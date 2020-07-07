@@ -1,0 +1,198 @@
+#
+# Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to use this Software with Cadence processor cores only and
+# not with any other processors and platforms, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+
+
+.PHONY: all  NNLIB 
+
+ROOTDIR = ../..
+
+QUIET =
+WARNING_AS_ERROR ?= 1
+
+ifeq ($(CPU), x86)
+
+  CC = gcc
+  MKPATH = mkdir -p
+  RM = rm -f
+  RM_R = rm -rf
+  LDFLAGS =
+  CPU_PREFIX = xgcc
+
+  CFLAGS = -I$(ROOTDIR)/include $(EXTRA_CFLAGS)
+
+else
+
+  CC = xt-xcc $(XTCORE)
+  CXX = xt-xc++ $(XTCORE)
+  ISS = xt-run $(XTCORE)
+  CONFIGDIR := $(shell $(ISS) --show-config=config)
+  include $(CONFIGDIR)/misc/hostenv.mk
+  CPU_PREFIX = xa
+
+  CFLAGS = -Wall -fsigned-char -mlongcalls -D__PROFILE__ -I$(ROOTDIR)/include $(EXTRA_CFLAGS)
+  ifeq ($(WARNING_AS_ERROR),1)
+  CFLAGS += -Werror 
+  endif
+  LDFLAGS = -mlongcalls
+
+endif
+
+CFLAGS += \
+    -I$(ROOTDIR)/test/include \
+    -I$(ROOTDIR)/include \
+    -I$(ROOTDIR)/include/nnlib \
+    -DMODEL_INT16 \
+    -DVERIFY \
+    -DPROFILE  \
+    -Dhifi5 \
+
+ifeq ($(DEBUG),1)
+  OPT_O2 = -O0 -g
+else
+  OPT_O2 = -O2
+endif
+
+vpath %.c $(ROOTDIR)/test/src
+
+NNLIBLIB     = $(ROOTDIR)/lib/$(CPU_PREFIX)_nnlib$(DETECTED_CORE).a
+
+MATMULBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_matXvec_test
+CONVBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_conv_test
+POOLBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_pool_test
+ACTBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_activation_test
+GRUBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_gru_test
+LSTMBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_lstm_test
+CNNBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_cnn_test
+MODEL_TINY_CONVBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_model_tiny_conv_test
+MODEL_CONVBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_model_conv_test
+
+OBJDIR = objs/$(DETECTED_CORE)
+
+MATMULOBJS = \
+    xa_nn_matXvec_testbench.o 
+CONVOBJS = \
+    xa_nn_conv_testbench.o 
+POOLOBJS = \
+    xa_nn_pool_testbench.o 
+ACTOBJS = \
+    xa_nn_activations_testbench.o
+GRUOBJS = \
+    xa_nn_gru_testbench.o 
+LSTMOBJS = \
+    xa_nn_lstm_testbench.o 
+CNNOBJS = \
+    xa_nn_cnn_testbench.o 
+MODEL_TINY_CONVOBJS = \
+	xa_nn_model_tiny_conv_testbench.o
+MODEL_CONVOBJS = \
+	xa_nn_model_conv_testbench.o
+
+UTILOBJS = \
+    xt_manage_buffers.o \
+    file_io.o
+DATAOBJS = \
+    tiny_conv2d_ker_bias.o \
+    tiny_fc_ker_bias.o     \
+    conv_conv2d_ker_bias.o \
+    conv_fc_ker_bias.o
+
+OBJS_MATMULOBJS  = $(addprefix $(OBJDIR)/,$(MATMULOBJS))
+OBJS_CONVOBJS  = $(addprefix $(OBJDIR)/,$(CONVOBJS))
+OBJS_POOLOBJS  = $(addprefix $(OBJDIR)/,$(POOLOBJS))
+OBJS_ACTOBJS  = $(addprefix $(OBJDIR)/,$(ACTOBJS))
+OBJS_GRUOBJS  = $(addprefix $(OBJDIR)/,$(GRUOBJS))
+OBJS_LSTMOBJS  = $(addprefix $(OBJDIR)/,$(LSTMOBJS))
+OBJS_UTILOBJS = $(addprefix $(OBJDIR)/,$(UTILOBJS))
+OBJS_CNNOBJS  = $(addprefix $(OBJDIR)/,$(CNNOBJS))
+OBJS_DATAOBJS = $(addprefix $(OBJDIR)/,$(DATAOBJS))
+OBJS_MODEL_TINY_CONVOBJS  = $(addprefix $(OBJDIR)/,$(MODEL_TINY_CONVOBJS))
+OBJS_MODEL_CONVOBJS  = $(addprefix $(OBJDIR)/,$(MODEL_CONVOBJS))
+
+run: 
+	xt-run --mem_model --nosummary xa_nn_matXvec_test
+	xt-run --mem_model --nosummary xa_nn_activation_test
+	xt-run --mem_model --nosummary xa_nn_conv_test
+	xt-run --mem_model --nosummary xa_nn_pool_test
+	xt-run --mem_model --nosummary xa_nn_gru_test
+	xt-run --mem_model --nosummary xa_nn_lstm_test
+	xt-run --mem_model --nosummary xa_nn_cnn_test
+	xt-run --mem_model --nosummary xa_nn_model_tiny_conv_test
+	xt-run --mem_model --nosummary xa_nn_model_conv_test
+
+all: NNLIB
+NNLIB: $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(MODEL_TINY_CONVBIN) $(MODEL_CONVBIN)
+
+nn_activation: clean_util $(ACTBIN)
+nn_cnn: clean_util $(CNNBIN)
+nn_conv: clean_util $(CONVBIN)
+nn_gru: clean_util $(GRUBIN)
+nn_lstm: clean_util $(LSTMBIN)
+nn_matXvec: clean_util $(MATMULBIN)
+nn_pool: clean_util $(POOLBIN) 
+nn_model_tiny_conv: clean_util clean_data $(MODEL_TINY_CONVBIN) 
+nn_model_conv: clean_util clean_data $(MODEL_CONVBIN) 
+
+clean_util:
+	-$(RM) $(OBJDIR)/xt_manage_buffers.o $(OBJDIR)/file_io.o 
+
+clean_data:
+	-$(RM) $(OBJDIR)/tiny_conv2d_ker_bias.o $(OBJDIR)/tiny_fc_ker_bias.o $(OBJDIR)/conv_conv2d_ker_bias.o $(OBJDIR)/conv_fc_ker_bias.o 
+
+$(MATMULBIN): $(OBJDIR) $(OBJS_MATMULOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_MATMULOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(CONVBIN): $(OBJDIR) $(OBJS_CONVOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_CONVOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(POOLBIN): $(OBJDIR) $(OBJS_POOLOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_POOLOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(ACTBIN): $(OBJDIR) $(OBJS_ACTOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_ACTOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(GRUBIN): $(OBJDIR) $(OBJS_GRUOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_GRUOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(LSTMBIN): $(OBJDIR) $(OBJS_LSTMOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_LSTMOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(CNNBIN): $(OBJDIR) $(OBJS_CNNOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_CNNOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(MODEL_TINY_CONVBIN): $(OBJDIR) $(OBJS_MODEL_TINY_CONVOBJS) $(OBJS_UTILOBJS) $(OBJS_DATAOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_MODEL_TINY_CONVOBJS) $(OBJS_UTILOBJS) $(OBJS_DATAOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(MODEL_CONVBIN): $(OBJDIR) $(OBJS_MODEL_CONVOBJS) $(OBJS_UTILOBJS) $(OBJS_DATAOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_MODEL_CONVOBJS) $(OBJS_UTILOBJS) $(OBJS_DATAOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+
+$(OBJDIR):
+	-$(MKPATH) $(OBJDIR)
+
+$(OBJS_MATMULOBJS) $(OBJS_CONVOBJS) $(OBJS_POOLOBJS) $(OBJS_UTILOBJS) $(OBJS_ACTOBJS) $(OBJS_GRUOBJS) $(OBJS_LSTMOBJS) $(OBJS_CNNOBJS) $(OBJS_MODEL_TINY_CONVOBJS) $(OBJS_MODEL_CONVOBJS) $(OBJS_DATAOBJS) : $(OBJDIR)/%.o: %.c
+	@echo "Compiling $<"
+	$(QUIET) $(CC) $(OPT_O2) $(CFLAGS) $(INCLUDES) -o $@ -c $<
+
+
+clean:
+	-$(RM) $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(MODEL_TINY_CONVBIN) $(MODEL_CONVBIN)
+	-$(RM) $(OBJDIR)$(S)*.o
+
