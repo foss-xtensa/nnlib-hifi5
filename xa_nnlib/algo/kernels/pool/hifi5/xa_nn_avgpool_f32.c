@@ -65,7 +65,7 @@ static void avgpool_f32(
     int itr_oh, itr_ow;
     int left_pad_aligned, right_pad, total_out_width, scratch_width;
     const xtfloatx2 * p_src1, * p_src2;
-    const xtfloatx2 * __restrict p_src1_temp, * __restrict p_src2_temp; 
+    const xtfloatx2 * __restrict p_src1_temp, * __restrict p_src2_temp;
     xtfloatx2 *p_dst, *p_dst_temp;
     ae_valignx2 align_src1, align_src2;
     int i;
@@ -81,7 +81,7 @@ static void avgpool_f32(
         p_dst_pad[i] = 0.0f;
     }
 
-    total_out_width = XT_MAX(input_width + x_padding, (out_width - 1) * x_stride + kernel_width); 
+    total_out_width = XT_MAX(input_width + x_padding, (out_width - 1) * x_stride + kernel_width);
     right_pad = total_out_width - (x_padding + input_width);
 
     /* Right padding of temporary output with min_value,
@@ -94,7 +94,7 @@ static void avgpool_f32(
 
     for(itr_oh = 0; itr_oh < out_height; itr_oh++)
     {
-        int pool_height, pool_width; 
+        int pool_height, pool_width;
         int start_row, end_row;
 
         /* Pool height processing */
@@ -310,6 +310,7 @@ WORD32 xa_nn_avgpool_f32(
     WORD32  y_padding,
     WORD32  out_height,
     WORD32  out_width,
+    WORD32  inp_data_format,
     WORD32  out_data_format,
     VOID *p_scratch)
 {
@@ -318,8 +319,8 @@ WORD32 xa_nn_avgpool_f32(
     XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
     XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
     /* Pointer alignment checks */
-    XA_NNLIB_ARG_CHK_ALIGN(p_out, ALIGNMENT, -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_inp, ALIGNMENT, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(FLOAT32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(FLOAT32), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
@@ -330,53 +331,122 @@ WORD32 xa_nn_avgpool_f32(
     XA_NNLIB_ARG_CHK_COND((y_stride <= 0 || x_stride <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((y_padding < 0 || x_padding < 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
-    XA_NNLIB_ARG_CHK_COND((out_data_format != 1), -1);
+    XA_NNLIB_ARG_CHK_COND((out_data_format != 0) && (out_data_format != 1), -1);
+    XA_NNLIB_ARG_CHK_COND((inp_data_format != 0) && (inp_data_format != 1), -1);
 
-    xa_nn_avgpool_init(-1,
-                       p_scratch,
-                       input_width,
-                       kernel_height,
-                       kernel_width,
-                       x_stride,
-                       y_stride,
-                       x_padding,
-                       out_height,
-                       out_width);
+    // Different I/O formats (not supported!)
+    XA_NNLIB_ARG_CHK_COND((out_data_format != inp_data_format), -1);
 
-    xa_nn_avgpool_state_t *p_state = (xa_nn_avgpool_state_t *)p_scratch;
-    FLOAT32 *p_tmp_out = (FLOAT32 *)(p_state->p_tmp_out);
-    int itr_ic, itr_oh, itr_ow;
-    const FLOAT32 *pt_inp;
-    FLOAT32 *pt_out;
-
-    /* Calculate denominators for division */
-    for(itr_oh = 0; itr_oh < out_height; itr_oh++)
+    if((input_channels == 1) || (out_data_format == 1))
     {
-        int kernel_x_start, kernel_x_end, kernel_y_start, kernel_y_end;
-        kernel_y_start = itr_oh*y_stride - y_padding;
-        kernel_y_end = kernel_y_start + kernel_height;
-        LIMIT(kernel_y_start, 0, input_height)
-        LIMIT(kernel_y_end, 0, input_height)
-        for(itr_ow = 0; itr_ow < out_width; itr_ow++)
+        xa_nn_avgpool_init(-1,
+                           p_scratch,
+                           input_width,
+                           kernel_height,
+                           kernel_width,
+                           x_stride,
+                           y_stride,
+                           x_padding,
+                           out_height,
+                           out_width);
+
+        xa_nn_avgpool_state_t *p_state = (xa_nn_avgpool_state_t *)p_scratch;
+        FLOAT32 *p_tmp_out = (FLOAT32 *)(p_state->p_tmp_out);
+        int itr_ic, itr_oh, itr_ow;
+        const FLOAT32 *pt_inp;
+        FLOAT32 *pt_out;
+
+        /* Calculate denominators for division */
+        for(itr_oh = 0; itr_oh < out_height; itr_oh++)
         {
-            kernel_x_start = itr_ow*x_stride - x_padding;
-            kernel_x_end = kernel_x_start + kernel_width;
-            LIMIT(kernel_x_start, 0, input_width)
-            LIMIT(kernel_x_end, 0, input_width)
-            FLOAT32 den = (FLOAT32)((kernel_y_end-kernel_y_start)*(kernel_x_end-kernel_x_start));
-            p_out[itr_oh*out_width+itr_ow] = MAX_S(RECIP_S(den), 0.0f);
+            int kernel_x_start, kernel_x_end, kernel_y_start, kernel_y_end;
+            kernel_y_start = itr_oh*y_stride - y_padding;
+            kernel_y_end = kernel_y_start + kernel_height;
+            LIMIT(kernel_y_start, 0, input_height)
+            LIMIT(kernel_y_end, 0, input_height)
+            for(itr_ow = 0; itr_ow < out_width; itr_ow++)
+            {
+                kernel_x_start = itr_ow*x_stride - x_padding;
+                kernel_x_end = kernel_x_start + kernel_width;
+                LIMIT(kernel_x_start, 0, input_width)
+                LIMIT(kernel_x_end, 0, input_width)
+                FLOAT32 den = (FLOAT32)((kernel_y_end-kernel_y_start)*(kernel_x_end-kernel_x_start));
+                p_out[itr_oh*out_width+itr_ow] = MAX_S(RECIP_S(den), 0.0f);
+            }
+        }
+
+        for(itr_ic = 0; itr_ic < input_channels; itr_ic++)
+        {
+            pt_inp = &p_inp[itr_ic * input_height * input_width];
+            pt_out = &p_out[itr_ic * out_height * out_width];
+
+            avgpool_f32(pt_out
+                    ,pt_inp
+                    ,input_height
+                    ,input_width
+                    ,kernel_height
+                    ,kernel_width
+                    ,x_stride
+                    ,y_stride
+                    ,x_padding
+                    ,y_padding
+                    ,out_height
+                    ,out_width
+                    ,out_height*out_width
+                    ,(input_channels-itr_ic-1)
+                    ,p_tmp_out
+                    );
         }
     }
-
-    for(itr_ic = 0; itr_ic < input_channels; itr_ic++)
+    else
     {
-        pt_inp = &p_inp[itr_ic * input_height * input_width];
-        pt_out = &p_out[itr_ic * out_height * out_width];
+        FLOAT32 *p_rec_den, *p_den, *p_zeros_mem;
+        void *p_scratch_aligned;
+        int itr_oh, itr_ow;
 
-        avgpool_f32(pt_out
-                ,pt_inp
+        p_scratch_aligned = (void *)ALIGN_PTR(p_scratch, ALIGNMENT);
+
+        p_rec_den = (FLOAT32 *)((WORD8 *)p_scratch_aligned +
+            2*ALIGNED_SIZE((sizeof(FLOAT32) * input_channels * input_width), ALIGNMENT));
+
+        p_den = p_rec_den;
+
+        /* Calculate denominators for division */
+        for(itr_oh = 0; itr_oh < out_height; itr_oh++)
+        {
+            int kernel_x_start, kernel_x_end, kernel_y_start, kernel_y_end;
+            kernel_y_start = itr_oh*y_stride - y_padding;
+            kernel_y_end = kernel_y_start + kernel_height;
+
+            LIMIT(kernel_y_start, 0, input_height)
+            LIMIT(kernel_y_end, 0, input_height)
+
+            for(itr_ow = 0; itr_ow < out_width; itr_ow++)
+            {
+                kernel_x_start = itr_ow*x_stride - x_padding;
+                kernel_x_end = kernel_x_start + kernel_width;
+
+                LIMIT(kernel_x_start, 0, input_width)
+                LIMIT(kernel_x_end, 0, input_width)
+
+                FLOAT32 den = (FLOAT32)((kernel_y_end-kernel_y_start)*(kernel_x_end-kernel_x_start));
+                p_rec_den[itr_oh*out_width+itr_ow] = XT_MAX_S(XT_RECIP_S(den), 0.0f);
+            }
+        }
+
+        p_rec_den = (FLOAT32 *)((WORD8 *)p_scratch_aligned + ALIGNED_SIZE((sizeof(FLOAT32) * input_channels * input_width), ALIGNMENT));
+        p_zeros_mem = p_rec_den;
+        for(itr_oh = 0; itr_oh < input_channels*input_width; itr_oh++)
+        {
+            p_rec_den[itr_oh] = 0;
+        }
+
+
+        xa_nn_avgpool_f32_hwc(p_out
+                ,p_inp
                 ,input_height
                 ,input_width
+                ,input_channels
                 ,kernel_height
                 ,kernel_width
                 ,x_stride
@@ -385,10 +455,9 @@ WORD32 xa_nn_avgpool_f32(
                 ,y_padding
                 ,out_height
                 ,out_width
-                ,out_height*out_width
-                ,(input_channels-itr_ic-1)
-                ,p_tmp_out
-                );
+                ,p_scratch_aligned
+                ,p_zeros_mem
+                ,p_den);
     }
     return 0;
 }

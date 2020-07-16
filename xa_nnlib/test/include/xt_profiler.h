@@ -81,7 +81,6 @@ static unsigned long inline GETCLOCK(void)
 }
 
 #define XTPWR_PROFILER_START( prof ) {        \
-  xt_iss_switch_mode(XT_ISS_CYCLE_ACCURATE);  \
   xt_iss_profile_enable();                    \
   xt_iss_client_command("all", "enable");     \
   get_clock(&(&gProfiler[prof])->start);      \
@@ -91,7 +90,6 @@ static unsigned long inline GETCLOCK(void)
   get_clock(&(&gProfiler[prof])->stop);                       \
   xt_iss_client_command("all", "disable");                    \
   xt_iss_profile_disable();                                   \
-  xt_iss_switch_mode(XT_ISS_FUNCTIONAL);                      \
   (&gProfiler[prof])->cycles += _STOP(prof) - _START(prof);   \
   _START(prof) = 0;                                           \
   _STOP(prof) = 0;                                            \

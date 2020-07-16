@@ -72,7 +72,7 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_maxpool_f32,(
             width--; \
         }
 
-/* Max pooling without using extra copy of input data 
+/* Max pooling without using extra copy of input data
  * Works with unaligned input, output.
  */
 
@@ -95,8 +95,8 @@ static void maxpool_f32(
 
     int itr_oh, itr_ow;
     int left_pad_aligned, right_pad, total_out_width, scratch_width;
-    const xtfloatx2 * p_src1, * p_src2, * p_src3; 
-    const xtfloatx2 * __restrict p_src1_temp, * __restrict p_src2_temp, * __restrict p_src3_temp; 
+    const xtfloatx2 * p_src1, * p_src2, * p_src3;
+    const xtfloatx2 * __restrict p_src1_temp, * __restrict p_src2_temp, * __restrict p_src3_temp;
     xtfloatx2 *p_dst, *p_dst_temp;
     ae_valignx2 align_src1, align_src2, align_src3;
     int i;
@@ -112,7 +112,7 @@ static void maxpool_f32(
         p_dst_pad[i] = -INFINITY;
     }
 
-    total_out_width = XT_MAX(input_width + x_padding, (out_width - 1) * x_stride + kernel_width); 
+    total_out_width = XT_MAX(input_width + x_padding, (out_width - 1) * x_stride + kernel_width);
     right_pad = total_out_width - (x_padding + input_width);
 
     /* Right padding of temporary output with min_value,
@@ -125,7 +125,7 @@ static void maxpool_f32(
 
     for(itr_oh = 0; itr_oh < out_height; itr_oh++)
     {
-        int pool_height, pool_width; 
+        int pool_height, pool_width;
         int start_row, end_row;
 
         /* Pool height processing */
@@ -143,14 +143,14 @@ static void maxpool_f32(
         if(pool_height)
         {
             p_src1 = (const xtfloatx2 *)p_inp;
-            INCR_N_ROW(p_src1, start_row); 
+            INCR_N_ROW(p_src1, start_row);
             pool_height--;
 
             p_src2 = p_src1;
-            INCR_ROW_IF_HEIGHT(p_src2, pool_height); 
+            INCR_ROW_IF_HEIGHT(p_src2, pool_height);
 
             p_src3 = p_src2;
-            INCR_ROW_IF_HEIGHT(p_src3, pool_height); 
+            INCR_ROW_IF_HEIGHT(p_src3, pool_height);
 
             /* Compare three rows per iteration */
             do
@@ -216,10 +216,10 @@ static void maxpool_f32(
                 p_src1 = p_dst;
 
                 p_src2 = p_src3;
-                INCR_ROW_IF_HEIGHT(p_src2, pool_height); 
+                INCR_ROW_IF_HEIGHT(p_src2, pool_height);
 
                 p_src3 = p_src2;
-                INCR_ROW_IF_HEIGHT(p_src3, pool_height); 
+                INCR_ROW_IF_HEIGHT(p_src3, pool_height);
 
             }while(1);
         }
@@ -275,7 +275,7 @@ static void maxpool_f32(
                 src1 = XT_MAX_SX2(temp, src3);
                 temp = XT_MAX_SX2(j1, j2);
                 j1 = XT_MAX_SX2(temp, j3);
-                
+
                 AE_SSX2X2_IP(src1, j1, (xtfloatx4 *)p_dst_temp, 16);
             }
 
@@ -318,10 +318,10 @@ static void maxpool_f32(
 
         }while(1);
 
-        FLOAT32 *ptr_out1 = p_scratch + total_out_width; 
+        FLOAT32 *ptr_out1 = p_scratch + total_out_width;
         for(itr_ow = 0; itr_ow < out_width; itr_ow++)
         {
-            p_out[itr_oh * out_width * 1 /* out_stride */ + itr_ow * 1 /* out_stride */] = ptr_out1[itr_ow * x_stride]; 
+            p_out[itr_oh * out_width * 1 /* out_stride */ + itr_ow * 1 /* out_stride */] = ptr_out1[itr_ow * x_stride];
         }
     }
 }
@@ -340,6 +340,7 @@ WORD32 xa_nn_maxpool_f32(
     WORD32  y_padding,
     WORD32  out_height,
     WORD32  out_width,
+    WORD32  inp_data_format,
     WORD32  out_data_format,
     VOID   *p_scratch)
 {
@@ -350,8 +351,8 @@ WORD32 xa_nn_maxpool_f32(
     XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
     XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
     /* Pointer alignment checks */
-    XA_NNLIB_ARG_CHK_ALIGN(p_out, ALIGNMENT, -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_inp, ALIGNMENT, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(FLOAT32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(FLOAT32), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
@@ -360,36 +361,63 @@ WORD32 xa_nn_maxpool_f32(
     XA_NNLIB_ARG_CHK_COND((y_stride <= 0 || x_stride <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((y_padding < 0 || x_padding < 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
-    XA_NNLIB_ARG_CHK_COND((out_data_format != 1), -1);
+    XA_NNLIB_ARG_CHK_COND((out_data_format != 0) && (out_data_format != 1), -1);
 
-    err = xa_nn_maxpool_init(-1
-                             ,p_scratch
-                             ,input_width
-                             ,kernel_height
-                             ,kernel_width
-                             ,x_stride
-                             ,y_stride
-                             ,x_padding
-                             ,out_width
-                             );
-    if(err<0)
-        return err;
+    XA_NNLIB_ARG_CHK_COND((inp_data_format != 0) && (inp_data_format != 1), -1);
+    // Different I/O formats (not supported!)
+    XA_NNLIB_ARG_CHK_COND((out_data_format != inp_data_format), -1);
 
-    xa_nn_maxpool_state_t *p_state = (xa_nn_maxpool_state_t *)p_scratch;
-    FLOAT32 *p_scratch_in = (FLOAT32 *)(p_state->p_scratch);
-    int itr_ic;
-    const FLOAT32 *pt_inp;
-    FLOAT32 *pt_out;
-
-    for(itr_ic = 0; itr_ic < input_channels; itr_ic++)
+    if((input_channels == 1) || (out_data_format == 1))
     {
-        pt_inp = &p_inp[itr_ic * input_height * input_width];
-        pt_out = &p_out[itr_ic * out_height * out_width];
+        err = xa_nn_maxpool_init(-1
+                                 ,p_scratch
+                                 ,input_width
+                                 ,kernel_height
+                                 ,kernel_width
+                                 ,x_stride
+                                 ,y_stride
+                                 ,x_padding
+                                 ,out_width
+                                 );
+        if(err<0)
+            return err;
 
-        maxpool_f32(pt_out
-                ,pt_inp
+        xa_nn_maxpool_state_t *p_state = (xa_nn_maxpool_state_t *)p_scratch;
+        FLOAT32 *p_scratch_in = (FLOAT32 *)(p_state->p_scratch);
+        int itr_ic;
+        const FLOAT32 *pt_inp;
+        FLOAT32 *pt_out;
+
+        for(itr_ic = 0; itr_ic < input_channels; itr_ic++)
+        {
+            pt_inp = &p_inp[itr_ic * input_height * input_width];
+            pt_out = &p_out[itr_ic * out_height * out_width];
+
+            maxpool_f32(pt_out
+                    ,pt_inp
+                    ,input_height
+                    ,input_width
+                    ,kernel_height
+                    ,kernel_width
+                    ,x_stride
+                    ,y_stride
+                    ,x_padding
+                    ,y_padding
+                    ,out_height
+                    ,out_width
+                    ,p_scratch_in
+                    );
+        }
+    }
+    else
+    {
+        void *p_scratch_aligned = (void *)ALIGN_PTR(p_scratch, ALIGNMENT);
+
+        xa_nn_maxpool_f32_hwc(p_out
+                ,p_inp
                 ,input_height
                 ,input_width
+                ,input_channels
                 ,kernel_height
                 ,kernel_width
                 ,x_stride
@@ -398,8 +426,7 @@ WORD32 xa_nn_maxpool_f32(
                 ,y_padding
                 ,out_height
                 ,out_width
-                ,p_scratch_in
-                );
+                ,p_scratch_aligned);
     }
     return 0;
 }

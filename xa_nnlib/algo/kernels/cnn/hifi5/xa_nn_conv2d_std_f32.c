@@ -72,7 +72,7 @@ static WORD32 conv_x_left_pad(
     {
       for(k=0;k<out_channels;k++)
       {
-        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = p_bias[k]; 
+        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = p_bias[k];
       }
     }
   }
@@ -94,7 +94,7 @@ static WORD32 conv_x_right_pad(
 {
   WORD32 i,j,k;
   WORD32 idx_out_width_over_x_r_pad = (x_padding + input_width + x_stride - 1)/x_stride + 1;
-  WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad; 
+  WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad;
 
   /* When kernel convolves over x-right pad region only, output is just bias */
   for(i=0;i<out_height;i++)
@@ -107,7 +107,7 @@ static WORD32 conv_x_right_pad(
       }
     }
   }
-  return out_width_over_x_r_pad; 
+  return out_width_over_x_r_pad;
 }
 
 WORD32 xa_nn_conv2d_std_f32(
@@ -137,10 +137,10 @@ WORD32 xa_nn_conv2d_std_f32(
   XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
   XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
   /* Pointer alignment checks */
-  XA_NNLIB_ARG_CHK_ALIGN(p_out, ALIGNMENT, -1);
-  XA_NNLIB_ARG_CHK_ALIGN(p_inp, ALIGNMENT, -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(FLOAT32), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(FLOAT32), -1);
   XA_NNLIB_ARG_CHK_ALIGN(p_kernel, ALIGNMENT, -1);
-  XA_NNLIB_ARG_CHK_ALIGN(p_bias, ALIGNMENT, -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(FLOAT32), -1);
   XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
   /* Basic Parameter checks */
   XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
@@ -153,8 +153,6 @@ WORD32 xa_nn_conv2d_std_f32(
   XA_NNLIB_ARG_CHK_COND((y_padding < 0 || x_padding < 0), -1);
   XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
-  /* Implementation dependent checks */
-  XA_NNLIB_ARG_CHK_COND((x_stride > kernel_width), -1);
 
   WORD32 j;
   WORD32 input_bytewidth = sizeof(*p_inp);
@@ -177,8 +175,8 @@ WORD32 xa_nn_conv2d_std_f32(
     out_width_over_x_pad = conv_x_left_pad(x_padding, kernel_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, (FLOAT32 *)p_bias, p_out);
     x_padding_var -= out_width_over_x_pad * x_stride;
   }
-  
-  
+
+
   /* When kernel convolves over x-right pad region only */
   WORD32 out_width_over_x_r_pad = 0;
   // Determine x-right padding
@@ -191,14 +189,14 @@ WORD32 xa_nn_conv2d_std_f32(
 
   /* When kernel convolves over input region */
   p_out += out_width_over_x_pad * out_width_offset;
-  // Initialize circular buffer 
+  // Initialize circular buffer
   // Determine y-bottom padding
-  WORD32 y_b_pad = out_height * y_stride - (y_padding + input_height - kernel_height + 1);
+  WORD32 y_b_pad = kernel_height + (out_height - 1) * y_stride - (y_padding + input_height);
   y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
- 
+
   conv2d_std_init_cir_buf(input_channels, input_channels_pad, input_bytewidth, input_width, input_height, y_padding, y_b_pad, x_padding_var, kernel_width, x_stride, (VOID**)&pp_inp, p_state);
 
-  // Index to padded input width 
+  // Index to padded input width
   WORD32 idx_beg_inp_width_pad = kernel_width - x_stride;
 
   // Process Loop to compute one output plane [out_height x out_channels] per iteration

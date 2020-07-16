@@ -31,6 +31,8 @@
 #define LIMIT(input, min, max) \
     input = XT_MAX(min, XT_MIN(max, input));
 
+#define MAX_HEIGHT_16_BIT_ACC 127
+
 extern const unsigned int inv_256_tbl[257];
 typedef struct _xa_nn_avgpool_state_t
 {
@@ -50,4 +52,118 @@ VOID xa_nn_avgpool_init(
     WORD32 x_padding,
     WORD32 out_height,
     WORD32 out_width);
+
+void xa_nn_avgpool_f32_hwc(
+        FLOAT32* __restrict__ p_out,
+const   FLOAT32* __restrict__ p_inp,
+        WORD32   input_height,
+        WORD32   input_width,
+        WORD32   input_channels,
+        WORD32   kernel_height,
+        WORD32   kernel_width,
+        WORD32   x_stride,
+        WORD32   y_stride,
+        WORD32   x_padding,
+        WORD32   y_padding,
+        WORD32   out_height,
+        WORD32   out_width,
+        pVOID    p_scratch_in,
+        FLOAT32  *p_zeros_mem,
+        FLOAT32  *p_den);
+
+void xa_nn_avgpool_asym8_hwc_16(
+        UWORD8* __restrict__ p_out,
+const   UWORD8* __restrict__ p_inp,
+        WORD32   input_height,
+        WORD32   input_width,
+        WORD32   input_channels,
+        WORD32   kernel_height,
+        WORD32   kernel_width,
+        WORD32   x_stride,
+        WORD32   y_stride,
+        WORD32   x_padding,
+        WORD32   y_padding,
+        WORD32   out_height,
+        WORD32   out_width,
+        pVOID    p_scratch_in,
+        pVOID    p_zeros_mem,
+        WORD32   *p_den_height,
+        WORD32   *p_den_width);
+
+void xa_nn_avgpool_asym8_hwc_32(
+        UWORD8* __restrict__ p_out,
+const   UWORD8* __restrict__ p_inp,
+        WORD32   input_height,
+        WORD32   input_width,
+        WORD32   input_channels,
+        WORD32   kernel_height,
+        WORD32   kernel_width,
+        WORD32   x_stride,
+        WORD32   y_stride,
+        WORD32   x_padding,
+        WORD32   y_padding,
+        WORD32   out_height,
+        WORD32   out_width,
+        pVOID    p_scratch_in,
+        pVOID    p_zeros_mem,
+        WORD32   *p_den_height,
+        WORD32   *p_den_width);
+
+void xa_nn_avgpool_8_hwc_16(
+        WORD8* __restrict__ p_out,
+const   WORD8* __restrict__ p_inp,
+        WORD32   input_height,
+        WORD32   input_width,
+        WORD32   input_channels,
+        WORD32   kernel_height,
+        WORD32   kernel_width,
+        WORD32   x_stride,
+        WORD32   y_stride,
+        WORD32   x_padding,
+        WORD32   y_padding,
+        WORD32   out_height,
+        WORD32   out_width,
+        pVOID    p_scratch_in,
+        pVOID    p_zeros_mem,
+        WORD32   *p_den_height,
+        WORD32   *p_den_width);
+
+void xa_nn_avgpool_8_hwc_32(
+        WORD8* __restrict__ p_out,
+const   WORD8* __restrict__ p_inp,
+        WORD32   input_height,
+        WORD32   input_width,
+        WORD32   input_channels,
+        WORD32   kernel_height,
+        WORD32   kernel_width,
+        WORD32   x_stride,
+        WORD32   y_stride,
+        WORD32   x_padding,
+        WORD32   y_padding,
+        WORD32   out_height,
+        WORD32   out_width,
+        pVOID    p_scratch_in,
+        pVOID    p_zeros_mem,
+        WORD32   *p_den_height,
+        WORD32   *p_den_width);
+
+void xa_nn_avgpool_16_hwc_32(
+        WORD16* __restrict__ p_out,
+const   WORD16* __restrict__ p_inp,
+        WORD32   input_height,
+        WORD32   input_width,
+        WORD32   input_channels,
+        WORD32   kernel_height,
+        WORD32   kernel_width,
+        WORD32   x_stride,
+        WORD32   y_stride,
+        WORD32   x_padding,
+        WORD32   y_padding,
+        WORD32   out_height,
+        WORD32   out_width,
+        pVOID    p_scratch_in,
+        pVOID    p_zeros_mem,
+        WORD32   *p_den_height,
+        WORD32   *p_den_width);
+
 #endif /* #ifndef __XA_NN_AVGPOOL_STATE_H__ */

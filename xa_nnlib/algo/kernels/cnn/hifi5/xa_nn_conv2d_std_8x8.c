@@ -54,12 +54,12 @@ static WORD32 conv_x_left_pad(
       {
 
         ae_int64 acc = AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[k]));
-        acc = AE_SLAA64S(acc, 8); 
+        acc = AE_SLAA64S(acc, 8);
         acc = AE_SLAA64S(acc, -56);
-        acc = AE_SLAA64S(acc, bias_shift); 
-        acc = AE_SLAA64S(acc, acc_shift); 
+        acc = AE_SLAA64S(acc, bias_shift);
+        acc = AE_SLAA64S(acc, acc_shift);
         ae_int8x8 res2 = AE_MOVINT8X8_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(acc),24),-24));
-        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] =AE_MOVAD8(res2,0); 
+        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] =AE_MOVAD8(res2,0);
       }
     }
   }
@@ -83,8 +83,8 @@ static WORD32 conv_x_right_pad(
 {
   WORD32 i,j,k;
   WORD32 idx_out_width_over_x_r_pad = (x_padding + input_width + x_stride - 1)/x_stride + 1;
-  WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad; 
-  
+  WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad;
+
   /* When kernel convolves over x-right pad region only, output is just bias */
   for(i=0;i<out_height;i++)
   {
@@ -93,16 +93,16 @@ static WORD32 conv_x_right_pad(
       for(k=0;k<out_channels;k++)
       {
         ae_int64 acc = AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[k]));
-        acc = AE_SLAA64S(acc, 8); 
+        acc = AE_SLAA64S(acc, 8);
         acc = AE_SLAA64S(acc, -56);
-        acc = AE_SLAA64S(acc, bias_shift); 
-        acc = AE_SLAA64S(acc, acc_shift); 
+        acc = AE_SLAA64S(acc, bias_shift);
+        acc = AE_SLAA64S(acc, acc_shift);
         ae_int8x8 res2 = AE_MOVINT8X8_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(acc),24),-24));
-        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = AE_MOVAD8(res2,0); 
+        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = AE_MOVAD8(res2,0);
       }
     }
   }
-  return out_width_over_x_r_pad; 
+  return out_width_over_x_r_pad;
 }
 
 WORD32 xa_nn_conv2d_std_8x8(
@@ -167,18 +167,17 @@ WORD32 xa_nn_conv2d_std_8x8(
   WORD32 out_width_offset = out_data_format ? 1 : out_channels;
 
   WORD32 x_padding_var = x_padding;
-  WORD32 input_channels_pad = PADDED_SIZE(input_channels, (ALIGNMENT>>1));
-  
+
   // Limit effective bias_shift and acc_shift to [-63 ... 63]
   // +16 to conform with 8bit left shifts of 8bit kernel and input loads
   //bias_shift = bias_shift + 16;
   bias_shift = bias_shift > 63 ? 63 : bias_shift < -63 ? -63 : bias_shift;
-  /* +48 to move acc to upper 16bits, as TRUNC keeps upper 32bits and ROUND keeps upper 16bits; 
+  /* +48 to move acc to upper 16bits, as TRUNC keeps upper 32bits and ROUND keeps upper 16bits;
      -16 to remove 8bit left shifts of kernel and input */
   acc_shift = acc_shift + 32;
   acc_shift = acc_shift > 63 ? 63 : acc_shift < -63 ? -63 : acc_shift;
 
- 
+
   /* When kernel convolves over x-left pad region only */
   WORD32 out_width_over_x_pad = 0;
   if(x_padding_var >= kernel_width)
@@ -186,8 +185,8 @@ WORD32 xa_nn_conv2d_std_8x8(
     out_width_over_x_pad = conv_x_left_pad(x_padding, kernel_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, bias_shift, acc_shift);
     x_padding_var -= out_width_over_x_pad * x_stride;
   }
-  
-  
+
+
   /* When kernel convolves over x-right pad region only */
   WORD32 out_width_over_x_r_pad = 0;
   // Determine x-right padding
@@ -201,14 +200,14 @@ WORD32 xa_nn_conv2d_std_8x8(
 
   /* When kernel convolves over input region */
   p_out += out_width_over_x_pad * out_width_offset;
-  // Initialize circular buffer 
+  // Initialize circular buffer
   // Determine y-bottom padding
-  WORD32 y_b_pad = out_height * y_stride - (y_padding + input_height - kernel_height + 1);
+  WORD32 y_b_pad = kernel_height + (out_height - 1) * y_stride - (y_padding + input_height);
   y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
- 
-  conv2d_std_init_cir_buf(input_channels, input_channels_pad, input_bytewidth, input_width, input_height, y_padding, y_b_pad, x_padding_var, kernel_width, x_stride, (VOID**)&pp_inp, p_state);
-  
-  // Index to padded input width 
+
+  conv2d_std_init_cir_buf(input_channels, input_channels, input_bytewidth, input_width, input_height, y_padding, y_b_pad, x_padding_var, kernel_width, x_stride, (VOID**)&pp_inp, p_state);
+
+  // Index to padded input width
   WORD32 idx_beg_inp_width_pad = kernel_width - x_stride;
 
 
@@ -216,7 +215,7 @@ WORD32 xa_nn_conv2d_std_8x8(
   for(j=0;j<out_width-out_width_over_x_pad-out_width_over_x_r_pad;j++)
   {
     // Add x_stride x (input_height x input_channels) new planes to circular buffer
-    conv2d_std_update_cir_buf(input_channels, input_channels_pad, input_bytewidth, input_width, input_height, y_padding, y_b_pad, x_padding_var, kernel_width, x_stride, (VOID**)&pp_inp, idx_beg_inp_width_pad, p_state);
+    conv2d_std_update_cir_buf(input_channels, input_channels, input_bytewidth, input_width, input_height, y_padding, y_b_pad, x_padding_var, kernel_width, x_stride, (VOID**)&pp_inp, idx_beg_inp_width_pad, p_state);
 
     // Update index to input width padded
     idx_beg_inp_width_pad += x_stride;
@@ -228,13 +227,13 @@ WORD32 xa_nn_conv2d_std_8x8(
        ,p_kernel /* vec: cols */
        ,p_bias /* bias */
        ,out_height /* rows */
-       ,input_channels_pad * kernel_width * kernel_height /* cols */
-       ,input_channels_pad * kernel_width * y_stride/* row_offset */
+       ,input_channels * kernel_width * kernel_height /* cols */
+       ,input_channels * kernel_width * y_stride/* row_offset */
        ,out_channels /* vec_count */
-       ,input_channels_pad * kernel_width * kernel_height /* vec_offset */
+       ,input_channels * kernel_width * kernel_height /* vec_offset */
        ,out_channels_offset /* out_col_offset */
        ,out_height_offset /* out_row_offset */
-       ,bias_shift 
+       ,bias_shift
        ,acc_shift
       );
 

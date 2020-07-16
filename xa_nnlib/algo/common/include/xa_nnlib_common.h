@@ -19,20 +19,14 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "xa_type_def.h"
-#include "xtensa/tie/xt_hifi2.h"
+#ifndef __XA_NNLIB_LEGACY_COMPAT_H__
+#define __XA_NNLIB_LEGACY_COMPAT_H__
 
-void xa_nn_elm_mul_16x16_16(WORD16 * __restrict__ output, const WORD16 * __restrict__ input_1, const WORD16 * __restrict__ input_2, WORD32 num_elm)
-{
-    #pragma aligned(input_1, 8)
-    #pragma aligned(input_2, 8)
-    int i;
-    ae_f16x4 *inp1 = (ae_f16x4 *)input_1;
-    ae_f16x4 *inp2 = (ae_f16x4 *)input_2;
-    ae_f16x4 *out = (ae_f16x4 *)output;
-    
-    for(i=0;i < num_elm>>2;i++)
-    {
-        out[i]  = AE_MULFP16X4S(inp1[i], inp2[i]);
-    }
-}
+#include "xtensa/tie/xt_hifi2.h"
+#include "xa_type_def.h"
+#include "common.h"
+#include "xa_nnlib_err_chk.h"
+#include "xa_nnlib_hifi_isa_compat.h"
+#include "xa_nnlib_kernels_api.h"
+
+#endif /* __XA_NNLIB_LEGACY_COMPAT_H__ */

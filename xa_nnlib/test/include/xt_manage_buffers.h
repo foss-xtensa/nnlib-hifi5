@@ -27,6 +27,8 @@
 #include "xa_type_def.h"
 
 #define ASYM8_TYPE -3
+#define ASYM8S_TYPE -4
+#define SYM8S_TYPE -5
 #define FLOAT_TYPE -1
 
 typedef struct _buf1D_t{
@@ -57,7 +59,7 @@ int set_rand_inp_buf2D(buf2D_t *ptr_buf2D);
 void write_buf1D(buf1D_t *pbuf, FILE *file,int extensionIndicator, char * var_name);
 void write_buf2D(buf2D_t *pbuf, FILE *file,int extensionIndicator, char * var_name);
 
-int compare_buf1D(buf1D_t *pbuf_ref, buf1D_t *pbuf_out, int method);
+int compare_buf1D(buf1D_t *pbuf_ref, buf1D_t *pbuf_out, int method, int precision, int sum_length);
 int compare_buf2D(buf2D_t *pbuf_ref, buf2D_t *pbuf_out, int method);
 
 int interleave_buf1D_real(buf1D_t *pbuf, buf1D_t *pbuf_interleaved, int length);

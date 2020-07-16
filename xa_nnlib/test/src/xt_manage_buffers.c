@@ -21,6 +21,7 @@
 ******************************************************************************/
 #include <xtensa/config/core-isa.h>
 #include "xt_manage_buffers.h"
+#include <math.h>
 #define COLS_PER_ROW 32  
 #define DBG_PRINT printf
 //#define DBG_PRINT(...) //printf
@@ -64,6 +65,8 @@ buf1D_t *create_buf1D(int len, int precision)
   {
     case -1: pbuf->bytes_per_element = 4; break;
     case ASYM8_TYPE: pbuf->bytes_per_element = 1; break;
+    case ASYM8S_TYPE: pbuf->bytes_per_element = 1; break;
+    case SYM8S_TYPE: pbuf->bytes_per_element = 1; break;
     case  8: pbuf->bytes_per_element = 1; break;
     case 16: pbuf->bytes_per_element = 2; break;
     case 32: pbuf->bytes_per_element = 4; break;
@@ -108,6 +111,8 @@ buf2D_t *create_buf2D(int rows, int cols, int row_offset, int precision, int pad
   {
     case -1:pbuf->bytes_per_element = 4; break;
     case ASYM8_TYPE: pbuf->bytes_per_element = 1;break;
+    case ASYM8S_TYPE: pbuf->bytes_per_element = 1; break;
+    case SYM8S_TYPE: pbuf->bytes_per_element = 1; break;
     case 8: pbuf->bytes_per_element = 1;break;
     case 16:pbuf->bytes_per_element = 2; break;
     case 32:pbuf->bytes_per_element = 4; break;
@@ -130,15 +135,8 @@ buf2D_t *create_buf2D(int rows, int cols, int row_offset, int precision, int pad
       int pad_elements  = (XCHAL_DATA_WIDTH / pbuf->bytes_per_element);
       pbuf->row_offset = cols + pad_elements;
       DBG_PRINT("Offset adjusted to %d\n", pbuf->row_offset);
-
-    }
-    else
-    {
-      pbuf->row_offset = cols;
     }
   }
-#else
-  pbuf->row_offset = cols;
 #endif
 
   size_in_bytes = (pbuf->bytes_per_element * pbuf->row_offset * pbuf->rows);
@@ -177,6 +175,8 @@ int interleave_buf1D(buf1D_t *pbuf, buf1D_t *pbuf_interleaved, int length)
     {
       case -1: numbytes = sizeof(float);       break;
       case ASYM8_TYPE: numbytes = sizeof(char);        break;
+      case ASYM8S_TYPE: numbytes = sizeof(char); break;
+      case SYM8S_TYPE: numbytes = sizeof(char); break;
        case 8: numbytes = sizeof(char);        break;
       case 16: numbytes = sizeof(short int);   break;
       case 32: numbytes = sizeof(int);         break;
@@ -210,6 +210,8 @@ int deinterleave_buf1D(buf1D_t *pbuf, buf1D_t *pbuf_deinterleaved, int length)
     {
       case -1: numbytes = sizeof(float);       break;
       case ASYM8_TYPE: numbytes = sizeof(char);        break;
+      case ASYM8S_TYPE: numbytes = sizeof(char); break;
+      case SYM8S_TYPE: numbytes = sizeof(char); break;
        case 8: numbytes = sizeof(char);        break;
       case 16: numbytes = sizeof(short int);   break;
       case 32: numbytes = sizeof(int);         break;
@@ -242,6 +244,8 @@ int interleave_buf1D_real(buf1D_t *pbuf, buf1D_t *pbuf_interleaved, int length)
     {
       case -1: numbytes = sizeof(float);       break;
       case ASYM8_TYPE: numbytes = sizeof(char);        break;
+      case ASYM8S_TYPE: numbytes = sizeof(char); break;
+      case SYM8S_TYPE: numbytes = sizeof(char); break;
        case 8: numbytes = sizeof(char);        break;
       case 16: numbytes = sizeof(short int);   break;
       case 32: numbytes = sizeof(int);         break;
@@ -271,6 +275,8 @@ int deinterleave_buf1D_real(buf1D_t *pbuf, buf1D_t *pbuf_deinterleaved, int leng
     {
       case -1: numbytes = sizeof(float);       break;
       case ASYM8_TYPE: numbytes = sizeof(char);        break;
+      case ASYM8S_TYPE: numbytes = sizeof(char); break;
+      case SYM8S_TYPE: numbytes = sizeof(char); break;
       case  8: numbytes = sizeof(char);        break;
       case 16: numbytes = sizeof(short int);   break;
       case 32: numbytes = sizeof(int);         break;
@@ -304,6 +310,8 @@ int set_rand_inp_buf1D(buf1D_t *ptr_buf1D)
       }
       break;
     case ASYM8_TYPE: 
+    case ASYM8S_TYPE: 
+    case SYM8S_TYPE: 
       {
         char *p = (char *) ptr_buf1D->p;
         for (i = 0; i < ptr_buf1D->length; i++)
@@ -373,6 +381,8 @@ int set_rand_inp_buf2D(buf2D_t *ptr_buf2D)
       }
       break;
     case ASYM8_TYPE: 
+    case ASYM8S_TYPE: 
+    case SYM8S_TYPE: 
       {
         char *p = (char *) ptr_buf2D->p;
         for (i = 0; i < ptr_buf2D->rows * ptr_buf2D->row_offset; i++)
@@ -466,6 +476,8 @@ void write_buf1D(buf1D_t *pbuf, FILE *file,int extensionIndicator, char * var_na
     {
       case -1: length = sizeof(float) * pbuf->length;   break;
       case ASYM8_TYPE:  length = sizeof(char)  * pbuf->length;   break;
+      case ASYM8S_TYPE:  length = sizeof(char)  * pbuf->length;   break;
+      case SYM8S_TYPE:  length = sizeof(char)  * pbuf->length;   break;
       case 8:  length = sizeof(char)  * pbuf->length;   break;
       case 16: length = sizeof(short) * pbuf->length;   break;
       case 32: length = sizeof(int) * pbuf->length;   break;
@@ -487,6 +499,8 @@ void write_buf2D(buf2D_t *pbuf, FILE *file,int extensionIndicator, char * var_na
     {
       case -1: length = sizeof(float) * pbuf->rows * pbuf->row_offset;   break;
       case ASYM8_TYPE: length = sizeof(char)  * pbuf->rows * pbuf->row_offset;   break;
+      case ASYM8S_TYPE:  length = sizeof(char)  * pbuf->rows * pbuf->row_offset;   break;
+      case SYM8S_TYPE:  length = sizeof(char)  * pbuf->rows * pbuf->row_offset;   break;
       case 8:  length = sizeof(char)  * pbuf->rows * pbuf->row_offset;   break;
       case 16: length = sizeof(short) * pbuf->rows * pbuf->row_offset;   break;
       case 32: length = sizeof(int) * pbuf->rows * pbuf->row_offset;   break;
@@ -511,13 +525,66 @@ static int verify_bitexact(void *p_ref, void *p_out, int len)
   return 0;
 }
 
+static float machine_eps(float value, int sum_length)
+{
+    float epsilon = 1.19e-07;
+    float eps, eps_sum;
+    int eps_exp;
+    frexp(value, &eps_exp);
+
+
+    if(eps_exp > 0){
+        eps = epsilon * eps_exp;
+        eps_sum = ((sum_length+1)/2)*eps + eps;
+    }
+    else if(eps_exp < 0){
+        eps = epsilon /(eps_exp * (-1));
+        eps_sum = ((sum_length+1)/2)*eps + eps;
+    }
+    else
+        eps = epsilon;
+        eps_sum = ((sum_length+1)/2)*eps + eps;
+
+    return eps_sum;
+}
+
+static int verify_epsf32(void *p_ref, void *p_out, int len, int sum_length)
+{
+  int i;
+  float *p_in1 = (float *)p_ref;
+  float *p_in2 = (float *)p_out;
+  float ref_lo, ref_hi;
+  float eps;
+
+  for(i = 0; i < len; i++)
+  {
+    eps = machine_eps(p_in1[i], sum_length);
+    ref_lo = p_in1[i] - eps;
+    ref_hi = p_in1[i] + eps;
+    if(p_in2[i] < ref_lo || p_in2[i] > ref_hi) {return -1;}
+  }
+  return 0;
+}
 /*
  * Compare 1D buffers.
  * Return 1 is match else 0
  */
-int compare_buf1D(buf1D_t *pbuf_ref, buf1D_t *pbuf_out, int method)
+int compare_buf1D(buf1D_t *pbuf_ref, buf1D_t *pbuf_out, int method, int precision, int sum_length)
 {
-   if(method == 1) /* Bitexact match */
+  if(method == 1 && (precision == -1))/*For f32 cases only*/
+   {
+       int length = pbuf_ref->length;
+       if(verify_epsf32(pbuf_ref->p, pbuf_out->p, length, sum_length))
+       {
+           return 0;
+       }
+       else
+       {
+           return 1;
+       }
+
+   } 
+  if(method == 1 && (precision != -1)) /* Bitexact match */
    {
        int size_in_bytes = (pbuf_ref->bytes_per_element * pbuf_ref->length);
        if(verify_bitexact(pbuf_ref->p, pbuf_out->p, size_in_bytes))

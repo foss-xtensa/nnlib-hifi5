@@ -26,7 +26,7 @@
 #include "xa_nnlib_common_macros_hifi5.h"
 #include "xa_nnlib_err_chk.h"
 
-WORD32 xa_nn_conv2d_depthwise_getsize
+static WORD32 xa_nn_conv2d_depthwise_nchw_getsize
   (WORD32 input_width
    ,WORD32 kernel_height
    ,WORD32 kernel_width
@@ -34,52 +34,21 @@ WORD32 xa_nn_conv2d_depthwise_getsize
    ,WORD32 y_stride
    ,WORD32 x_padding
    ,WORD32 output_width
-   ,WORD32 circ_buf_precision
+   ,WORD32 circ_buf_bytewidth
+   ,WORD32 scratch_bytewidth
    )
 {
-  XA_NNLIB_CHK_COND((input_width <= 0), -1);
-  XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
-  XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
-  XA_NNLIB_CHK_COND((x_stride <= 0 || x_stride > kernel_width), -1);
-  XA_NNLIB_CHK_COND((y_stride <= 0 || y_stride > kernel_height), -1);
-  XA_NNLIB_CHK_COND((x_padding < 0), -1);
-  XA_NNLIB_CHK_COND((output_width <= 0), -1);
-
+  int kernel_width_pad = ALIGNED_SIZE(kernel_width, 4);
+  int kernel_height_pad = ALIGNED_SIZE(kernel_height, 4);
   WORD32 circ_buf_height = (kernel_height + ((OUT_HEIGHT_PER_ITER - 1) * y_stride));
 
-  WORD32 scratch_bytewidth = 0;
-  WORD32 circ_buf_bytewidth = 0;
-
-  switch (circ_buf_precision)
-  {
-    case 8: /* For 8b */
-    case 16: /* For 16b */
-      scratch_bytewidth = 8; /* 64b scratch */
-      circ_buf_bytewidth = (circ_buf_precision/8); /* bytewidth as per precision */
-      break;
-
-    case -1: /* For f32 */
-      scratch_bytewidth = 4; /* f32 scratch */
-      circ_buf_bytewidth = 4; /* bytewidth for f32 */
-      break;
-
-    case -3: /* For asym8 */
-      scratch_bytewidth = 4;
-      circ_buf_bytewidth = 1;
-      break;
-
-    default:
-      return -1; /* Retunrning due to invalid input */
-      break;
-  }
-
-  int total_size, state_size, circ_buf_size, scratch_size;
+  int total_size, state_size, circ_buf_size, scratch_size, padded_kernel_size;
   int circ_buf_width;
   int output_width_for_x_stride_1;
   int output_height;
   state_size = ALIGNED_SIZE(sizeof(xa_nn_conv2d_dw_state_t), ALIGNMENT_16);
   circ_buf_size =
-    xa_nn_circ_buf_getsize
+    xa_nn_circ_buf_nchw_getsize
     (circ_buf_bytewidth
      ,input_width
      ,kernel_height
@@ -113,16 +82,18 @@ WORD32 xa_nn_conv2d_depthwise_getsize
    * */
   output_width_for_x_stride_1 = (1 + ((circ_buf_width - kernel_width)/1));
 
-  /* output_width_for_x_stride_1 loop is unrolled by 4 so keeping this dimension to multiple of 4 */
-  output_width_for_x_stride_1 = ALIGNED_SIZE(output_width_for_x_stride_1, 4);
+  /* output_width_for_x_stride_1 loop is unrolled by 8 so keeping this dimension to multiple of 8 */
+  output_width_for_x_stride_1 = ALIGNED_SIZE(output_width_for_x_stride_1, 8);
 
   output_height = (1 + ((circ_buf_height - kernel_height) / (y_stride)));
 
-  scratch_size = (output_height * output_width_for_x_stride_1 * scratch_bytewidth);
+  scratch_size = (output_height * output_width_for_x_stride_1 * scratch_bytewidth); //TODO: correct size
   /* Get aligned size so as to have next memory pointer aligned */
   scratch_size = ALIGNED_SIZE(scratch_size, ALIGNMENT_16);
 
-  total_size = state_size + circ_buf_size + scratch_size;
+  /* TBD: Exact calculation needs API change, using input bytewidth for now */
+  padded_kernel_size = kernel_width_pad * kernel_height_pad * circ_buf_bytewidth;
+  total_size = state_size + circ_buf_size + padded_kernel_size + scratch_size;
 
   if (0 > total_size)
   {
@@ -134,7 +105,7 @@ WORD32 xa_nn_conv2d_depthwise_getsize
   }
 }
 
-VOID xa_nn_conv2d_depthwise_init
+static VOID xa_nn_conv2d_depthwise_nchw_init
   (pVOID p_scratch
    ,WORD32 input_width
    ,WORD32 kernel_height
@@ -143,30 +114,10 @@ VOID xa_nn_conv2d_depthwise_init
    ,WORD32 y_stride
    ,WORD32 x_padding
    ,WORD32 output_width
-   ,WORD32 circ_buf_precision
+   ,WORD32 circ_buf_bytewidth
+   ,pVOID p_pad_val
    )
-
 {
-    WORD32 circ_buf_bytewidth = 0;
-
-    switch (circ_buf_precision)
-    {
-        case 8: /* For 8b */
-        case 16: /* For 16b */
-            circ_buf_bytewidth = (circ_buf_precision/8);
-        break;
-
-        case -1: /* For f32 */
-            circ_buf_bytewidth = 4;
-        break;
-
-        case -3: /* For asym8 */
-            circ_buf_bytewidth = 1;
-
-        default:
-        break;
-    }
-
     WORD32 circ_buf_height = (kernel_height + ((OUT_HEIGHT_PER_ITER - 1) * y_stride));
 
     pWORD8 p_mem = p_scratch;
@@ -175,7 +126,7 @@ VOID xa_nn_conv2d_depthwise_init
     state_size = sizeof(xa_nn_conv2d_dw_state_t);
     p_mem = (p_mem + state_size);
     p_mem = (pWORD8)ALIGN_PTR(p_mem, ALIGNMENT_16);
-    xa_nn_circ_buf_init(&(p_state->circ_buf)
+    xa_nn_circ_buf_nchw_init(&(p_state->circ_buf)
                         ,p_mem
                         ,circ_buf_bytewidth
                         ,input_width
@@ -186,6 +137,7 @@ VOID xa_nn_conv2d_depthwise_init
                         ,x_padding
                         ,circ_buf_height
                         ,output_width
+                        ,p_pad_val
                         );
 
     circ_buf_size = (int)((unsigned)p_state->circ_buf.p_end - (unsigned)p_state->circ_buf.p_begin);
@@ -199,4 +151,227 @@ VOID xa_nn_conv2d_depthwise_init
     p_state->p_scratch = (pVOID)p_mem;
 }
 
+static WORD32 xa_nn_conv2d_depthwise_nhwc_getsize
+(WORD32 input_height
+ ,WORD32 input_channels
+ ,WORD32 kernel_height
+ ,WORD32 kernel_width
+ ,WORD32 channels_multiplier
+ ,WORD32 y_stride
+ ,WORD32 y_padding
+ ,WORD32 output_height
+ ,WORD32 circ_buf_bytewidth
+ )
+{
+    int total_size, state_size, circ_buf_size;
+    state_size = ALIGNED_SIZE(sizeof(xa_nn_circ_buf_t), ALIGNMENT);
+    circ_buf_size =
+        xa_nn_circ_buf_nhwc_getsize
+        (circ_buf_bytewidth
+         ,input_height
+         ,input_channels
+         ,kernel_height
+         ,kernel_width
+         ,channels_multiplier
+         ,y_stride
+         ,y_padding
+         ,output_height
+        );
+    if (0 > circ_buf_size)
+    {
+        return -1;
+    }
+    else
+    {
+        total_size = state_size + circ_buf_size;
+        return total_size;
+    }
+}
 
+static VOID xa_nn_conv2d_depthwise_nhwc_init
+(pVOID p_scratch
+ ,WORD32 input_height
+ ,WORD32 input_channels
+ ,WORD32 kernel_height
+ ,WORD32 kernel_width
+ ,WORD32 channels_multiplier
+ ,WORD32 y_stride
+ ,WORD32 y_padding
+ ,WORD32 output_height
+ ,WORD32 circ_buf_bytewidth
+ )
+
+{
+    pWORD8 p_mem = p_scratch;
+    xa_nn_circ_buf_t *p_state = (xa_nn_circ_buf_t *)p_mem;
+    int state_size;
+    state_size = ALIGNED_SIZE(sizeof(xa_nn_circ_buf_t), ALIGNMENT);
+    p_mem = (p_mem + state_size);
+    xa_nn_circ_buf_nhwc_init(p_state
+            ,p_mem
+            ,circ_buf_bytewidth
+            ,input_height
+            ,input_channels
+            ,kernel_height
+            ,kernel_width
+            ,channels_multiplier
+            ,y_stride
+            ,y_padding
+            ,output_height
+            );
+}
+
+
+WORD32 xa_nn_conv2d_depthwise_getsize
+(WORD32 input_height
+ ,WORD32 input_width
+ ,WORD32 input_channels
+ ,WORD32 kernel_height
+ ,WORD32 kernel_width
+ ,WORD32 channels_multiplier
+ ,WORD32 x_stride
+ ,WORD32 y_stride
+ ,WORD32 x_padding
+ ,WORD32 y_padding
+ ,WORD32 output_height
+ ,WORD32 output_width
+ ,WORD32 circ_buf_precision
+ ,WORD32 inp_data_format
+ )
+{
+    XA_NNLIB_CHK_COND((input_height <= 0), -1);
+    XA_NNLIB_CHK_COND((input_width <= 0), -1);
+    XA_NNLIB_CHK_COND((input_channels <= 0), -1);
+    XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
+    XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
+    XA_NNLIB_CHK_COND((channels_multiplier <= 0), -1);
+    XA_NNLIB_CHK_COND((x_stride <= 0 || x_stride > kernel_width), -1);
+    XA_NNLIB_CHK_COND((y_stride <= 0 || y_stride > kernel_height), -1);
+    XA_NNLIB_CHK_COND((x_padding < 0), -1);
+    XA_NNLIB_CHK_COND((y_padding < 0), -1);
+    XA_NNLIB_CHK_COND((output_height <= 0), -1);
+    XA_NNLIB_CHK_COND((output_width <= 0), -1);
+    XA_NNLIB_CHK_COND((inp_data_format != 0 && inp_data_format != 1), -1);
+
+    WORD32 scratch_bytewidth = 0;
+    WORD32 circ_buf_bytewidth = 0;
+    WORD32 total_size = 0;
+
+    switch (circ_buf_precision)
+    {
+        case 8: /* For 8b */
+        case 16: /* For 16b */
+            scratch_bytewidth = 8; /* 64b scratch */
+            circ_buf_bytewidth = (circ_buf_precision/8); /* bytewidth as per precision */
+            break;
+
+        case -1: /* For f32 */
+            scratch_bytewidth = 4; /* f32 scratch */
+            circ_buf_bytewidth = 4; /* bytewidth for f32 */
+            break;
+
+        case -3: /* For asym8 */
+        case -4: /* For asym8s */
+            scratch_bytewidth = 4;
+            circ_buf_bytewidth = 1;
+            break;
+
+        default:
+            return -1; /* Retunrning due to invalid input */
+            break;
+    }
+
+    if(inp_data_format == 0)
+    {
+        total_size = xa_nn_conv2d_depthwise_nhwc_getsize(input_height
+                ,input_channels
+                ,kernel_height
+                ,kernel_width
+                ,channels_multiplier
+                ,y_stride
+                ,y_padding
+                ,output_height
+                ,circ_buf_bytewidth);
+    }
+    else if(inp_data_format == 1)
+    {
+        total_size = xa_nn_conv2d_depthwise_nchw_getsize(input_width
+                ,kernel_height
+                ,kernel_width
+                ,x_stride
+                ,y_stride
+                ,x_padding
+                ,output_width
+                ,circ_buf_bytewidth
+                ,scratch_bytewidth);
+    }
+    return total_size;
+}
+
+VOID xa_nn_conv2d_depthwise_init
+(pVOID p_scratch
+ ,WORD32 input_height
+ ,WORD32 input_width
+ ,WORD32 input_channels
+ ,WORD32 kernel_height
+ ,WORD32 kernel_width
+ ,WORD32 channels_multiplier
+ ,WORD32 x_stride
+ ,WORD32 y_stride
+ ,WORD32 x_padding
+ ,WORD32 y_padding
+ ,WORD32 output_height
+ ,WORD32 output_width
+ ,WORD32 circ_buf_precision
+ ,WORD32 inp_data_format
+ ,pVOID p_pad_val
+ )
+{
+    WORD32 circ_buf_bytewidth = 0;
+
+    switch (circ_buf_precision)
+    {
+        case 8: /* For 8b */
+        case 16: /* For 16b */
+            circ_buf_bytewidth = (circ_buf_precision/8);
+            break;
+
+        case -1: /* For f32 */
+            circ_buf_bytewidth = 4;
+            break;
+
+        case -3: /* For asym8 */
+        case -4: /* For asym8s */
+            circ_buf_bytewidth = 1;
+
+        default:
+            break;
+    }
+
+    if(inp_data_format == 0)
+    {
+        xa_nn_conv2d_depthwise_nhwc_init(p_scratch
+                ,input_height
+                ,input_channels
+                ,kernel_height
+                ,kernel_width
+                ,channels_multiplier
+                ,y_stride
+                ,y_padding
+                ,output_height
+                ,circ_buf_bytewidth);
+    }
+    else if(inp_data_format == 1)
+    {
+        xa_nn_conv2d_depthwise_nchw_init(p_scratch
+                ,input_width
+                ,kernel_height
+                ,kernel_width
+                ,x_stride
+                ,y_stride
+                ,x_padding
+                ,output_width
+                ,circ_buf_bytewidth
+                ,p_pad_val);
+    }
+}

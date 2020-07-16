@@ -72,7 +72,7 @@
     INIT_ROWS_TO_ADD(rows_to_add, kernel_height, y_stride) \
     CALC_PADDINGS(top_pad, bottom_pad, rows_added, rows_to_add, input_height) \
     CALC_INP_ROW(input_row, rows_added, input_height) \
-    xa_nn_circ_buf_add_rows(p_circ_buf \
+    xa_nn_circ_buf_nchw_add_rows(p_circ_buf \
                             ,&(pt_inp)[input_row*input_width] \
                             ,x_padding \
                             ,input_width \
@@ -89,7 +89,7 @@
     CALC_ROWS_TO_ADD(rows_to_add, circ_out_height, y_stride) \
     CALC_PADDINGS(top_pad, bottom_pad, rows_added, rows_to_add, input_height) \
     CALC_INP_ROW(input_row, rows_added, input_height) \
-    xa_nn_circ_buf_add_rows(p_circ_buf \
+    xa_nn_circ_buf_nchw_add_rows(p_circ_buf \
                             ,&(pt_inp)[input_row*input_width] \
                             ,x_padding \
                             ,input_width \
@@ -106,7 +106,7 @@
     INIT_ROWS_TO_ADD(rows_to_add, kernel_height, y_stride) \
     CALC_PADDINGS(top_pad, bottom_pad, rows_added, rows_to_add, input_height) \
     CALC_INP_ROW(input_row, rows_added, input_height) \
-    xa_nn_circ_buf_add_rows_with_pad_val(p_circ_buf \
+    xa_nn_circ_buf_nchw_add_rows_with_pad_val(p_circ_buf \
                                          ,&(pt_inp)[input_row*input_width] \
                                          ,x_padding \
                                          ,input_width \
@@ -124,7 +124,7 @@
     CALC_ROWS_TO_ADD(rows_to_add, circ_out_height, y_stride) \
     CALC_PADDINGS(top_pad, bottom_pad, rows_added, rows_to_add, input_height) \
     CALC_INP_ROW(input_row, rows_added, input_height) \
-    xa_nn_circ_buf_add_rows_with_pad_val(p_circ_buf \
+    xa_nn_circ_buf_nchw_add_rows_with_pad_val(p_circ_buf \
                                          ,&(pt_inp)[input_row*input_width] \
                                          ,x_padding \
                                          ,input_width \
@@ -146,7 +146,7 @@ typedef struct _xa_nn_circ_buf_t
     WORD32 row_offset                                          ; /* Jump required to go next row but same column */
 } xa_nn_circ_buf_t;
 
-WORD32 xa_nn_circ_buf_getsize(
+WORD32 xa_nn_circ_buf_nchw_getsize(
     WORD32 bytewidth,
     WORD32 input_width,
     WORD32 kernel_height,
@@ -157,7 +157,7 @@ WORD32 xa_nn_circ_buf_getsize(
     WORD32 circ_buf_height,
     WORD32 output_width);
 
-VOID xa_nn_circ_buf_init(
+VOID xa_nn_circ_buf_nchw_init(
     xa_nn_circ_buf_t *p_circ_buf,
     pVOID p_mem,
     WORD32 bytewidth,
@@ -168,9 +168,10 @@ VOID xa_nn_circ_buf_init(
     WORD32 y_stride,
     WORD32 x_padding,
     WORD32 circ_buf_height,
-    WORD32 output_width);
+    WORD32 output_width,
+    pVOID p_pad_val);
 
-void xa_nn_circ_buf_add_rows(
+void xa_nn_circ_buf_nchw_add_rows(
     xa_nn_circ_buf_t *p_circ_buf,
     const VOID *p_inp,
     WORD32 left_padding,
@@ -179,7 +180,7 @@ void xa_nn_circ_buf_add_rows(
     WORD32 top_pad,
     WORD32 bottom_pad);
 
-void xa_nn_circ_buf_add_rows_with_pad_val(
+void xa_nn_circ_buf_nchw_add_rows_with_pad_val(
     xa_nn_circ_buf_t *p_circ_buf,
     const VOID *p_inp,
     WORD32 left_padding,
@@ -188,5 +189,203 @@ void xa_nn_circ_buf_add_rows_with_pad_val(
     WORD32 top_pad,
     WORD32 bottom_pad,
     pVOID p_pad_val);
+
+/***********************************************************************************************/
+/* Below macros and functions are for circular buffer for depth first input, here circular buffer
+size is kernel_width*input_height*input_channels*channels_multiplier and buffer moves over input
+in horizontal direction */
+
+#define INIT_COLS_ADDED(cols_added, x_padding) \
+    cols_added = -x_padding;
+
+#define UPDATE_COLS_ADDED(cols_added, cols_to_add) \
+    cols_added += cols_to_add;
+
+#define INIT_COLS_TO_ADD(cols_to_add, kernel_width, x_stride) \
+    cols_to_add = kernel_width-x_stride;
+
+
+#define CALC_COLS_TO_ADD(cols_to_add, x_stride) \
+    cols_to_add = x_stride;
+
+/* cols_added starts from -x_padding and increases as we added columns to circular buffer,
+   if cols_added is less than 0 we have to add that many zero columns at left (left_padding),
+   if cols_added is more than input_width we have to add that many zero columns at right
+   (right_padding) */
+#define CALC_PADDINGS_LR(left_pad, right_pad, cols_added, cols_to_add, input_width) \
+    left_pad = -cols_added; \
+    LIMIT(left_pad, 0, cols_to_add) \
+    right_pad = cols_to_add - (input_width-cols_added); \
+    LIMIT(right_pad, 0, cols_to_add) \
+
+
+/* Calculate the input column index to which the pointer passed to circular buffer
+   add column call should point, it must be between 0 to input_width-1 */
+#define CALC_INP_COL(input_col, cols_added, input_width) \
+    input_col = cols_added; \
+    LIMIT(input_col, 0, input_width-1)
+
+/* Initialize the mechanism for adding columns from input to circular buffer */
+#define CIRC_BUF_ADD_COLS_INIT(cols_added, cols_to_add, left_pad, right_pad, input_col, \
+    input_height, input_width, input_channels, kernel_width, channels_multiplier, x_stride, \
+    x_padding, y_padding, output_height, p_circ_buf, pt_inp) \
+    INIT_COLS_ADDED(cols_added, x_padding) \
+    INIT_COLS_TO_ADD(cols_to_add, kernel_width, x_stride) \
+    CALC_PADDINGS_LR(left_pad, right_pad, cols_added, cols_to_add, input_width) \
+    CALC_INP_COL(input_col, cols_added, input_width) \
+    xa_nn_circ_buf_nhwc_add_cols(p_circ_buf \
+                            ,&(pt_inp)[input_col*input_channels] \
+                            ,y_padding \
+                            ,input_height \
+                            ,input_width \
+                            ,input_channels \
+                            ,kernel_height \
+                            ,kernel_width \
+                            ,channels_multiplier \
+                            ,y_stride \
+                            ,y_padding \
+                            ,output_height \
+                            ,cols_to_add \
+                            ,left_pad \
+                            ,right_pad \
+                            ); \
+    UPDATE_COLS_ADDED(cols_added, cols_to_add) \
+
+/* Add columns from input to circular buffer */
+#define CIRC_BUF_ADD_COLS(cols_added, cols_to_add, left_pad, right_pad, input_col, \
+    input_height, input_width, input_channels, kernel_width, channels_multiplier, x_stride, \
+    x_padding, y_padding, output_height, p_circ_buf, pt_inp) \
+    CALC_COLS_TO_ADD(cols_to_add, x_stride) \
+    CALC_PADDINGS_LR(left_pad, right_pad, cols_added, cols_to_add, input_width) \
+    CALC_INP_COL(input_col, cols_added, input_width) \
+    xa_nn_circ_buf_nhwc_add_cols(p_circ_buf \
+                            ,&(pt_inp)[input_col*input_channels] \
+                            ,y_padding \
+                            ,input_height \
+                            ,input_width \
+                            ,input_channels \
+                            ,kernel_height \
+                            ,kernel_width \
+                            ,channels_multiplier \
+                            ,y_stride \
+                            ,y_padding \
+                            ,output_height \
+                            ,cols_to_add \
+                            ,left_pad \
+                            ,right_pad \
+                            ); \
+    UPDATE_COLS_ADDED(cols_added, cols_to_add) \
+
+/* Initialize the mechanism for adding columns from input to circular buffer */
+#define CIRC_BUF_ADD_COLS_INIT_WITH_PAD_VAL(cols_added, cols_to_add, left_pad, right_pad, input_col, \
+    input_height, input_width, input_channels, kernel_width, channels_multiplier, x_stride, \
+    x_padding, y_padding, output_height, p_circ_buf, pt_inp, p_pad_val) \
+    INIT_COLS_ADDED(cols_added, x_padding) \
+    INIT_COLS_TO_ADD(cols_to_add, kernel_width, x_stride) \
+    CALC_PADDINGS_LR(left_pad, right_pad, cols_added, cols_to_add, input_width) \
+    CALC_INP_COL(input_col, cols_added, input_width) \
+    xa_nn_circ_buf_nhwc_add_cols_with_pad_val(p_circ_buf \
+                            ,&(pt_inp)[input_col*input_channels] \
+                            ,y_padding \
+                            ,input_height \
+                            ,input_width \
+                            ,input_channels \
+                            ,kernel_height \
+                            ,kernel_width \
+                            ,channels_multiplier \
+                            ,y_stride \
+                            ,y_padding \
+                            ,output_height \
+                            ,cols_to_add \
+                            ,left_pad \
+                            ,right_pad \
+                            ,p_pad_val \
+                            ); \
+    UPDATE_COLS_ADDED(cols_added, cols_to_add) \
+
+/* Add columns from input to circular buffer */
+#define CIRC_BUF_ADD_COLS_WITH_PAD_VAL(cols_added, cols_to_add, left_pad, right_pad, input_col, \
+    input_height, input_width, input_channels, kernel_width, channels_multiplier, x_stride, \
+    x_padding, y_padding, output_height, p_circ_buf, pt_inp, p_pad_val) \
+    CALC_COLS_TO_ADD(cols_to_add, x_stride) \
+    CALC_PADDINGS_LR(left_pad, right_pad, cols_added, cols_to_add, input_width) \
+    CALC_INP_COL(input_col, cols_added, input_width) \
+    xa_nn_circ_buf_nhwc_add_cols_with_pad_val(p_circ_buf \
+                            ,&(pt_inp)[input_col*input_channels] \
+                            ,y_padding \
+                            ,input_height \
+                            ,input_width \
+                            ,input_channels \
+                            ,kernel_height \
+                            ,kernel_width \
+                            ,channels_multiplier \
+                            ,y_stride \
+                            ,y_padding \
+                            ,output_height \
+                            ,cols_to_add \
+                            ,left_pad \
+                            ,right_pad \
+                            ,p_pad_val \
+                            ); \
+    UPDATE_COLS_ADDED(cols_added, cols_to_add) \
+
+WORD32 xa_nn_circ_buf_nhwc_getsize(
+    WORD32 bytewidth,
+    WORD32 input_height,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 channels_multiplier,
+    WORD32 y_stride,
+    WORD32 y_padding,
+    WORD32 output_height);
+
+VOID xa_nn_circ_buf_nhwc_init(
+    xa_nn_circ_buf_t *p_circ_buf,
+    pVOID p_mem,
+    WORD32 bytewidth,
+    WORD32 input_height,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 channels_multiplier,
+    WORD32 y_stride,
+    WORD32 y_padding,
+    WORD32 output_height);
+
+void xa_nn_circ_buf_nhwc_add_cols(
+    xa_nn_circ_buf_t *p_circ_buf,
+    const VOID *p_inp,
+    WORD32 top_padding,
+    WORD32 input_height,
+    WORD32 input_width,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 circ_buf_width,
+    WORD32 channels_multiplier,
+    WORD32 y_stride,
+    WORD32 y_padding,
+    WORD32 output_height,
+    WORD32 n_cols,
+    WORD32 left_pad,
+    WORD32 right_pad);
+
+void xa_nn_circ_buf_nhwc_add_cols_with_pad_val(
+    xa_nn_circ_buf_t *p_circ_buf,
+    const VOID *p_inp,
+    WORD32 top_padding,
+    WORD32 input_height,
+    WORD32 input_width,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 circ_buf_width,
+    WORD32 channels_multiplier,
+    WORD32 y_stride,
+    WORD32 y_padding,
+    WORD32 output_height,
+    WORD32 n_cols,
+    WORD32 left_pad,
+    WORD32 right_pad,
+    pVOID  p_pad_val);
 
 #endif /* #ifndef __XA_NN_CIRC_BUF_H__ */

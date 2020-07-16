@@ -20,22 +20,34 @@
 #
 
 ======================================================================
-Cadence HiFi Neural Network (NN) Library
+Cadence HiFi 5 Neural Network (NN) Library
 ======================================================================
 
 ======================================================================
 Revision History
 ======================================================================
 
+Version 1.1.0 API 1.0: July 15, 2020
+
++ Intermediate Release of HiFi 5 NN Library
++ Tested using RI.2 tools and xt-xcc/xt-xc++ compiler
++ Adds support for quantized 8 bit variants of following kernels of TFLM
+    Depthwise convolution 
+    Fully connected
+    Softmax
++ Other miscellaneous optimization improvements
+
+----------------------------------------------------------------------
+
 Version 1.0.0 API 1.0: July 23, 2019
 
-+ GA Release of HiFi5 NN Library
-+ NN Library for HiFi5 DSPs with the NN Extension and optional SP-VFPU
++ GA Release of HiFi 5 NN Library
++ NN Library for HiFi 5 DSPs with the NN Extension and optional SP-VFPU
 + Implements the following low level kernels:
     Matrix-vector multiplication kernels
     Convolution kernels
     Activation kernels
-    Pooling kernels
+    Pooling kernels 
 + Implements the following NN layers using the "generic NN Layer API":
     GRU layer
     LSTM layer

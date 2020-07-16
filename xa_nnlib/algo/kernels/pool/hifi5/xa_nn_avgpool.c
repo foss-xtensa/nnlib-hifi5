@@ -25,7 +25,7 @@
 #include "xa_nn_avgpool_state.h"
 #include "xa_nnlib_err_chk.h"
 
-WORD32 xa_nn_avgpool_getsize(
+WORD32 xa_nn_avgpool_getsize_nchw(
     WORD32 inp_precision,
     WORD32 input_width,
     WORD32 kernel_height,
@@ -39,6 +39,7 @@ WORD32 xa_nn_avgpool_getsize(
     XA_NNLIB_CHK_COND((input_width <= 0), -1);
     XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
     XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
+    XA_NNLIB_CHK_COND((kernel_width > input_width), -1);
     /* For 8 and 16 bit variants kernel_height and kernel_width should be less than or equal to 256 */
     XA_NNLIB_CHK_COND((inp_precision != -1 && kernel_height > 256), -1);
     XA_NNLIB_CHK_COND((inp_precision != -1 && kernel_width > 256), -1);
@@ -68,6 +69,10 @@ WORD32 xa_nn_avgpool_getsize(
             inp_bytewidth = sizeof(WORD32);
             acc_bytewidth = sizeof(WORD32);
             break;
+        case -3:
+            inp_bytewidth = sizeof(UWORD8);
+            acc_bytewidth = sizeof(WORD32);
+            break;
         default:
             return -1;
             break;
@@ -75,7 +80,7 @@ WORD32 xa_nn_avgpool_getsize(
     /* State size */
     state_size = ALIGNED_SIZE(sizeof(xa_nn_avgpool_state_t), ALIGNMENT);
    /* Array for storing 1/den values */
-    if(inp_precision == 16 || inp_precision == 8)
+    if(inp_precision == 16 || inp_precision == 8 || inp_precision == -3)
         den_array_size = ALIGNED_SIZE((out_height+out_width)*sizeof(WORD32), ALIGNMENT);
     else
         den_array_size = 0;
@@ -90,6 +95,165 @@ WORD32 xa_nn_avgpool_getsize(
     /* Total size */
     total_size = state_size + den_array_size + tmp_out_size;
     return total_size;
+}
+
+WORD32 xa_nn_avgpool_getsize_nhwc(
+    WORD32 inp_precision,
+    WORD32 input_channels,
+    WORD32 input_width,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    WORD32 y_stride,
+    WORD32 x_padding,
+    WORD32 out_height,
+    WORD32 out_width)
+{
+    //XA_NNLIB_CHK_COND((kernel_width > input_width), -1);
+    /* For 8 and 16 bit variants kernel_height and kernel_width should be less than or equal to 256 */
+    XA_NNLIB_CHK_COND((inp_precision != -1 && kernel_height > 256), -1);
+    XA_NNLIB_CHK_COND((inp_precision != -1 && kernel_width > 256), -1);
+
+    int total_size;
+    int den_array_size;     /* Array to store 1/den for out_height and out_width */
+
+    if(input_channels == 1)
+    {
+        total_size = xa_nn_avgpool_getsize_nchw(
+                inp_precision,
+                input_width,
+                kernel_height,
+                kernel_width,
+                x_stride,
+                y_stride,
+                x_padding,
+                out_height,
+                out_width);
+
+        return total_size;
+    }
+
+    if(inp_precision == -1)
+    {
+        den_array_size = out_width*out_height;
+
+        total_size = 2*ALIGNED_SIZE((sizeof(FLOAT32) * input_width * input_channels), ALIGNMENT) +
+                     ALIGNED_SIZE((sizeof(FLOAT32) * den_array_size), ALIGNMENT);
+
+        total_size = ALIGNED_SIZE(total_size, ALIGNMENT);
+    }
+    else if((inp_precision == -3) || (inp_precision == 8))
+    {
+        int cw_plane_size;
+        int zero_mem_bytes;
+        cw_plane_size = input_width*input_channels;
+
+        if(kernel_height <= (int)MAX_HEIGHT_16_BIT_ACC) // Accumulation in 16 bit container
+        {
+            zero_mem_bytes = XT_MAX(sizeof(UWORD8)*cw_plane_size, sizeof(WORD16)*input_channels);
+
+            total_size = ALIGNED_SIZE(sizeof(WORD32)* out_height, ALIGNMENT) +
+                         ALIGNED_SIZE(sizeof(WORD32)* out_width, ALIGNMENT) +
+                         ALIGNED_SIZE((sizeof(WORD16)*cw_plane_size), ALIGNMENT) +
+                         ALIGNED_SIZE((sizeof(WORD32)*input_channels), ALIGNMENT) +
+                         zero_mem_bytes;
+
+            total_size = ALIGNED_SIZE(total_size, ALIGNMENT);
+        }
+        else  // Accumulation in 32 bit container
+        {
+            zero_mem_bytes = XT_MAX(sizeof(UWORD8)*cw_plane_size, sizeof(WORD32)*input_channels);
+
+            total_size = ALIGNED_SIZE(sizeof(WORD32)*out_height, ALIGNMENT) +
+                         ALIGNED_SIZE(sizeof(WORD32)*out_width, ALIGNMENT) +
+                         ALIGNED_SIZE(sizeof(WORD32)*cw_plane_size, ALIGNMENT) +
+                         ALIGNED_SIZE(sizeof(WORD32)*input_channels, ALIGNMENT) +
+                         zero_mem_bytes;
+
+            total_size = ALIGNED_SIZE(total_size, ALIGNMENT);
+        }
+    }
+    else if(inp_precision == 16)
+    {
+        int cw_plane_size;
+        int zero_mem_bytes;
+
+        cw_plane_size = input_width*input_channels;
+        zero_mem_bytes = XT_MAX(sizeof(WORD16)*cw_plane_size, sizeof(WORD32)*input_channels);
+
+        total_size = ALIGNED_SIZE(sizeof(WORD32)*out_height, ALIGNMENT) +
+            ALIGNED_SIZE(sizeof(WORD32)*out_width, ALIGNMENT) +
+            ALIGNED_SIZE(sizeof(WORD32)*cw_plane_size, ALIGNMENT) +
+            ALIGNED_SIZE(sizeof(WORD32)*input_channels, ALIGNMENT) +
+            zero_mem_bytes;
+
+            total_size = ALIGNED_SIZE(total_size, ALIGNMENT);
+    }
+    else
+    {
+        total_size = -1;
+    }
+
+    return total_size;
+}
+
+WORD32 xa_nn_avgpool_getsize(
+    WORD32 input_channels,
+    WORD32 inp_precision,
+    WORD32 out_precision,
+    WORD32 input_height,
+    WORD32 input_width,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    WORD32 y_stride,
+    WORD32 x_padding,
+    WORD32 y_padding,
+    WORD32 out_height,
+    WORD32 out_width,
+    WORD32 inp_data_format,
+    WORD32 out_data_format)
+{
+    int scratch_size;
+
+    (void)out_precision;
+    (void)input_height;
+    (void)y_padding;
+    (void)inp_data_format;
+
+    if(out_data_format == 0)
+    {
+        scratch_size = xa_nn_avgpool_getsize_nhwc(
+                inp_precision,
+                input_channels,
+                input_width,
+                kernel_height,
+                kernel_width,
+                x_stride,
+                y_stride,
+                x_padding,
+                out_height,
+                out_width);
+    }
+    else if(out_data_format == 1)
+    {
+        scratch_size = xa_nn_avgpool_getsize_nchw(
+                inp_precision,
+                input_width,
+                kernel_height,
+                kernel_width,
+                x_stride,
+                y_stride,
+                x_padding,
+                out_height,
+                out_width);
+    }
+    else
+    {
+        scratch_size = -1;
+    }
+
+    return scratch_size;
 }
 
 VOID xa_nn_avgpool_init(
@@ -120,6 +284,9 @@ VOID xa_nn_avgpool_init(
         case -1:
             inp_bytewidth = sizeof(WORD32);
             break;
+        case -3:
+            inp_bytewidth = sizeof(UWORD8);
+            break;
         default:
             break;
     }
@@ -128,7 +295,7 @@ VOID xa_nn_avgpool_init(
 
     p_mem = (p_mem + state_size);
     /* Initialize 1/den array pointers */
-    if(inp_precision == 16 || inp_precision == 8)
+    if(inp_precision == 16 || inp_precision == 8 || inp_precision == -3)
     {
         p_state->p_den_height = (WORD32 *)p_mem;
         p_mem = (p_mem + out_height*sizeof(WORD32));

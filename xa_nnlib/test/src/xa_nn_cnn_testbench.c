@@ -384,7 +384,8 @@ int xa_nn_main_process(int argc, char *argv[])
   char profiler_params[MAX_PROFILER_PARAMS_LENGTH]; 
   xa_nnlib_handle_t cnn_handle;
   int inp_size=0, kernel_size, out_size;
-  int kernel_size_pad, input_channels_pad;
+  int kernel_size_pad, input_channels_pad, kernel_width_pad;
+  int kernel_channels;
   int input_channelsXwidth_pad;
   int kernel_point_size, dw_out_size;
   int bias_size, bias_point_size;
@@ -394,7 +395,7 @@ int xa_nn_main_process(int argc, char *argv[])
   xa_nnlib_cnn_init_config_t cnn_cfg;
 
   buf1D_t *p_inp;
-  buf1D_t *p_kernel;
+  buf2D_t *p_kernel;
   buf1D_t *p_kernel_point;
   buf1D_t *p_bias;
   buf1D_t *p_bias_point;
@@ -405,10 +406,6 @@ int xa_nn_main_process(int argc, char *argv[])
   FILE *fptr_inp;
   FILE *fptr_out;
   FILE *fptr_ref;
-
-#ifdef __XTENSA__
-  xt_iss_switch_mode(XT_ISS_FUNCTIONAL);
-#endif
 
   /* Library name version etc print */
   fprintf(stderr, "\n--------------------------------------------------------\n");
@@ -456,7 +453,14 @@ int xa_nn_main_process(int argc, char *argv[])
   {
     inp_size          = cfg.input_channels      * cfg.input_height        * cfg.input_width;
     kernel_size       = cfg.channels_multiplier * cfg.input_channels      * cfg.kernel_height  * cfg.kernel_width;
-    kernel_size_pad   = cfg.channels_multiplier * cfg.input_channels      * cfg.kernel_height  * ((cfg.kernel_width + 3) & ~3);
+
+    kernel_channels = cfg.input_channels * cfg.channels_multiplier;
+#ifdef hifi5
+    kernel_width_pad = cfg.kernel_width;
+#else
+    kernel_width_pad   = (cfg.kernel_width + 3) & (~3);
+#endif
+    kernel_size_pad = cfg.kernel_height * kernel_width_pad * kernel_channels;
     dw_out_size       = cfg.channels_multiplier * cfg.input_channels      * cfg.out_height     * cfg.out_width;
     kernel_point_size = cfg.out_channels        * cfg.channels_multiplier * cfg.input_channels * 1 * 1;
     out_size          = cfg.out_channels        * cfg.out_height          * cfg.out_width;
@@ -493,7 +497,7 @@ int xa_nn_main_process(int argc, char *argv[])
     strcat(profiler_name, profiler_params);
     
     // If VFPU is not supported, return
-    if(!XCHAL_HAVE_HIFI4_VFPU)
+    if(!HIFI_VFPU)
     {
       printf("%s: NOT TESTED\n", profiler_name);
       return 0;
@@ -548,18 +552,25 @@ int xa_nn_main_process(int argc, char *argv[])
   // Allocate Memory
   p_inp = create_buf1D(inp_size, cfg.inp_precision);    VALIDATE_PTR(p_inp);
   p_out = create_buf1D(out_size, cfg.out_precision);    VALIDATE_PTR(p_out);
-  if(!strcmp(cfg.kernel_name,"conv2d_std") || !strcmp(cfg.kernel_name,"conv1d_std"))
+  if(!strcmp(cfg.kernel_name,"conv2d_std"))
   {
-    p_kernel = create_buf1D(cfg.out_channels*kernel_size_pad, cfg.kernel_precision);    VALIDATE_PTR(p_kernel);
-    p_bias = create_buf1D(bias_size, cfg.bias_precision);                               VALIDATE_PTR(p_bias);
+    p_kernel = create_buf2D(cfg.out_channels * cfg.kernel_height * cfg.kernel_width, cfg.input_channels, input_channels_pad, cfg.kernel_precision, 0);    VALIDATE_PTR(p_kernel);
+    p_bias = create_buf1D(bias_size, cfg.bias_precision);                            VALIDATE_PTR(p_bias);
+
+    XTPWR_PROFILER_OPEN(0, profiler_name, profiler_params, out_size * kernel_size, "MACs/cyc", 1);
+  }
+  else if(!strcmp(cfg.kernel_name,"conv1d_std"))
+  {
+    p_kernel = create_buf2D(cfg.out_channels * cfg.kernel_height, cfg.input_width * cfg.input_channels, input_channelsXwidth_pad, cfg.kernel_precision, 0);    VALIDATE_PTR(p_kernel);
+    p_bias = create_buf1D(bias_size, cfg.bias_precision);                            VALIDATE_PTR(p_bias);
 
     XTPWR_PROFILER_OPEN(0, profiler_name, profiler_params, out_size * kernel_size, "MACs/cyc", 1);
   }
   else if(!strcmp(cfg.kernel_name,"conv2d_depth"))
   {
-    p_kernel = create_buf1D(kernel_size_pad, cfg.kernel_precision);                          VALIDATE_PTR(p_kernel);
+    p_kernel = create_buf2D(kernel_channels * cfg.kernel_height, cfg.kernel_width, kernel_width_pad, cfg.kernel_precision, 0);            VALIDATE_PTR(p_kernel);
     p_bias = create_buf1D(bias_size, cfg.bias_precision);                                    VALIDATE_PTR(p_bias);
-    p_kernel_point = create_buf1D(kernel_point_size*cfg.out_channels, cfg.kernel_precision); VALIDATE_PTR(p_kernel_point);
+    p_kernel_point = create_buf1D(kernel_point_size, cfg.kernel_precision); VALIDATE_PTR(p_kernel_point);
     p_dw_out = create_buf1D(dw_out_size, cfg.out_precision);                                 VALIDATE_PTR(p_dw_out);
     p_bias_point = create_buf1D(bias_point_size, cfg.bias_precision);                        VALIDATE_PTR(p_bias_point);
 
@@ -644,11 +655,11 @@ int xa_nn_main_process(int argc, char *argv[])
     {
       // If write_file enabled, generate random data for input, else read from file
       if(!strcmp(cfg.kernel_name,"conv2d_std"))
-        load_conv2d_std_input_data(cfg.write_file, fptr_inp, p_inp, p_kernel, p_bias, cfg.input_channels, input_channels_pad);
+        load_conv2d_std_input_data(cfg.write_file, fptr_inp, p_inp, p_kernel, p_bias, cfg.input_channels, input_channels_pad, 0);
       else if(!strcmp(cfg.kernel_name,"conv2d_depth"))
-        load_conv2d_ds_input_data(cfg.write_file, fptr_inp, p_inp, p_kernel, p_bias, p_kernel_point, p_bias_point);
+        load_conv2d_ds_input_data(cfg.write_file, fptr_inp, p_inp, p_kernel, p_bias, p_kernel_point, p_bias_point, 0);
       else if(!strcmp(cfg.kernel_name,"conv1d_std"))
-        load_conv1d_std_input_data(cfg.write_file, fptr_inp, p_inp, p_kernel, p_bias, cfg.input_channels, cfg.input_width, input_channelsXwidth_pad);
+        load_conv1d_std_input_data(cfg.write_file, fptr_inp, p_inp, p_kernel, p_bias, cfg.input_channels, cfg.input_width, input_channelsXwidth_pad, 0);
 
       XTPWR_PROFILER_START(0);
       err = xa_nnlib_cnn_process(cnn_handle, 
@@ -675,7 +686,7 @@ int xa_nn_main_process(int argc, char *argv[])
       if(cfg.verify)
       {
         read_buf1D_from_file(fptr_ref, p_ref);
-        pass_count += compare_buf1D(p_ref, p_out, cfg.verify);
+        pass_count += compare_buf1D(p_ref, p_out, cfg.verify, cfg.out_precision, kernel_size_pad);
       }
       else
       {
@@ -691,7 +702,7 @@ int xa_nn_main_process(int argc, char *argv[])
 
   // Free all buffers
   free_buf1D(p_inp);
-  free_buf1D(p_kernel);
+  free_buf2D(p_kernel);
   free_buf1D(p_bias);
   free_buf1D(p_out);
   if(!strcmp(cfg.kernel_name,"conv2d_depth"))
