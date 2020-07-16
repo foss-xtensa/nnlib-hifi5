@@ -35,7 +35,7 @@
 #define ALIGNED_SIZE( size, align ) \
   ( (size_t)(size) + (align) - 1 )
 
-//#define ALIGNED_ADDR( addr, align ) 
+//#define ALIGNED_ADDR( addr, align )
 //  (void*)( ( (UWORD32)(addr) + ( (align) - 1 ) ) & ~( (align) - 1 ) )
 
 #define PADDED_SIZE( size, align ) \
@@ -92,11 +92,11 @@ WORD32 xa_nn_matXvec_8x8_8_circ(
     WORD8  * __restrict__ p_mat,
     WORD8  * __restrict__ p_vec,
     WORD8  * __restrict__ p_bias,
-    WORD32 rows, 
-    WORD32 cols, 
+    WORD32 rows,
+    WORD32 cols,
     WORD32 row_offset,
-    WORD32 vec_count, 
-    WORD32 vec_offset, 
+    WORD32 vec_count,
+    WORD32 vec_offset,
     WORD32 out_col_offset,
     WORD32 out_row_offset,
     WORD32 bias_shift,
@@ -107,11 +107,11 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
     WORD16 * __restrict__ p_mat,
     WORD16 * __restrict__ p_vec,
     WORD16 * __restrict__ p_bias,
-    WORD32 rows, 
-    WORD32 cols, 
+    WORD32 rows,
+    WORD32 cols,
     WORD32 row_offset,
-    WORD32 vec_count, 
-    WORD32 vec_offset, 
+    WORD32 vec_count,
+    WORD32 vec_offset,
     WORD32 out_col_offset,
     WORD32 out_row_offset,
     WORD32 bias_shift,
@@ -122,10 +122,10 @@ WORD32 xa_nn_matXvec_f32_circ(
     FLOAT32 * __restrict__ p_mat,
     FLOAT32 * __restrict__ p_vec,
     FLOAT32 * __restrict__ p_bias,
-    WORD32 rows, 
-    WORD32 cols, 
+    WORD32 rows,
+    WORD32 cols,
     WORD32 row_offset,
-    WORD32 vec_count, 
+    WORD32 vec_count,
     WORD32 vec_offset,
     WORD32 out_col_offset,
     WORD32 out_row_offset);
@@ -133,8 +133,8 @@ WORD32 xa_nn_matXvec_f32_circ(
 WORD32 xa_nn_matXvec_asym8xasym8_asym8_circ(
     UWORD8 * __restrict__ p_out,
     UWORD8 * __restrict__ p_mat1,
-    UWORD8 * __restrict__ p_vec1,
-    WORD32 * __restrict__ p_bias,
+    const UWORD8 * __restrict__ p_vec1,
+    const WORD32 * __restrict__ p_bias,
     WORD32 rows,
     WORD32 cols1,
     WORD32 row_stride1,

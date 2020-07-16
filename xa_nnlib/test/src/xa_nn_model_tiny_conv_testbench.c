@@ -298,7 +298,7 @@ void top3_label_out(buf1D_t *p_out, int OUT_DEPTH)
     }\
   }
 
-#if XCHAL_HAVE_HIFI4_VFPU
+#if HIFI_VFPU
 #define PROCESS_CONV2D \
     if CONV_2D(conv2d_std, -1, -1, -1, -1) \
     else {printf("[Error] convolution is not supported\n"); return -1;}
@@ -358,10 +358,6 @@ int xa_nn_main_process(int argc, char *argv[])
   
     FILE *fptr_inp;
 
-#ifdef __XTENSA__
-    xt_iss_switch_mode(XT_ISS_FUNCTIONAL);
-#endif
-
     if(default_config(&cfg))
     {
       return -1;
@@ -403,7 +399,7 @@ int xa_nn_main_process(int argc, char *argv[])
     strcat(profiler_name_3, profiler_params_softmax);
     
     // If VFPU is not supported, return
-    if(!XCHAL_HAVE_HIFI4_VFPU)
+    if(!HIFI_VFPU)
     {
       printf("%s: NOT TESTED\n", profiler_name_0);
       printf("%s: NOT TESTED\n", profiler_name_1);

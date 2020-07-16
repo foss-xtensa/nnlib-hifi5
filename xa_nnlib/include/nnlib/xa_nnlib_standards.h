@@ -22,6 +22,21 @@
 #ifndef __STANDARDS_H__
 #define __STANDARDS_H__
 
+#include <xtensa/config/core-isa.h>
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
+#if ( (XCHAL_HAVE_HIFI4_VFPU) )
+#define HIFI_VFPU 1
+#elif ( (XCHAL_HAVE_HIFI3Z_VFPU) )
+#define HIFI_VFPU 1
+#else
+#define HIFI_VFPU 0
+#endif
+
 typedef double flt64;
 typedef char  Int4;
 typedef char  Int8;
@@ -56,7 +71,7 @@ typedef enum _xa_nnlib_prec_t
   PREC_F32   = -1,
   PREC_F16   = -2,
   PREC_ASYM8 = -3
-    
+
 } xa_nnlib_prec_t;
 
 typedef enum _xa_nnlib_shape_type_t
@@ -144,5 +159,9 @@ enum xa_error_fatal_nnlib_generic {
 const Int8 * xa_nnlib_get_lib_name_string(void);
 const Int8 * xa_nnlib_get_lib_version_string(void);
 const Int8 * xa_nnlib_get_lib_api_version_string(void);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* __STANDARDS_H__ */

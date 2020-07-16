@@ -26,6 +26,7 @@
 #include <xtensa/config/core-isa.h>
 #include "xa_type_def.h"
 #include "nnlib/xa_nnlib_api.h"
+#include "nnlib/xa_nnlib_standards.h"
 #include "xt_manage_buffers.h"
 #include "cmdline_parser.h"
 #include "file_io.h"
@@ -60,13 +61,13 @@ typedef struct _test_config_t
   int inp_precision;
   int out_precision;
   int bias_precision;
-  int mat1_offset;
-  int mat2_offset;
-  int inp1_offset;
-  int inp2_offset;
+  int mat1_zero_bias;
+  int mat2_zero_bias;
+  int inp1_zero_bias;
+  int inp2_zero_bias;
   int out_multiplier;
   int out_shift;
-  int out_offset;
+  int out_zero_bias;
   char activation[MAX_ACTIVATION_NAME_LENGTH];
   int membank_padding;
   int frames;
@@ -98,13 +99,13 @@ int default_config(test_config_t *p_cfg)
     p_cfg->inp_precision = 16;
     p_cfg->out_precision = 16;
     p_cfg->bias_precision = 16;
-    p_cfg->mat1_offset = -128;
-    p_cfg->mat2_offset = -128;
-    p_cfg->inp1_offset = -128;
-    p_cfg->inp2_offset = -128;
+    p_cfg->mat1_zero_bias = -128;
+    p_cfg->mat2_zero_bias = -128;
+    p_cfg->inp1_zero_bias = -128;
+    p_cfg->inp2_zero_bias = -128;
     p_cfg->out_multiplier = 0x40000000;
     p_cfg->out_shift = -8;
-    p_cfg->out_offset = 128;
+    p_cfg->out_zero_bias = 128;
     p_cfg->activation[0] = '\0';  
     p_cfg->membank_padding = 1;
     p_cfg->frames   = 2;  
@@ -152,13 +153,13 @@ void parse_arguments(int argc, char** argv, test_config_t *p_cfg)
     ARGTYPE_ONETIME_CONFIG("-inp_precision",p_cfg->inp_precision);
     ARGTYPE_ONETIME_CONFIG("-out_precision",p_cfg->out_precision);
     ARGTYPE_ONETIME_CONFIG("-bias_precision",p_cfg->bias_precision);
-    ARGTYPE_ONETIME_CONFIG("-mat1_offset",p_cfg->mat1_offset);
-    ARGTYPE_ONETIME_CONFIG("-mat2_offset",p_cfg->mat2_offset);
-    ARGTYPE_ONETIME_CONFIG("-inp1_offset",p_cfg->inp1_offset);
-    ARGTYPE_ONETIME_CONFIG("-inp2_offset",p_cfg->inp2_offset);
+    ARGTYPE_ONETIME_CONFIG("-mat1_zero_bias",p_cfg->mat1_zero_bias);
+    ARGTYPE_ONETIME_CONFIG("-mat2_zero_bias",p_cfg->mat2_zero_bias);
+    ARGTYPE_ONETIME_CONFIG("-inp1_zero_bias",p_cfg->inp1_zero_bias);
+    ARGTYPE_ONETIME_CONFIG("-inp2_zero_bias",p_cfg->inp2_zero_bias);
     ARGTYPE_ONETIME_CONFIG("-out_multiplier",p_cfg->out_multiplier);
     ARGTYPE_ONETIME_CONFIG("-out_shift",p_cfg->out_shift);
-    ARGTYPE_ONETIME_CONFIG("-out_offset",p_cfg->out_offset);
+    ARGTYPE_ONETIME_CONFIG("-out_zero_bias",p_cfg->out_zero_bias);
     ARGTYPE_STRING("-activation",p_cfg->activation, MAX_ACTIVATION_NAME_LENGTH);
     ARGTYPE_ONETIME_CONFIG("-membank_padding",p_cfg->membank_padding);
     ARGTYPE_ONETIME_CONFIG("-frames",p_cfg->frames);
@@ -192,15 +193,13 @@ void show_usage(void)
     printf("\t-inp_precision : 8, 16 or -1(single prec float); Default=16\n");
     printf("\t-out_precision : 8, 16, 32, 64 or -1(single prec float); Default=16\n");
     printf("\t-bias_precision : 16, 64 or -1(single prec float); Default=16\n");
-#ifdef NNLIB_V2
-    printf("\t-mat1_offset : matrix1 zero offset for asym8 -255 to 0; Default=-128\n");
-    printf("\t-mat2_offset : matrix2 zero offset for asym8 -255 to 0; Default=-128\n");
-    printf("\t-inp1_offset : input1 zero offset for asym8 -255 to 0; Default=-128\n");
-    printf("\t-inp2_offset : input2 zero offset for asym8 -255 to 0; Default=-128\n");
+    printf("\t-mat1_zero_bias : matrix1 zero bias for asym8 -255 to 0; Default=-128\n");
+    printf("\t-mat2_zero_bias : matrix2 zero bias for asym8 -255 to 0; Default=-128\n");
+    printf("\t-inp1_zero_bias : input1 zero bias for asym8 -255 to 0; Default=-128\n");
+    printf("\t-inp2_zero_bias : input2 zero bias for asym8 -255 to 0; Default=-128\n");
     printf("\t-out_multiplier : output multiplier for asym8 0 to 0x7fffffff; Default=0x40000000\n");
     printf("\t-out_shift : output shift for asym8 -31 to 31; Default=-8\n");
-    printf("\t-out_offset : output zero offset for asym8 0 to 255; Default=128\n");
-#endif /* NNLIB_V2 */
+    printf("\t-out_zero_bias : output zero bias for asym8 0 to 255; Default=128\n");
     printf("\t-membank_padding: 0, 1; Default=1\n");
     printf("\t-frames: Positive number; Default=2\n");
     printf("\t-activation: sigmoid, tanh, relu or softmax; Default="" : bypass i.e. no activation for output.\n");
@@ -224,21 +223,25 @@ void show_usage(void)
       XTPWR_PROFILER_STOP(0);\
     }
 
-#ifdef NNLIB_V2
 #define MAT_VEC_MUL_FN_ASYM8(MPREC, VPREC, OPREC) \
     if((MPREC == p_mat1->precision) && (VPREC == p_vec1->precision) && (OPREC == p_out->precision)) {\
       XTPWR_PROFILER_START(0);\
       err = xa_nn_matXvec_asym8xasym8_asym8 ( \
           (UWORD8 *)p_out->p, (UWORD8 *) p_mat1->p, (UWORD8 *) p_mat2->p, (UWORD8 *)p_vec1->p, (UWORD8 *)p_vec2->p, (WORD32 *)p_bias->p, \
           cfg.rows, cfg.cols1, cfg.cols2, p_mat1->row_offset, p_mat2->row_offset, \
-          cfg.mat1_offset, cfg.mat2_offset, cfg.inp1_offset, cfg.inp2_offset, cfg.out_multiplier, cfg.out_shift, cfg.out_offset);\
+          cfg.mat1_zero_bias, cfg.mat2_zero_bias, cfg.inp1_zero_bias, cfg.inp2_zero_bias, cfg.out_multiplier, cfg.out_shift, cfg.out_zero_bias);\
       XTPWR_PROFILER_STOP(0);\
     }
-#else
-#define MAT_VEC_MUL_FN_ASYM8(MPREC, VPREC, OPREC) \
+
+#define MAT_VEC_MUL_FN_SYM8SXASYM8S(MPREC, VPREC, OPREC) \
     if((MPREC == p_mat1->precision) && (VPREC == p_vec1->precision) && (OPREC == p_out->precision)) {\
-     printf("unsupported multiplication\n"); return -1;} 
-#endif /* NNLIB_V2 */
+      XTPWR_PROFILER_START(0);\
+      err = xa_nn_matXvec_sym8sxasym8s_asym8s ( \
+          (WORD8 *) p_out->p, (WORD8 *) p_mat1->p, (WORD8 *) p_mat2->p, (WORD8 *)p_vec1->p, (WORD8 *)p_vec2->p, (WORD32 *)p_bias->p, \
+          cfg.rows, cfg.cols1, cfg.cols2, p_mat1->row_offset, p_mat2->row_offset, \
+          cfg.inp1_zero_bias, cfg.inp2_zero_bias, cfg.out_multiplier, cfg.out_shift, cfg.out_zero_bias);\
+      XTPWR_PROFILER_STOP(0);\
+    }
 
 #define MAT_VEC_MUL_FC_FN(MPREC, VPREC, OPREC) \
     if((MPREC == p_mat1->precision) && (VPREC == p_vec1->precision) && (OPREC == p_out->precision)) {\
@@ -250,22 +253,27 @@ void show_usage(void)
       XTPWR_PROFILER_STOP(0);\
     }
 
-#ifdef NNLIB_V2
 #define MAT_VEC_MUL_FC_FN_ASYM8(MPREC, VPREC, OPREC) \
     if((MPREC == p_mat1->precision) && (VPREC == p_vec1->precision) && (OPREC == p_out->precision)) {\
       XTPWR_PROFILER_START(0);\
       err = xa_nn_fully_connected_asym8xasym8_asym8 ( \
           (UWORD8 *)p_out->p, (UWORD8 *) p_mat1->p, (UWORD8 *)p_vec1->p, (WORD32 *)p_bias->p, \
           cfg.cols1, cfg.rows, \
-          cfg.mat1_offset, cfg.inp1_offset, \
-          cfg.out_multiplier, cfg.out_shift, cfg.out_offset);\
+          cfg.mat1_zero_bias, cfg.inp1_zero_bias, \
+          cfg.out_multiplier, cfg.out_shift, cfg.out_zero_bias);\
       XTPWR_PROFILER_STOP(0);\
     }
-#else
-#define MAT_VEC_MUL_FC_FN_ASYM8(MPREC, VPREC, OPREC) \
+
+#define MAT_VEC_MUL_FC_FN_SYM8SXASYM8S(MPREC, VPREC, OPREC) \
     if((MPREC == p_mat1->precision) && (VPREC == p_vec1->precision) && (OPREC == p_out->precision)) {\
-     printf("unsupported multiplication\n"); return -1;} 
-#endif /* NNLIB_V2 */
+      XTPWR_PROFILER_START(0);\
+      err = xa_nn_fully_connected_sym8sxasym8s_asym8s ( \
+          (WORD8 *)p_out->p, (WORD8 *) p_mat1->p, (WORD8 *)p_vec1->p, (WORD32 *)p_bias->p, \
+          cfg.cols1, cfg.rows, \
+          cfg.inp1_zero_bias, \
+          cfg.out_multiplier, cfg.out_shift, cfg.out_zero_bias);\
+      XTPWR_PROFILER_STOP(0);\
+    }
 
 #define MAT_VEC_MUL_FC_FN_F32(MPREC, VPREC, OPREC) \
     if((MPREC == p_mat1->precision) && (VPREC == p_vec1->precision) && (OPREC == p_out->precision)) {\
@@ -313,8 +321,8 @@ void show_usage(void)
       err = xa_nn_matXvec_batch_asym8xasym8_asym8 ( \
           (UWORD8 **)pp_out, (UWORD8 *) p_mat1->p, (UWORD8 **)pp_vec1, (WORD32 *)p_bias->p, \
           cfg.rows, cfg.cols1, p_mat1->row_offset, \
-          cfg.vec_count, cfg.mat1_offset, cfg.inp1_offset, \
-          cfg.out_multiplier, cfg.out_shift, cfg.out_offset);\
+          cfg.vec_count, cfg.mat1_zero_bias, cfg.inp1_zero_bias, \
+          cfg.out_multiplier, cfg.out_shift, cfg.out_zero_bias);\
       free(pp_vec1);\
       free(pp_out);\
       XTPWR_PROFILER_STOP(0);\
@@ -376,7 +384,7 @@ void show_usage(void)
       XTPWR_PROFILER_STOP(0);\
     }
 
-#if XCHAL_HAVE_HIFI4_VFPU 
+#if HIFI_VFPU 
 #define PROCESS_MATXVEC \
     MAT_VEC_MUL_ACTIVATION_FN(16, 16, 16, sigmoid) \
     else MAT_VEC_MUL_ACTIVATION_FN(16, 16, 16, tanh) \
@@ -394,6 +402,7 @@ void show_usage(void)
     else MAT_VEC_MUL_FN(8, 8, 16) \
     else MAT_VEC_MUL_FN(8, 8, 32) \
     else MAT_VEC_MUL_FN_ASYM8(-3, -3, -3) \
+    else MAT_VEC_MUL_FN_SYM8SXASYM8S(-5, -4, -4) \
     else MAT_VEC_MUL_ACTIVATION_FN_F32(-1, -1, -1, sigmoid) \
     else MAT_VEC_MUL_ACTIVATION_FN_F32(-1, -1, -1, tanh) \
     else MAT_VEC_MUL_FN_F32(-1, -1, -1) \
@@ -416,15 +425,17 @@ void show_usage(void)
     else MAT_VEC_MUL_FN(8, 8, 16) \
     else MAT_VEC_MUL_FN(8, 8, 32) \
     else MAT_VEC_MUL_FN_ASYM8(-3, -3, -3) \
+    else MAT_VEC_MUL_FN_SYM8SXASYM8S(-5, -4, -4) \
     else {  printf("unsupported multiplication\n"); return -1;} 
 #endif
 
-#if XCHAL_HAVE_HIFI4_VFPU 
+#if HIFI_VFPU 
 #define PROCESS_MATXVEC_FC \
     MAT_VEC_MUL_FC_FN(16, 16, 16) \
     else MAT_VEC_MUL_FC_FN(8, 16, 16) \
     else MAT_VEC_MUL_FC_FN(8, 8, 8) \
     else MAT_VEC_MUL_FC_FN_ASYM8(-3, -3, -3) \
+    else MAT_VEC_MUL_FC_FN_SYM8SXASYM8S(-5, -4, -4) \
     else MAT_VEC_MUL_FC_FN_F32(-1, -1, -1) \
     else {  printf("unsupported multiplication\n"); return -1;} 
 #else
@@ -433,10 +444,11 @@ void show_usage(void)
     else MAT_VEC_MUL_FC_FN(8, 16, 16) \
     else MAT_VEC_MUL_FC_FN(8, 8, 8) \
     else MAT_VEC_MUL_FC_FN_ASYM8(-3, -3, -3) \
+    else MAT_VEC_MUL_FC_FN_SYM8SXASYM8S(-5, -4, -4) \
     else {  printf("unsupported multiplication\n"); return -1;} 
 #endif
 
-#if XCHAL_HAVE_HIFI4_VFPU 
+#if HIFI_VFPU 
 #define PROCESS_MATXVEC_BATCH \
     MAT_VEC_MUL_FN_BATCH(16, 16, 64) \
     else MAT_VEC_MUL_FN_BATCH(8, 16, 64) \
@@ -478,10 +490,6 @@ int xa_nn_main_process(int argc, char *argv[])
   FILE *fptr_out;
   FILE *fptr_ref;
 
-#ifdef __XTENSA__
-  xt_iss_switch_mode(XT_ISS_FUNCTIONAL);
-#endif
-
   if(default_config(&cfg))
   {
     return -1;
@@ -502,6 +510,8 @@ int xa_nn_main_process(int argc, char *argv[])
     /* In fully connected apis, row_stride is equal to cols, thus setting
      * membank_padding to 0. */
     cfg.membank_padding = 0;
+    cfg.row_stride1 = cfg.cols1;
+    cfg.row_stride2 = cfg.cols2;
   }
 
   // Set profiler name 
@@ -514,13 +524,12 @@ int xa_nn_main_process(int argc, char *argv[])
       sprintf(profiler_name,"matXvec%s_f32xf32_f32",(cfg.batch)? "_batch": "");
     }
     // If VFPU is not supported, return
-    if(!XCHAL_HAVE_HIFI4_VFPU)
+    if(!HIFI_VFPU)
     {
       printf("%s: NOT TESTED\n", profiler_name);
       return 0;
     }
   }
-#ifdef NNLIB_V2
   else if((cfg.mat_precision == -3) || (cfg.inp_precision == -3) || (cfg.out_precision == -3))
   {
     if(cfg.fc == 1){
@@ -529,14 +538,16 @@ int xa_nn_main_process(int argc, char *argv[])
     else{
       sprintf(profiler_name,"matXvec%s_asym8xasym8_asym8",(cfg.batch)? "_batch": "");
     }
-    // If VFPU is not supported, return
-    if(!XCHAL_HAVE_HIFI4_VFPU)
-    {
-      printf("%s: NOT TESTED\n", profiler_name);
-      return 0;
+  }
+  else if((cfg.mat_precision == -5) && (cfg.inp_precision == -4) && (cfg.out_precision == -4))
+  {
+    if(cfg.fc == 1){
+      sprintf(profiler_name,"fully_connected_sym8sxasym8s_asym8s");
+    }
+    else{
+      sprintf(profiler_name,"matXvec%s_sym8sxasym8s_asym8s",(cfg.batch)? "_batch": "");
     }
   }
-#endif /* NNLIB_V2 */
   else
   {
     if(cfg.fc == 1){
@@ -649,7 +660,7 @@ int xa_nn_main_process(int argc, char *argv[])
     if(cfg.verify)
     {
       read_buf1D_from_file(fptr_ref, ptr_ref);
-      pass_count += compare_buf1D(ptr_ref, p_out, cfg.verify);
+      pass_count += compare_buf1D(ptr_ref, p_out, cfg.verify, cfg.out_precision, 1);
     }
     else
     {

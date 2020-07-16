@@ -213,29 +213,8 @@ void show_usage(void)
     printf("\t-verify: Verify output against provided reference; 0: Disable, 1: Bitexact match; Default=1\n");
 }
 
-#ifndef NNLIB_V2
 #define AVGPOOL_KERNEL_F_FN(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == CHW)) {\
-    XTPWR_PROFILER_START(0);\
-    err = xa_nn_##KERNEL##_f32 ( \
-        (FLOAT32 *)p_out->p, (FLOAT32 *) p_inp->p, \
-        cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, \
-        cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
-        cfg.out_data_format, p_scratch);\
-    XTPWR_PROFILER_STOP(0);\
-  }
-#else
-#define AVGPOOL_KERNEL_F_FN(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == CHW) && (cfg.out_data_format == CHW)) {\
-    XTPWR_PROFILER_START(0);\
-    err = xa_nn_##KERNEL##_f32 ( \
-        (FLOAT32 *)p_out->p, (FLOAT32 *) p_inp->p, \
-        cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, \
-        cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
-        cfg.inp_data_format, cfg.out_data_format, p_scratch);\
-    XTPWR_PROFILER_STOP(0);\
-  }\
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == NHWC) && (cfg.out_data_format == NHWC)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision)) {\
     XTPWR_PROFILER_START(0);\
     err = xa_nn_##KERNEL##_f32 ( \
         (FLOAT32 *)p_out->p, (FLOAT32 *) p_inp->p, \
@@ -244,42 +223,20 @@ void show_usage(void)
         cfg.inp_data_format, cfg.out_data_format, p_scratch);\
     XTPWR_PROFILER_STOP(0);\
   }
-#endif
 
 #define AVGPOOL_KERNEL_FN(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == CHW)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision)) {\
     XTPWR_PROFILER_START(0);\
     err = xa_nn_##KERNEL##_##IPREC ( \
         (WORD##OPREC *)p_out->p, (WORD##IPREC *) p_inp->p, \
         cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, \
         cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
-        cfg.out_data_format, p_scratch);\
+        cfg.inp_data_format, cfg.out_data_format, p_scratch);\
     XTPWR_PROFILER_STOP(0);\
   }
 
-#ifndef NNLIB_V2
 #define MAXPOOL_KERNEL_F_FN(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == CHW)) {\
-    XTPWR_PROFILER_START(0);\
-    err = xa_nn_##KERNEL##_f32 ( \
-        (FLOAT32 *)p_out->p, (FLOAT32 *) p_inp->p, \
-        cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, \
-        cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
-        cfg.out_data_format, p_scratch);\
-    XTPWR_PROFILER_STOP(0);\
-  }
-#else
-#define MAXPOOL_KERNEL_F_FN(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == CHW) && (cfg.out_data_format == CHW)) {\
-    XTPWR_PROFILER_START(0);\
-    err = xa_nn_##KERNEL##_f32 ( \
-        (FLOAT32 *)p_out->p, (FLOAT32 *) p_inp->p, \
-        cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, \
-        cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
-        cfg.inp_data_format, cfg.out_data_format, p_scratch);\
-    XTPWR_PROFILER_STOP(0);\
-  }\
-  else if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == NHWC) && (cfg.out_data_format == NHWC)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision)) {\
     XTPWR_PROFILER_START(0);\
     err = xa_nn_##KERNEL##_f32 ( \
         (FLOAT32 *)p_out->p, (FLOAT32 *) p_inp->p, \
@@ -288,33 +245,20 @@ void show_usage(void)
         cfg.inp_data_format, cfg.out_data_format, p_scratch);\
     XTPWR_PROFILER_STOP(0);\
   }
-#endif
 
 #define MAXPOOL_KERNEL_FN(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == CHW)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision)) {\
     XTPWR_PROFILER_START(0);\
     err = xa_nn_##KERNEL##_##IPREC ( \
         (WORD##OPREC *)p_out->p, (WORD##IPREC *) p_inp->p, \
         cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, \
         cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
-        cfg.out_data_format, p_scratch);\
+        cfg.inp_data_format, cfg.out_data_format, p_scratch);\
     XTPWR_PROFILER_STOP(0);\
   }
 
-
-
-#ifdef NNLIB_V2
 #define POOL_KERNEL_ASYM8_FN(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == CHW) && (cfg.out_data_format == CHW)) {\
-    XTPWR_PROFILER_START(0);\
-    err = xa_nn_##KERNEL##_asym8( \
-        (UWORD8 *)p_out->p, (UWORD8 *)p_inp->p, \
-        cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, \
-        cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
-        cfg.inp_data_format, cfg.out_data_format, p_scratch);\
-    XTPWR_PROFILER_STOP(0);\
-  }\
-  else if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision) && (cfg.inp_data_format == NHWC) && (cfg.out_data_format == NHWC)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == p_inp->precision)) {\
     XTPWR_PROFILER_START(0);\
     err = xa_nn_##KERNEL##_asym8( \
         (UWORD8 *)p_out->p, (UWORD8 *)p_inp->p, \
@@ -323,13 +267,8 @@ void show_usage(void)
         cfg.inp_data_format, cfg.out_data_format, p_scratch);\
     XTPWR_PROFILER_STOP(0);\
   }
-#else
-#define POOL_KERNEL_ASYM8_FN(KERNEL, IPREC, OPREC) \
-  if(0) {\
-  }
-#endif
 
-#if XCHAL_HAVE_HIFI4_VFPU
+#if HIFI_VFPU
 #define PROCESS_POOL \
     AVGPOOL_KERNEL_FN(avgpool, 16, 16) \
     else AVGPOOL_KERNEL_FN(avgpool, 8, 8) \
@@ -366,18 +305,12 @@ int xa_nn_main_process(int argc, char *argv[])
   test_config_t cfg;
 
   buf1D_t *p_inp;
-  buf1D_t *p_inp_nhwc;
   buf1D_t *p_out;
   buf1D_t *p_ref;
-  buf1D_t *p_ref_nhwc;
 
   FILE *fptr_inp;
   FILE *fptr_out;
   FILE *fptr_ref;
-
-#ifdef __XTENSA__
-  xt_iss_switch_mode(XT_ISS_FUNCTIONAL);
-#endif
 
   if(default_config(&cfg))
   {
@@ -409,7 +342,7 @@ int xa_nn_main_process(int argc, char *argv[])
     strcat(profiler_name, profiler_params);
     
     // If VFPU is not supported, return
-    if(!XCHAL_HAVE_HIFI4_VFPU)
+    if(!HIFI_VFPU)
     {
       printf("%s: NOT TESTED\n", profiler_name);
       return 0;
@@ -460,12 +393,6 @@ int xa_nn_main_process(int argc, char *argv[])
   if(cfg.verify)
   {
     p_ref = create_buf1D(out_size, cfg.out_precision); 
-
-    if(cfg.inp_data_format == NHWC)
-    {
-        p_ref_nhwc = create_buf1D(out_size, cfg.out_precision); 
-    }
-    
     fptr_ref = file_open(pb_ref_file_path, cfg.read_ref_file_name, "rb", XA_MAX_CMD_LINE_LENGTH);
   }
 
@@ -473,11 +400,6 @@ int xa_nn_main_process(int argc, char *argv[])
   p_inp = create_buf1D(inp_size, cfg.inp_precision);                              VALIDATE_PTR(p_inp);
   p_out = create_buf1D(out_size, cfg.out_precision);                              VALIDATE_PTR(p_out);
 
-  if(cfg.inp_data_format == NHWC)
-  {
-      p_inp_nhwc = create_buf1D(inp_size, cfg.inp_precision);                    VALIDATE_PTR(p_inp_nhwc);
-  }
-  
   if(!strcmp(cfg.kernel_name,"avgpool"))
     num_ops = out_size * (1 + cfg.kernel_height * cfg.kernel_width);
   else if(!strcmp(cfg.kernel_name,"maxpool"))
@@ -491,17 +413,6 @@ int xa_nn_main_process(int argc, char *argv[])
   // Get persistent size and allocate 
   if(!strcmp(cfg.kernel_name,"avgpool"))
   {
-#ifndef NNLIB_V2
-      scratch_size = xa_nn_avgpool_getsize(cfg.inp_precision
-              ,cfg.input_width
-              ,cfg.kernel_height
-              ,cfg.kernel_width
-              ,cfg.x_stride
-              ,cfg.y_stride
-              ,cfg.x_padding
-              ,cfg.out_height
-              ,cfg.out_width);
-#else
       scratch_size = xa_nn_avgpool_getsize(cfg.input_channels
               ,cfg.inp_precision
               ,cfg.out_precision
@@ -517,20 +428,9 @@ int xa_nn_main_process(int argc, char *argv[])
               ,cfg.out_width
               ,cfg.inp_data_format
               ,cfg.out_data_format);
-#endif
   }
   else if(!strcmp(cfg.kernel_name,"maxpool"))
   {
-#ifndef NNLIB_V2
-      scratch_size = xa_nn_maxpool_getsize(cfg.inp_precision
-              ,cfg.input_width
-              ,cfg.kernel_height
-              ,cfg.kernel_width
-              ,cfg.x_stride
-              ,cfg.y_stride
-              ,cfg.x_padding
-              ,cfg.out_width);
-#else
       scratch_size = xa_nn_maxpool_getsize(cfg.input_channels
               ,cfg.inp_precision
               ,cfg.out_precision
@@ -546,7 +446,6 @@ int xa_nn_main_process(int argc, char *argv[])
               ,cfg.out_width
               ,cfg.inp_data_format
               ,cfg.out_data_format);
-#endif
   }
 
   PRINT_VAR(scratch_size)
@@ -561,25 +460,6 @@ int xa_nn_main_process(int argc, char *argv[])
     // If write_file enabled, generate random data for input, else read from file
     load_pool_input_data(cfg.write_file, fptr_inp, p_inp);
     
-    if(cfg.inp_data_format == NHWC)
-    {
-        // data format conversion code
-        if(cfg.inp_precision == -1)
-        {
-            float *pi, *po;
-            pi = (float *)p_inp->p;
-            po = (float *)p_inp_nhwc->p;
-            CHW_TO_HWC(pi, po, cfg.input_height, cfg.input_width, cfg.input_channels)
-        }
-        else if(cfg.inp_precision == -3)
-        {
-            UWORD8 *pi, *po;
-            pi = (UWORD8 *)p_inp->p;
-            po = (UWORD8 *)p_inp_nhwc->p;
-            CHW_TO_HWC(pi, po, cfg.input_height, cfg.input_width, cfg.input_channels)
-        }
-    }
-
     // Call the cnn kernel_name specified on command line
     PROCESS_POOL;
 
@@ -600,28 +480,7 @@ int xa_nn_main_process(int argc, char *argv[])
     if(cfg.verify)
     {
       read_buf1D_from_file(fptr_ref, p_ref);
-      if(cfg.out_data_format == CHW)
-      {
-          pass_count += compare_buf1D(p_ref, p_out, cfg.verify);
-      }
-      else if(cfg.out_data_format == NHWC)
-      {
-        if(cfg.out_precision == -1)
-        {
-            float *pi, *po;
-            pi = (float *)p_ref->p;
-            po = (float *)p_ref_nhwc->p;
-            CHW_TO_HWC(pi, po, cfg.out_height, cfg.out_width, cfg.input_channels)
-        }
-        else if(cfg.out_precision == -3)
-        {
-            UWORD8 *pi, *po;
-            pi = (UWORD8 *)p_ref->p;
-            po = (UWORD8 *)p_ref_nhwc->p;
-            CHW_TO_HWC(pi, po, cfg.out_height, cfg.out_width, cfg.input_channels)
-        }
-        pass_count += compare_buf1D(p_ref_nhwc, p_out, cfg.verify);
-      }
+      pass_count += compare_buf1D(p_ref, p_out, cfg.verify, cfg.out_precision, 1);
     }
     else
     {
@@ -638,19 +497,10 @@ int xa_nn_main_process(int argc, char *argv[])
   free_buf1D(p_inp);
   free_buf1D(p_out);
 
-  if(cfg.inp_data_format == NHWC)
-  {
-      free_buf1D(p_inp_nhwc);
-  }
-
   if(cfg.verify)
   {
     fclose(fptr_ref);
     free_buf1D(p_ref);
-    if(cfg.inp_data_format == NHWC)
-    {
-        free_buf1D(p_ref_nhwc);
-    }
   }
 
   free(p_scratch);

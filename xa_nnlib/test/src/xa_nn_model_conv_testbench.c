@@ -318,7 +318,7 @@ void convert_whd_to_dwh(buf1D_t *p_maxp_out_dwh, buf1D_t* p_maxp_out, int maxp_o
         MAXP_INPUT_HEIGHT, MAXP_INPUT_WIDTH, MAXP_INPUT_CHANNELS, \
         MAXP_KERNEL_HEIGHT, MAXP_KERNEL_WIDTH, \
         MAXP_X_STRIDE, MAXP_Y_STRIDE, MAXP_X_PADDING, MAXP_Y_PADDING, \
-        MAXP_OUT_HEIGHT, MAXP_OUT_WIDTH, MAXP_OUT_DATA_FORMAT, p_scratch);\
+        MAXP_OUT_HEIGHT, MAXP_OUT_WIDTH, MAXP_OUT_DATA_FORMAT, MAXP_OUT_DATA_FORMAT, p_scratch);\
     XTPWR_BASIC_PROFILER_STOP(2); \
     if(err)\
     {\
@@ -387,7 +387,7 @@ void convert_whd_to_dwh(buf1D_t *p_maxp_out_dwh, buf1D_t* p_maxp_out, int maxp_o
     }\
   }
 
-#if XCHAL_HAVE_HIFI4_VFPU
+#if HIFI_VFPU
 #define PROCESS_CONV1_2D \
     if CONV1_2D(conv2d_std, -1, -1) \
     else {printf("[Error] Conv1 is not supported\n"); return -1;}
@@ -475,11 +475,6 @@ int xa_nn_main_process(int argc, char *argv[])
   buf1D_t *p_out;
   
   FILE *fptr_inp;
-  //int iter;
-
-#ifdef __XTENSA__
-  xt_iss_switch_mode(XT_ISS_FUNCTIONAL);
-#endif
 
   if(default_config(&cfg))
   {
@@ -546,7 +541,7 @@ int xa_nn_main_process(int argc, char *argv[])
     strcat(profiler_name_6, profiler_params_softmax);
     
     // If VFPU is not supported, return
-    if(!XCHAL_HAVE_HIFI4_VFPU)
+    if(!HIFI_VFPU)
     {
       printf("%s: NOT TESTED\n", profiler_name_0);
       printf("%s: NOT TESTED\n", profiler_name_1);
@@ -607,7 +602,7 @@ int xa_nn_main_process(int argc, char *argv[])
   // Get persistent size and allocate 
   conv1_scratch_size = xa_nn_conv2d_std_getsize(CONV1_INPUT_HEIGHT,CONV1_INPUT_CHANNELS,CONV1_KERNEL_HEIGHT,CONV1_KERNEL_WIDTH,CONV1_Y_STRIDE,CONV1_Y_PADDING,CONV1_OUT_HEIGHT,cfg.precision); PRINT_VAR(conv1_scratch_size)
 
-  maxp_scratch_size = xa_nn_maxpool_getsize(cfg.precision,MAXP_INPUT_WIDTH,MAXP_KERNEL_HEIGHT,MAXP_KERNEL_WIDTH,MAXP_X_STRIDE,MAXP_Y_STRIDE,MAXP_X_PADDING,MAXP_OUT_WIDTH); PRINT_VAR(maxp_scratch_size)
+  maxp_scratch_size = xa_nn_maxpool_getsize(MAXP_INPUT_CHANNELS,cfg.precision,cfg.precision,MAXP_INPUT_HEIGHT,MAXP_INPUT_WIDTH,MAXP_KERNEL_HEIGHT,MAXP_KERNEL_WIDTH,MAXP_X_STRIDE,MAXP_Y_STRIDE,MAXP_X_PADDING,MAXP_Y_PADDING,MAXP_OUT_HEIGHT,MAXP_OUT_WIDTH,MAXP_OUT_DATA_FORMAT,MAXP_OUT_DATA_FORMAT); PRINT_VAR(maxp_scratch_size)
 
   conv2_scratch_size = xa_nn_conv2d_std_getsize(CONV2_INPUT_HEIGHT,CONV2_INPUT_CHANNELS,CONV2_KERNEL_HEIGHT,CONV2_KERNEL_WIDTH,CONV2_Y_STRIDE,CONV2_Y_PADDING,CONV2_OUT_HEIGHT,cfg.precision); PRINT_VAR(conv2_scratch_size)
   if(conv1_scratch_size > maxp_scratch_size){

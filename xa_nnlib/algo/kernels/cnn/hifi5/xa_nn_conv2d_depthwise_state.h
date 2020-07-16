@@ -32,15 +32,22 @@ typedef struct _xa_nn_conv2d_dw_state_t
 } xa_nn_conv2d_dw_state_t;
 
 VOID xa_nn_conv2d_depthwise_init
-  (pVOID p_scratch
-   ,WORD32 input_width
-   ,WORD32 kernel_height
-   ,WORD32 kernel_width
-   ,WORD32 x_stride
-   ,WORD32 y_stride
-   ,WORD32 x_padding
-   ,WORD32 output_width
-   ,WORD32 circ_buf_bytewidth
-   );
+(pVOID p_scratch
+ ,WORD32 input_height
+ ,WORD32 input_width
+ ,WORD32 input_channels
+ ,WORD32 kernel_height
+ ,WORD32 kernel_width
+ ,WORD32 channels_multiplier
+ ,WORD32 x_stride
+ ,WORD32 y_stride
+ ,WORD32 x_padding
+ ,WORD32 y_padding
+ ,WORD32 output_height
+ ,WORD32 output_width
+ ,WORD32 circ_buf_precision
+ ,WORD32 inp_data_format
+ ,pVOID p_pad_val
+ );
 
 #endif /* #ifndef __XA_NN_CONV2D_DEPTHWISE_STATE_H__ */

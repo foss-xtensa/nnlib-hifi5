@@ -25,7 +25,7 @@
 #include "xa_nn_maxpool_state.h"
 #include "xa_nnlib_err_chk.h"
 
-WORD32 xa_nn_maxpool_getsize(
+WORD32 xa_nn_maxpool_getsize_nchw(
     WORD32 inp_precision,
     WORD32 input_width,
     WORD32 kernel_height,
@@ -42,6 +42,7 @@ WORD32 xa_nn_maxpool_getsize(
     XA_NNLIB_CHK_COND((input_width <= 0), -1);
     XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
     XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
+    XA_NNLIB_CHK_COND((kernel_width > input_width), -1);
     XA_NNLIB_CHK_COND((x_stride <= 0), -1);
     XA_NNLIB_CHK_COND((y_stride <= 0), -1);
     XA_NNLIB_CHK_COND((x_padding < 0), -1);
@@ -62,6 +63,10 @@ WORD32 xa_nn_maxpool_getsize(
             inp_bytewidth = sizeof(WORD32);
             acc_bytewidth = sizeof(WORD32);
             break;
+        case -3:
+            inp_bytewidth = sizeof(UWORD8);
+            acc_bytewidth = sizeof(WORD32);
+            break;
         default:
             return -1;
             break;
@@ -80,6 +85,115 @@ WORD32 xa_nn_maxpool_getsize(
     /* Total size */
     total_size = state_size + scratch_size;
     return total_size;
+}
+
+WORD32 xa_nn_maxpool_getsize_nhwc(WORD32  inp_precision,
+                                  WORD32  input_width,
+                                  WORD32  input_channels,
+                                  WORD32 kernel_height,
+                                  WORD32 kernel_width,
+                                  WORD32 x_stride,
+                                  WORD32 y_stride,
+                                  WORD32 x_padding,
+                                  WORD32 out_width)
+{
+    int scratch_bytewidth, scratch_size;
+
+    if(input_channels == 1)
+    {
+          scratch_size = xa_nn_maxpool_getsize_nchw(inp_precision
+                  ,input_width
+                  ,kernel_height
+                  ,kernel_width
+                  ,x_stride
+                  ,y_stride
+                  ,x_padding
+                  ,out_width);
+
+          return scratch_size;
+    }
+
+    if(inp_precision == -1)
+    {
+        scratch_bytewidth = sizeof(FLOAT32);
+        return ALIGNED_SIZE(input_channels*input_width*scratch_bytewidth, ALIGNMENT);
+    }
+    else if(inp_precision == -3)
+    {
+        scratch_bytewidth = sizeof(WORD16);
+        return ALIGNED_SIZE((input_channels*(input_width + 1)*scratch_bytewidth), ALIGNMENT);
+    }
+    else if(inp_precision == 8)
+    {
+        scratch_bytewidth = sizeof(WORD8);
+        return ALIGNED_SIZE((input_channels*(input_width + 1)*scratch_bytewidth), ALIGNMENT);
+    }
+    else if(inp_precision == 16)
+    {
+        scratch_bytewidth = sizeof(WORD16);
+        return ALIGNED_SIZE((input_channels*(input_width + 1)*scratch_bytewidth), ALIGNMENT);
+    }
+
+    return 0;
+
+}
+
+WORD32 xa_nn_maxpool_getsize(
+        WORD32 input_channels,
+        WORD32 inp_precision,
+        WORD32 out_precision,
+        WORD32 input_height,
+        WORD32 input_width,
+        WORD32 kernel_height,
+        WORD32 kernel_width,
+        WORD32 x_stride,
+        WORD32 y_stride,
+        WORD32 x_padding,
+        WORD32 y_padding,
+        WORD32 out_height,
+        WORD32 out_width,
+        WORD32 inp_data_format,
+        WORD32 out_data_format)
+{
+    int scratch_size;
+
+    (void)out_precision;
+    (void)input_height;
+    (void)y_padding;
+    (void)inp_data_format;
+    (void)out_height;
+
+    if(out_data_format == 0)
+    {
+        scratch_size = xa_nn_maxpool_getsize_nhwc(
+                inp_precision,
+                input_width,
+                input_channels,
+                kernel_height,
+                kernel_width,
+                x_stride,
+                y_stride,
+                x_padding,
+                out_width);
+    }
+    else if(out_data_format == 1)
+    {
+        scratch_size = xa_nn_maxpool_getsize_nchw(
+                inp_precision,
+                input_width,
+                kernel_height,
+                kernel_width,
+                x_stride,
+                y_stride,
+                x_padding,
+                out_width);
+    }
+    else
+    {
+        scratch_size = -1;
+    }
+
+    return scratch_size;
 }
 
 WORD32 xa_nn_maxpool_init(
@@ -108,6 +222,9 @@ WORD32 xa_nn_maxpool_init(
             break;
         case -1:
             inp_bytewidth = sizeof(WORD32);
+            break;
+        case -3:
+            inp_bytewidth = sizeof(UWORD8);
             break;
         default:
             break;

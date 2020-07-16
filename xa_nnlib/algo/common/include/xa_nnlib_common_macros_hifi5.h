@@ -35,7 +35,7 @@
 /* Macro for 1 */
 #define ONE16X4 AE_MOVDA16(1)
 
-/* Value of ROW_UNROLL currently supported are 1,2,4,8 only */                    
+/* Value of ROW_UNROLL currently supported are 1,2,4,8 only */
 #ifndef ROW_UNROLL
 #define ROW_UNROLL 8
 #endif
@@ -72,7 +72,7 @@
   (((8 * (4 - (BW(A) + BW(B))))))
 
 #define ADJUST_VAR_C(C) \
-  (((64 - (8 * BW(C))))) 
+  (((64 - (8 * BW(C)))))
 
 #define ADJUST_ACC_LSH_AxB_C(A, B, C) \
   acc_shift = acc_shift - ADJUST_VAR_AxB(A, B) + ADJUST_VAR_C(C); \
@@ -91,6 +91,11 @@
 #define SETUP_BIAS_f32 \
   xtfloat _xtfloat_bias = (xtfloat)0.0f; \
   xtfloat *_xtfloat_p_bias = (xtfloat *) p_bias; \
+
+#define SETUP_BIAS_ASYM8b \
+  WORD32 _WORD32_bias; \
+  ae_int64 _ae_int64_sat_bias = ZERO64; \
+  WORD32 *_WORD32_p_bias = (WORD32 *) p_bias; \
 
 #define SETUP_BIAS_8b_UNALIGNED_SUPPORT \
   ae_int64 sat_1;\
@@ -130,15 +135,20 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define SETUP_ACC_FOR_16bx8b(idx)  SETUP_ACC_64b(idx)
 #define SETUP_ACC_FOR_16bx16b(idx) SETUP_ACC_64b(idx)
 
+#define SETUP_ACC_FOR_ASYM8bxASYM8b(idx) \
+  ae_int64 _ae_int64_acc_ ## idx = ZERO64; \
+
 /*------------------ time batching macros ----------------- */
 
 #define SETUP_ACC_BATCH_ROW_FOR_16bx8b SETUP_ACC_BATCH_ROW_FOR_16bx16b
 #define SETUP_ACC_BATCH_ROW_FOR_8bx16b SETUP_ACC_BATCH_ROW_FOR_16bx16b
 #define SETUP_ACC_BATCH_ROW_FOR_8bx8b  SETUP_ACC_BATCH_ROW_FOR_16bx16b
+#define SETUP_ACC_BATCH_ROW_FOR_ASYM8bxASYM8b SETUP_ACC_BATCH_ROW_FOR_16bx16b
 
 #define SETUP_ACC_BATCH_FOR_16bx8b SETUP_ACC_BATCH_FOR_16bx16b
 #define SETUP_ACC_BATCH_FOR_8bx16b SETUP_ACC_BATCH_FOR_16bx16b
 #define SETUP_ACC_BATCH_FOR_8bx8b  SETUP_ACC_BATCH_FOR_16bx16b
+#define SETUP_ACC_BATCH_FOR_ASYM8bxASYM8b SETUP_ACC_BATCH_FOR_16bx16b
 
 #define SETUP_ACC_BATCH_ROW_FOR_16bx16b(idx_row)\
   SETUP_ACC_BATCH_VEC_UNROLL(idx_row);\
@@ -277,6 +287,14 @@ ae_int16 _ae_int16_bias = ZERO16; \
   ae_int16x4 _ae_int16x4_vec2_3 = ZERO16X4; \
   ae_int16x8 *_ae_int16x8_p_vec2 = (ae_int16x8 *) p_vec2; \
 
+#define SETUP_VEC1_ASYM8b \
+  ae_int16x4 _ae_int16x4_vec1 = ZERO16X4; \
+  WORD8 *_WORD8_p_vec1 = (WORD8 *) p_vec1; \
+
+#define SETUP_VEC2_ASYM8b \
+  ae_int16x4 _ae_int16x4_vec2 = ZERO16X4; \
+  WORD8 *_WORD8_p_vec2 = (WORD8 *) p_vec2; \
+
 /*------------------ time batching macros ----------------- */
 
 #define SETUP_VEC_BATCH_8b(idx_vec)\
@@ -292,6 +310,8 @@ ae_int16 _ae_int16_bias = ZERO16; \
   xtfloatx2 _xtfloatx2_vec_batch_ ##idx_vec  = (xtfloatx2)0.0f ; \
   xtfloatx2 _xtfloatx2_vec_batch_1_ ##idx_vec  = (xtfloatx2)0.0f ; \
   xtfloatx4 *_xtfloatx4_p_vec_batch_ ##idx_vec  = (xtfloatx4 *)(p_vec1[vec_itr + idx_vec]); \
+
+#define SETUP_VEC_BATCH_ASYM8b SETUP_VEC_BATCH_8b
 /*---------------------------------------------------------*/
 
 #define SETUP_MAT1_8b_UNALIGNED(idx) \
@@ -327,6 +347,10 @@ ae_int16 _ae_int16_bias = ZERO16; \
   ae_int16x4 * _ae_int16x4_p_mat2_ ## idx = (ae_int16x4 *) &p_mat2[(m_itr+idx)*row_stride2]; \
   ae_valign _align_ae_int16x4_p_mat2_ ## idx = AE_LA64_PP(_ae_int16x4_p_mat2_ ##idx);
 
+#define SETUP_VEC_BATCH_ASYM8b SETUP_VEC_BATCH_8b
+#define SETUP_VEC_OFFSET_BATCH_ASYM8b SETUP_VEC_OFFSET_BATCH_8b
+#define SETUP_VEC_OFFSET_BATCH_ASYM8b_UNALIGNED SETUP_VEC_OFFSET_BATCH_8b_UNALIGNED
+/*---------------------------------------------------------*/
 
 #define SETUP_MAT1_8b(idx) \
   ae_int8x8 _ae_int8x8_mat1_ ## idx ; \
@@ -367,6 +391,14 @@ ae_int16 _ae_int16_bias = ZERO16; \
   xtfloatx2 _xtfloatx2_mat1_ ## idx = (xtfloatx2)0.0f; \
   xtfloatx2 _xtfloatx2_mat1_1_ ## idx = (xtfloatx2)0.0f; \
   xtfloatx4 *_xtfloatx4_p_mat1_ ## idx = (xtfloatx4 *) &p_mat1[(m_itr+idx)*row_stride1]; \
+
+#define SETUP_MAT1_ASYM8b(idx) \
+  ae_int16x4 _ae_int16x4_mat1_ ## idx = ZERO16X4; \
+  WORD8 *_WORD8_p_mat1_ ## idx = (WORD8 *) &p_mat1[(m_itr+idx)*row_stride1]; \
+
+#define SETUP_MAT2_ASYM8b(idx) \
+  ae_int16x4 _ae_int16x4_mat2_ ## idx = ZERO16X4; \
+  WORD8 *_WORD8_p_mat2_ ## idx = (WORD8 *) &p_mat2[(m_itr+idx)*row_stride2]; \
 
 /* ====================================================================== */
 
@@ -463,6 +495,15 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define LOAD_VEC2_16b \
   AE_L16X4X2_IP(_ae_int16x4_vec2,_ae_int16x4_vec2_1, _ae_int16x8_p_vec2, 2*INCREMENT_IN_BYTES_FOR_INT16X4); \
 
+#define LOAD_VEC1_ASYM8b \
+  AE_L8X4F_IP(_ae_int16x4_vec1, _WORD8_p_vec1, INCREMENT_IN_BYTES_FOR_WORD8X4); \
+  _ae_int16x4_vec1 = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_vec1), 8)); \
+  _ae_int16x4_vec1 = AE_ADD16(_ae_int16x4_vec1, AE_MOVDA16(vec1_zero_bias)); \
+
+#define LOAD_VEC2_ASYM8b \
+  AE_L8X4F_IP(_ae_int16x4_vec2, _WORD8_p_vec2, INCREMENT_IN_BYTES_FOR_WORD8X4); \
+  _ae_int16x4_vec2 = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_vec2), 8)); \
+  _ae_int16x4_vec2 = AE_ADD16(_ae_int16x4_vec2, AE_MOVDA16(vec2_zero_bias)); \
 /*------------------ time batching macros ----------------- */
 #define LOAD_VEC_BATCH_f32(idx_vec) \
   AE_LSX2X2_IP(_xtfloatx2_vec_batch_ ##idx_vec,_xtfloatx2_vec_batch_1_ ##idx_vec ,_xtfloatx4_p_vec_batch_ ##idx_vec, 2*INCREMENT_IN_BYTES_FOR_FLOAT32x2); \
@@ -472,6 +513,11 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define LOAD_VEC_BATCH_16b(idx_vec) \
   AE_L16X4X2_IP(_ae_int16x4_vec_batch_ ##idx_vec,_ae_int16x4_vec_batch_1_ ##idx_vec, _ae_int16x8_p_vec_batch_ ##idx_vec, 2*INCREMENT_IN_BYTES_FOR_INT16X4); \
+
+#define LOAD_VEC_BATCH_ASYM8b(idx_vec) \
+  AE_L8X4F_IP(_ae_int16x4_vec_batch_ ##idx_vec, _WORD8_p_vec_batch_ ##idx_vec, INCREMENT_IN_BYTES_FOR_WORD8X4); \
+  _ae_int16x4_vec_batch_ ##idx_vec  = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_vec_batch_ ##idx_vec), 8)); \
+  _ae_int16x4_vec_batch_ ##idx_vec = AE_ADD16(_ae_int16x4_vec_batch_ ##idx_vec, AE_MOVDA16(vec1_zero_bias)); \
 
 #define LOAD_BIAS_8b_FOR_8bx8b \
   _WORD8_bias = *_WORD8_p_bias++; \
@@ -491,6 +537,17 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define LOAD_BIAS_f32 \
   AE_LSIP(_xtfloat_bias, _xtfloat_p_bias, INCREMENT_IN_BYTES_FOR_FLOAT32); \
+
+#define LOAD_BIAS_ASYM8b \
+  _WORD32_bias = *_WORD32_p_bias++; \
+  _ae_int64_sat_bias = AE_SRAI64(AE_MOVINT64_FROMINT32X2(AE_MOVDA32(_WORD32_bias)), 32); \
+
+#define LOAD_BIAS_ASYM8b_MATMUL \
+  if(p_bias!=NULL)\
+  {\
+    _WORD32_bias = *_WORD32_p_bias++; \
+    _ae_int64_sat_bias = AE_SRAI64(AE_MOVINT64_FROMINT32X2(AE_MOVDA32(_WORD32_bias)), 32); \
+  }
 /*---------------------------------------------------------*/
 #define LOAD_ROW_MAT1_16b_UNALIGNED_16x8(idx) \
     AE_LA16X4X2_IP(_ae_int16x4_mat1_ ## idx,_ae_int16x4_mat1_1_ ## idx,_align_ae_int16x8_p_mat1_ ## idx,_ae_int16x8_p_mat1_ ## idx);
@@ -556,15 +613,35 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define LOAD_ROW_MAT1_f32(idx) \
   AE_LSX2X2_IP(_xtfloatx2_mat1_ ## idx,_xtfloatx2_mat1_1_ ## idx, _xtfloatx4_p_mat1_ ## idx, 2*INCREMENT_IN_BYTES_FOR_FLOAT32x2); \
 
+#define LOAD_ROW_MAT1_ASYM8b(idx) \
+  AE_L8X4F_IP(_ae_int16x4_mat1_ ##idx, _WORD8_p_mat1_ ##idx, INCREMENT_IN_BYTES_FOR_WORD8X4); \
+  _ae_int16x4_mat1_ ##idx = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_mat1_ ##idx), 8)); \
+  _ae_int16x4_mat1_ ##idx = AE_ADD16(_ae_int16x4_mat1_ ##idx, AE_MOVDA16(mat1_zero_bias)); \
+
+#define LOAD_ROW_MAT1_ASYM8b_UNALIGNED(idx) \
+  AE_LA8X4F_IP(_ae_int16x4_mat1_ ## idx, _align_WORD8_p_mat1_ ## idx, _WORD8_p_mat1_ ## idx); \
+  _ae_int16x4_mat1_ ##idx = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_mat1_ ##idx), 8)); \
+  _ae_int16x4_mat1_ ##idx = AE_ADD16(_ae_int16x4_mat1_ ##idx, AE_MOVDA16(mat1_zero_bias)); \
+
+#define LOAD_ROW_MAT1_ASYM8b_SINGLE_UNALIGNED(idx) \
+  _ae_int16x4_mat1_ ## idx = AE_MOVDA16(((short)*(_WORD8_p_mat1_ ## idx)) << 8); \
+  _WORD8_p_mat1_ ## idx++;\
+  _ae_int16x4_mat1_ ##idx = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_mat1_ ##idx), 8)); \
+  _ae_int16x4_mat1_ ##idx = AE_ADD16(_ae_int16x4_mat1_ ##idx, AE_MOVDA16(mat1_zero_bias)); \
+
+#define LOAD_ROW_MAT2_ASYM8b(idx) \
+  AE_L8X4F_IP(_ae_int16x4_mat2_ ## idx, _WORD8_p_mat2_ ## idx, INCREMENT_IN_BYTES_FOR_WORD8X4); \
+  _ae_int16x4_mat2_ ## idx = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_mat2_ ## idx), 8)); \
+  _ae_int16x4_mat2_ ##idx = AE_ADD16(_ae_int16x4_mat2_ ##idx, AE_MOVDA16(mat2_zero_bias)); \
 
 #define KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(idx,idx1)\
             AE_MULAAAA2Q16X8(_ae_int64_acc_ ## idx ,_ae_int64_acc_ ## idx1,_ae_int16x4_mat1_ ## idx ,_ae_int16x4_mat1_1_ ## idx1,_ae_int8x8_vec1);\
-            AE_MULAAAA2Q16X8(_ae_int64_acc_ ## idx1 ,_ae_int64_acc_ ## idx,_ae_int16x4_mat1_ ## idx1,_ae_int16x4_mat1_1_ ## idx ,_ae_int8x8_vec1);   
+            AE_MULAAAA2Q16X8(_ae_int64_acc_ ## idx1 ,_ae_int64_acc_ ## idx,_ae_int16x4_mat1_ ## idx1,_ae_int16x4_mat1_1_ ## idx ,_ae_int8x8_vec1);
 
 
 #define KERNEL_MAT2_16_VEC2_8_TWO_ACCUMULATOR(idx,idx1)\
             AE_MULAAAA2Q16X8(_ae_int64_acc_ ## idx ,_ae_int64_acc_ ## idx1,_ae_int16x4_mat2_ ## idx ,_ae_int16x4_mat2_1_ ## idx1,_ae_int8x8_vec2);\
-            AE_MULAAAA2Q16X8(_ae_int64_acc_ ## idx1 ,_ae_int64_acc_ ## idx,_ae_int16x4_mat2_ ## idx1,_ae_int16x4_mat2_1_ ## idx ,_ae_int8x8_vec2);   
+            AE_MULAAAA2Q16X8(_ae_int64_acc_ ## idx1 ,_ae_int64_acc_ ## idx,_ae_int16x4_mat2_ ## idx1,_ae_int16x4_mat2_1_ ## idx ,_ae_int8x8_vec2);
 
 #define KERNEL_MAT1_VEC1_16b_8b_UNALIGNED_SINGLE_ELEMENT_SINGLE_ROW \
    AE_MULA16_00(_ae_int64_acc_0,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0)),_ae_int16x4_mat1_0);\
@@ -574,11 +651,11 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define KERNEL_MAT1_VEC1_16b_8b_UNALIGNED_SINGLE_ELEMENT \
    AE_MULA16_00(_ae_int64_acc_0,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0)),_ae_int16x4_mat1_0);\
-   AE_MULA16_00(_ae_int64_acc_1,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0)),_ae_int16x4_mat1_1); 
+   AE_MULA16_00(_ae_int64_acc_1,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0)),_ae_int16x4_mat1_1);
 
 #define KERNEL_MAT2_VEC2_16b_8b_UNALIGNED_SINGLE_ELEMENT \
    AE_MULA16_00(_ae_int64_acc_0,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0)),_ae_int16x4_mat2_0);\
-   AE_MULA16_00(_ae_int64_acc_1,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0)),_ae_int16x4_mat2_1); 
+   AE_MULA16_00(_ae_int64_acc_1,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0)),_ae_int16x4_mat2_1);
 
 #define KERNEL_MAT1_VEC1_16b_16b_UNALIGNED_SINGLE_ROW \
     AE_MULAAAAQ16(_ae_int64_acc_0,_ae_int16x4_mat1_0,_ae_int16x4_vec1); \
@@ -604,11 +681,11 @@ ae_int16 _ae_int16_bias = ZERO16; \
    AE_MULA16_00(_ae_int64_acc_0,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),_ae_int16x4_vec1_0);\
    AE_MULA16_00(_ae_int64_acc_1,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),_ae_int16x4_vec1_0);\
    AE_MULA16_00(_ae_int64_acc_2,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),_ae_int16x4_vec1_1);\
-   AE_MULA16_00(_ae_int64_acc_3,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),_ae_int16x4_vec1_1); 
+   AE_MULA16_00(_ae_int64_acc_3,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),_ae_int16x4_vec1_1);
 
 #define KERNEL_MAT1_VEC1_8b_16b_UNALIGNED_SINGLE_ELEMENT_SINGLE_VECTOR \
    AE_MULA16_00(_ae_int64_acc_0,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),_ae_int16x4_vec1_0);\
-   AE_MULA16_00(_ae_int64_acc_1,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),_ae_int16x4_vec1_0); 
+   AE_MULA16_00(_ae_int64_acc_1,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),_ae_int16x4_vec1_0);
 
 #define KERNEL_MAT1_VEC1_8b_16b_UNALIGNED_SINGLE_ELEMENT \
    AE_MULA16_00(_ae_int64_acc_0,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),_ae_int16x4_vec1);\
@@ -624,23 +701,23 @@ ae_int16 _ae_int16_bias = ZERO16; \
         AE_MULA8QW8X16(_ae_int64_acc_2,_ae_int64_acc_3,_ae_int64_acc_0,_ae_int64_acc_1,_ae_int8x8_mat1_0, _ae_int8x8_mat1_1, zero_temp,zero_temp,_ae_int16x4_vec1_1,_ae_int16x4_vec1_1_1);
 
 #define KERNEL_MAT1_VEC1_8b_16b_UNALIGNED_SINGLE_VECTOR \
-        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat1_0, _ae_int8x8_mat1_1, zero_temp,zero_temp,_ae_int16x4_vec1_0,_ae_int16x4_vec1_1_0);  
+        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat1_0, _ae_int8x8_mat1_1, zero_temp,zero_temp,_ae_int16x4_vec1_0,_ae_int16x4_vec1_1_0);
 
 #define KERNEL_MAT1_VEC1_8b_16b_UNALIGNED_SINGLE_ROW_8x16_BATCH \
-        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat1_0,zero_temp, zero_temp,zero_temp,_ae_int16x4_vec1_0,_ae_int16x4_vec1_1_0);  
+        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat1_0,zero_temp, zero_temp,zero_temp,_ae_int16x4_vec1_0,_ae_int16x4_vec1_1_0);
 
 
 #define KERNEL_MAT1_VEC1_8b_16b_UNALIGNED_SINGLE_ROW \
-        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat1_0,zero_temp, zero_temp,zero_temp,_ae_int16x4_vec1,_ae_int16x4_vec1_1);  
+        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat1_0,zero_temp, zero_temp,zero_temp,_ae_int16x4_vec1,_ae_int16x4_vec1_1);
 
 #define KERNEL_MAT1_VEC1_8b_16b_UNALIGNED \
-        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat1_0, _ae_int8x8_mat1_1, _ae_int8x8_mat1_2, zero_temp,_ae_int16x4_vec1,_ae_int16x4_vec1_1);  
+        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat1_0, _ae_int8x8_mat1_1, _ae_int8x8_mat1_2, zero_temp,_ae_int16x4_vec1,_ae_int16x4_vec1_1);
 
 #define KERNEL_MAT2_VEC2_8b_16b_UNALIGNED \
-        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat2_0, _ae_int8x8_mat2_1, _ae_int8x8_mat2_2 ,zero_temp,_ae_int16x4_vec2,_ae_int16x4_vec2_1);  
+        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat2_0, _ae_int8x8_mat2_1, _ae_int8x8_mat2_2 ,zero_temp,_ae_int16x4_vec2,_ae_int16x4_vec2_1);
 
 #define KERNEL_MAT2_VEC2_8b_16b_UNALIGNED_SINGLE_ROW \
-        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat2_0, zero_temp, zero_temp,zero_temp,_ae_int16x4_vec2,_ae_int16x4_vec2_1);  
+        AE_MULA8QW8X16(_ae_int64_acc_0,_ae_int64_acc_1,_ae_int64_acc_2,_ae_int64_acc_3,_ae_int8x8_mat2_0, zero_temp, zero_temp,zero_temp,_ae_int16x4_vec2,_ae_int16x4_vec2_1);
 
 #define KERNEL_MAT2_VEC2_8b_16b_UNALIGNED_SINGLE_ELEMENT \
                   AE_MULA16_00(_ae_int64_acc_0,AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_0,0)),_ae_int16x4_vec2);\
@@ -655,22 +732,22 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define KERNEL_MAT1_VEC1_16b_16b_UNALIGNED_BATCH(acc1,acc2,idx) \
     AE_MULAAAAQ16(_ae_int64_acc_ ## acc1,_ae_int16x4_mat1_0,_ae_int16x4_vec1_ ## idx); \
-    AE_MULAAAAQ16(_ae_int64_acc_ ## acc2,_ae_int16x4_mat1_1,_ae_int16x4_vec1_ ## idx); 
+    AE_MULAAAAQ16(_ae_int64_acc_ ## acc2,_ae_int16x4_mat1_1,_ae_int16x4_vec1_ ## idx);
 
 #define KERNEL_MAT1_VEC1_16b_16b_UNALIGNED \
     AE_MULAAAAQ16(_ae_int64_acc_0,_ae_int16x4_mat1_0,_ae_int16x4_vec1); \
-    AE_MULAAAAQ16(_ae_int64_acc_1,_ae_int16x4_mat1_1,_ae_int16x4_vec1); 
+    AE_MULAAAAQ16(_ae_int64_acc_1,_ae_int16x4_mat1_1,_ae_int16x4_vec1);
 
 #define KERNEL_MAT1_VEC1_16b_16b_UNALIGNED_SINGLE_ELEMENT_BATCH_SINGLE_ROW(acc1,idx) \
     AE_MULA16_00(_ae_int64_acc_ ## acc1,_ae_int16x4_mat1_0,_ae_int16x4_vec1_ ## idx); \
 
 #define KERNEL_MAT1_VEC1_16b_16b_UNALIGNED_SINGLE_ELEMENT_BATCH(acc1,acc2,idx) \
     AE_MULA16_00(_ae_int64_acc_ ## acc1,_ae_int16x4_mat1_0,_ae_int16x4_vec1_ ## idx); \
-    AE_MULA16_00(_ae_int64_acc_ ## acc2,_ae_int16x4_mat1_1,_ae_int16x4_vec1_ ## idx); 
+    AE_MULA16_00(_ae_int64_acc_ ## acc2,_ae_int16x4_mat1_1,_ae_int16x4_vec1_ ## idx);
 
 #define KERNEL_MAT1_VEC1_16b_16b_UNALIGNED_SINGLE_ELEMENT \
     AE_MULA16_00(_ae_int64_acc_0,_ae_int16x4_mat1_0,_ae_int16x4_vec1); \
-    AE_MULA16_00(_ae_int64_acc_1,_ae_int16x4_mat1_1,_ae_int16x4_vec1); 
+    AE_MULA16_00(_ae_int64_acc_1,_ae_int16x4_mat1_1,_ae_int16x4_vec1);
 
 #define KERNEL_MAT2_VEC2_16b_16b_UNALIGNED_SINGLE_ROW \
     AE_MULAAAAQ16(_ae_int64_acc_0,_ae_int16x4_mat2_0,_ae_int16x4_vec2); \
@@ -680,11 +757,11 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define KERNEL_MAT2_VEC2_16b_16b_UNALIGNED \
     AE_MULAAAAQ16(_ae_int64_acc_0,_ae_int16x4_mat2_0,_ae_int16x4_vec2); \
-    AE_MULAAAAQ16(_ae_int64_acc_1,_ae_int16x4_mat2_1,_ae_int16x4_vec2); 
+    AE_MULAAAAQ16(_ae_int64_acc_1,_ae_int16x4_mat2_1,_ae_int16x4_vec2);
 
 #define KERNEL_MAT2_VEC2_16b_16b_UNALIGNED_SINGLE_ELEMENT \
     AE_MULA16_00(_ae_int64_acc_0,_ae_int16x4_mat2_0,_ae_int16x4_vec2); \
-    AE_MULA16_00(_ae_int64_acc_1,_ae_int16x4_mat2_1,_ae_int16x4_vec2); 
+    AE_MULA16_00(_ae_int64_acc_1,_ae_int16x4_mat2_1,_ae_int16x4_vec2);
 
 
 
@@ -737,7 +814,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
           _ae_int32x2_acc_1= _ae_int32x2_acc_1 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0)));\
           _ae_int32x2_acc_2= _ae_int32x2_acc_2 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_1,0)));\
           _ae_int32x2_acc_3= _ae_int32x2_acc_3 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_1,0)));\
-        
+
 #define KERNEL_MAT1_VEC1_8b_8b_UNALIGNED_SINGLE_ELEMENT \
           ae_int32x2 temp;\
           _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0)));\
@@ -753,7 +830,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define KERNEL_MAT2_VEC2_8b_8b_UNALIGNED \
     AE_MULA8Q8X8(_ae_int32x2_acc_0 ,  _ae_int32x2_acc_1 ,zero_temp,_ae_int8x8_mat2_0 ,_ae_int8x8_mat2_2 , _ae_int8x8_mat2_1,_ae_int8x8_vec2);
-    
+
 #define KERNEL_MAT1_VEC1_8b_8b(idx) \
   AE_MUL8Q8X8(_ae_int32x2_acc_ ## idx,_ae_int32x2_acc_ ## idx,\
               _ae_int8x8_mat1_ ## idx, _ae_int8x8_mat1_ ## idx,\
@@ -817,7 +894,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
           AE_MULA8Q8X8(_ae_int32x2_acc_8 ,  _ae_int32x2_acc_9 , _ae_int8x8_mat2_1_0 , _ae_int8x8_mat2_1_1 , _ae_int8x8_mat2_1_2 , _ae_int8x8_mat2_1_3 , _ae_int8x8_vec2_1);\
           AE_MULA8Q8X8(_ae_int32x2_acc_10,  _ae_int32x2_acc_11, _ae_int8x8_mat2_1_4 , _ae_int8x8_mat2_1_5 , _ae_int8x8_mat2_1_6 , _ae_int8x8_mat2_1_7 , _ae_int8x8_vec2_1);\
           AE_MULA8Q8X8(_ae_int32x2_acc_12,  _ae_int32x2_acc_13, _ae_int8x8_mat2_1_8 , _ae_int8x8_mat2_1_9 , _ae_int8x8_mat2_1_10, _ae_int8x8_mat2_1_11, _ae_int8x8_vec2_1);\
-          AE_MULA8Q8X8(_ae_int32x2_acc_14,  _ae_int32x2_acc_15, _ae_int8x8_mat2_1_12, _ae_int8x8_mat2_1_13, _ae_int8x8_mat2_1_14, _ae_int8x8_mat2_1_15, _ae_int8x8_vec2_1); 
+          AE_MULA8Q8X8(_ae_int32x2_acc_14,  _ae_int32x2_acc_15, _ae_int8x8_mat2_1_12, _ae_int8x8_mat2_1_13, _ae_int8x8_mat2_1_14, _ae_int8x8_mat2_1_15, _ae_int8x8_vec2_1);
 
 #define kernel_mat2_16_vec2_16_8x8_acc_32_DUAL_1 \
           AE_MULA8Q8X8(_ae_int32x2_acc_0 ,  _ae_int32x2_acc_1 , _ae_int8x8_mat2_2_0 , _ae_int8x8_mat2_2_1 , _ae_int8x8_mat2_2_2 , _ae_int8x8_mat2_2_3 , _ae_int8x8_vec2_2);\
@@ -840,7 +917,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
                       _ae_int8x8_mat1_1_2, _ae_int8x8_mat1_1_3,_ae_int8x8_vec1_1);\
           AE_MULA8Q8X8(_ae_int32x2_acc_6, _ae_int32x2_acc_7,_ae_int8x8_mat1_1_4, _ae_int8x8_mat1_1_5,\
                       _ae_int8x8_mat1_1_6, _ae_int8x8_mat1_1_7,_ae_int8x8_vec1_1);
-        
+
 #define kernel_mat2_16_vec2_16_8x8_acc_32 \
           AE_MULA8Q8X8(_ae_int32x2_acc_0, _ae_int32x2_acc_1,_ae_int8x8_mat2_0, _ae_int8x8_mat2_1,\
                       _ae_int8x8_mat2_2, _ae_int8x8_mat2_3,_ae_int8x8_vec2);\
@@ -866,15 +943,25 @@ ae_int16 _ae_int16_bias = ZERO16; \
         _ae_int32x2_acc_1 = _ae_int32x2_acc_1 + _ae_int32x2_acc_5;\
         _ae_int32x2_acc_2 = _ae_int32x2_acc_2 + _ae_int32x2_acc_6;\
         _ae_int32x2_acc_3 = _ae_int32x2_acc_3 + _ae_int32x2_acc_7;
-        
+
+#define KERNEL_MAT1_VEC1_ASYM8b_ASYM8b(idx) \
+  LOAD_ROW_MAT1_ASYM8b(idx); \
+  AE_MULAAAAQ16(_ae_int64_acc_ ## idx, _ae_int16x4_vec1, _ae_int16x4_mat1_ ## idx); \
+
+#define KERNEL_MAT2_VEC2_ASYM8b_ASYM8b(idx) \
+  LOAD_ROW_MAT2_ASYM8b(idx); \
+  AE_MULAAAAQ16(_ae_int64_acc_ ## idx, _ae_int16x4_vec2, _ae_int16x4_mat2_ ## idx); \
 /*------------------ time batching macros ----------------- */
 
 #define KERNEL_MAT1_VEC_BATCH_ROW_8b_8b  KERNEL_MAT1_VEC_BATCH_ROW_16b_16b
 #define KERNEL_MAT1_VEC_BATCH_ROW_16b_8b KERNEL_MAT1_VEC_BATCH_ROW_16b_16b
 #define KERNEL_MAT1_VEC_BATCH_ROW_8b_16b KERNEL_MAT1_VEC_BATCH_ROW_16b_16b
+#define KERNEL_MAT1_VEC_BATCH_ROW_ASYM8b_ASYM8b     KERNEL_MAT1_VEC_BATCH_ROW_16b_16b
 #define KERNEL_MAT1_VEC_BATCH_8b_8b      KERNEL_MAT1_VEC_BATCH_16b_16b
 #define KERNEL_MAT1_VEC_BATCH_16b_8b     KERNEL_MAT1_VEC_BATCH_16b_16b
 #define KERNEL_MAT1_VEC_BATCH_8b_16b     KERNEL_MAT1_VEC_BATCH_16b_16b
+#define KERNEL_MAT1_VEC_BATCH_ASYM8b_ASYM8b(idx_row,idx_vec) \
+  AE_MULAAAAQ16(_ae_int64_acc_ ##idx_row ##_ ##idx_vec, _ae_int16x4_vec_batch_ ##idx_vec, _ae_int16x4_mat1_ ##idx_row); \
 
 #define KERNEL_MAT1_VEC_BATCH_ROW_16b_16b(idx_row)\
   KERNEL_MAT1_VEC_BATCH_VEC_UNROLL(idx_row);\
@@ -988,7 +1075,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
         _ae_int64_acc_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
         _ae_int64_acc_ ## idx = AE_SRAA64(_ae_int64_acc_ ## idx,32);\
         _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx,sat_1);\
-        
+
 #define ADD_BIAS_32b_ACC_FOR_8bx8b(idx) \
   AE_L32X2_IP(_ae_int32x2_bias, _ae_int32x2_p_bias, 2*INCREMENT_IN_BYTES_FOR_INT32); \
   sat_1 = AE_MOVF64_FROMF32X2(AE_SEL32_HH(_ae_int32x2_bias,ZERO32));\
@@ -1047,6 +1134,12 @@ ae_int16 _ae_int16_bias = ZERO16; \
   _ae_int64_acc_ ## idx =_ae_int64_acc_ ## idx+_ae_int64_acc_1_ ## idx;\
   _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx, _ae_int64_sat_bias); \
 
+#define ADD_BIAS_ASYM8b_ACC_FOR_ASYM8bxASYM8b(idx) \
+    /* Load 32b bias */ \
+  _WORD32_bias = *_WORD32_p_bias++; \
+  _ae_int64_sat_bias = AE_SRAI64(AE_MOVINT64_FROMINT32X2(AE_MOVDA32(_WORD32_bias)), 32); \
+  _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx, _ae_int64_sat_bias); \
+
 /*------------------ time batching macros ----------------- */
 #define ADD_BIAS_BATCH_ROW_8b_ACC_FOR_8bx8b(idx_row)\
   LOAD_BIAS_8b_FOR_8bx8b; \
@@ -1064,13 +1157,23 @@ ae_int16 _ae_int16_bias = ZERO16; \
   LOAD_BIAS_16b_FOR_16bx16b; \
   ADD_BIAS_BATCH_ACC_VEC_UNROLL(idx_row);\
 
-#define ADD_BIAS_BATCH_8b_ACC_FOR_8bx8b    ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b 
-#define ADD_BIAS_BATCH_16b_ACC_FOR_16bx8b    ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b 
-#define ADD_BIAS_BATCH_16b_ACC_FOR_8bx16b    ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b 
+#define ADD_BIAS_BATCH_ROW_ASYM8b_ACC_FOR_ASYM8bxASYM8b(idx_row) \
+  LOAD_BIAS_ASYM8b \
+  ADD_BIAS_BATCH_ACC_VEC_UNROLL(idx_row); \
+
+#define ADD_BIAS_BATCH_ROW_ASYM8b_ACC_FOR_ASYM8bxASYM8b_MATMUL(idx_row) \
+  LOAD_BIAS_ASYM8b_MATMUL \
+  ADD_BIAS_BATCH_ACC_VEC_UNROLL(idx_row); \
+
+#define ADD_BIAS_BATCH_8b_ACC_FOR_8bx8b    ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b
+#define ADD_BIAS_BATCH_16b_ACC_FOR_16bx8b    ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b
+#define ADD_BIAS_BATCH_16b_ACC_FOR_8bx16b    ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b
 
 #define ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b(idx_row,idx_vec)\
   _ae_int64_acc_ ##idx_row ##_ ##idx_vec=_ae_int64_acc_1_ ##idx_row ##_ ##idx_vec+_ae_int64_acc_ ##idx_row ##_ ##idx_vec;\
   _ae_int64_acc_ ##idx_row ##_ ##idx_vec = AE_ADD64S(_ae_int64_acc_ ##idx_row ##_ ##idx_vec, _ae_int64_sat_bias); \
+
+#define ADD_BIAS_BATCH_ASYM8b_ACC_FOR_ASYM8bxASYM8b     ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b
 
 #define ADD_BIAS_BATCH_ROW_ACC_FOR_f32(idx_row)\
   LOAD_BIAS_f32; \
@@ -1097,7 +1200,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define KERNEL_8x8_NOT_UNROLLED_MAT1_VEC1 \
           AE_MULA8Q8X8(_ae_int32x2_acc_1, _ae_int32x2_acc_0,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat1_0,_ae_int8x8_vec1);\
           AE_MULA8Q8X8(_ae_int32x2_acc_1, _ae_int32x2_acc_0,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat1_1_0,_ae_int8x8_vec1_1);
-        
+
 #define KERNEL_8x8_NOT_UNROLLED_MAT2_VEC2 \
           AE_MULA8Q8X8(_ae_int32x2_acc_0, _ae_int32x2_acc_0,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat2_0,_ae_int8x8_vec2);\
           AE_MULA8Q8X8(_ae_int32x2_acc_0, _ae_int32x2_acc_0,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat2_1_0,_ae_int8x8_vec2_1);
@@ -1149,7 +1252,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define SETUP_OUTPUT_STORE_32_SCRATCH \
         ae_int32 * output_ptr; \
         output_ptr=(ae_int32 *)((ae_int32 *)p_scratch+m_itr);
-        
+
 #define SETUP_OUTPUT_STORE_32 \
         ae_int32 * output_ptr; \
         output_ptr=(ae_int32 *)(p_out+m_itr);
@@ -1234,7 +1337,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
         temp2=AE_TRUNCA16X4F32S(_ae_int32x2_acc_2,_ae_int32x2_acc_3, 24+acc_shift);\
         temp=AE_ROUND8X8F16SSYM(temp1,temp2);\
         AE_S8X8_IP(temp,output_ptr,sizeof(ae_int8x8));
-        
+
 #define STORE_ACC_8bx8b_AT_OUT_16x4x2 \
         ae_int32x2 temp32_1, temp32_2, temp32_3, temp32_4;\
         _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);\
@@ -1327,11 +1430,11 @@ ae_int16 _ae_int16_bias = ZERO16; \
         _ae_int64_acc_ ## acc = AE_SLAA64S(_ae_int64_acc_ ## acc,acc_shift);\
   (*((ae_int32 *) p_out[vec_itr + idx_vec] + m_itr + idx_row)) = \
   AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_ ## acc); \
-        
+
 #define STORE_ACC_8bx8b_AT_OUT_32_SINGLE_UNALIGNED(idx) \
         _ae_int64_acc_ ## idx = AE_SLAA64S(_ae_int64_acc_ ## idx,acc_shift);\
         AE_S32_L_IP(AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_ ## idx),output_ptr,sizeof(ae_int32));
-        
+
 #define STORE_ACC_8bx8b_AT_OUT_32_SINGLE \
         _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0,acc_shift);\
         AE_S32_L_IP(AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_0),output_ptr,sizeof(ae_int32));
@@ -1352,7 +1455,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_LL(temp1 ## one,temp1 ## one)),output_ptr,sizeof(ae_int16));\
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_HH(temp2 ## one, temp2 ## one)),output_ptr,sizeof(ae_int16));\
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_LL(temp2 ## one, temp2 ## one)),output_ptr,sizeof(ae_int16));\
-        
+
 
 #define STORE_ACC_8bx16b_AT_OUT_16x4x4\
         ae_int32x2 temp1,temp2;\
@@ -1412,7 +1515,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_LL(temp1,temp1)),output_ptr,sizeof(ae_int16));\
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_HH(temp2,temp2)),output_ptr,sizeof(ae_int16));\
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_LL(temp2,temp2)),output_ptr,sizeof(ae_int16));\
-        
+
 
 #define STORE_ACC_8bx8b_AT_OUT_32x4 \
         _ae_int32x2_acc_0 = AE_SLAA32S(_ae_int32x2_acc_0,acc_shift);\
@@ -1452,6 +1555,10 @@ ae_int16 _ae_int16_bias = ZERO16; \
         temp32_4  = AE_ROUND32X2F64SSYM(_ae_int64_acc_7, _ae_int64_acc_1_7);\
         AE_S32X2X2_IP(temp32_1,temp32_2, output_ptr, sizeof(ae_int32x4));\
         AE_S32X2X2_IP(temp32_3,temp32_4, output_ptr, sizeof(ae_int32x4));\
+
+#define STORE_ACC_ASYM8bxASYM8b_AT_OUT_ASYM8b(idx) \
+  _ae_int32x2_acc_ ## idx = AE_MIN32(AE_MAX32(_ae_int32x2_acc_ ## idx, AE_MOVDA32(0)), AE_MOVDA32(255)); \
+  (*((UWORD8 *) p_out + m_itr + idx)) = (UWORD8)AE_MOVAD32_L(_ae_int32x2_acc_ ## idx); \
 
 /* ==================================================================================================== */
 #define STORE_ACC_8bx16b_AT_SCRATCH_32b(idx) \
@@ -1521,7 +1628,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
         AE_S32X2X2_IP(temp,temp1,output_ptr,sizeof(ae_int32x4));\
         temp  = AE_ROUND32X2F64SSYM(_ae_int64_acc_12,_ae_int64_acc_13);\
         temp1 = AE_ROUND32X2F64SSYM(_ae_int64_acc_14,_ae_int64_acc_15);\
-        AE_S32X2X2_IP(temp,temp1,output_ptr,sizeof(ae_int32x4)); 
+        AE_S32X2X2_IP(temp,temp1,output_ptr,sizeof(ae_int32x4));
 
 
 #define STORE_ACC_8bx16b_AT_OUT_32b(idx) \
@@ -1607,6 +1714,45 @@ ae_int16 _ae_int16_bias = ZERO16; \
   p_out_tmp = (p_out[vec_itr + idx_vec] + m_itr + idx_row);\
   AE_SSIP(_xtfloat_acc_ ##idx_row ##_ ##idx_vec,p_out_tmp,0); \
 
+#define STORE_ACC_BATCH_ROW_ASYM8bxASYM8b_AT_OUT_ASYM8b(idx_row) \
+  STORE_ACC_BATCH_VEC_UNROLL(idx_row); \
+
+#define STORE_ACC_BATCH_ASYM8bxASYM8b_AT_OUT_ASYM8b(idx_row,idx_vec) \
+  _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_MIN32(AE_MAX32(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, AE_MOVDA32(0)), AE_MOVDA32(255)); \
+  (*((UWORD8 *) (p_out[vec_itr + idx_vec] + m_itr + idx_row))) = (UWORD8)AE_MOVAD32_L(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec); \
+
+/*---------------------------------------------------------*/
+/* Specific macros needed for extra calculations involved
+  for ASYM8b */
+
+/* This is written to match with Tensorflow */
+#define ADJUST_ACC_ASYM8b(idx) \
+  /* Multiply accumulator with 'out_multiplier', same as Tensorflow */ \
+  ae_int32x2 _ae_int32x2_acc_ ## idx = AE_SLAA32(AE_MOVINT32X2_FROMINT64(_ae_int64_acc_ ## idx), left_shift); \
+  _ae_int32x2_acc_ ## idx = AE_MULFP32X2RAS(_ae_int32x2_acc_ ## idx, AE_MOVDA32(out_multiplier)); \
+  /* Shift by out_shift, same as Tensorflow */ \
+  _ae_int64_acc_ ## idx = AE_SLAI64(AE_MOVINT64_FROMINT32X2(_ae_int32x2_acc_ ## idx), 32); \
+  _ae_int64_acc_ ## idx = AE_SRAA64(_ae_int64_acc_ ## idx, right_shift); \
+  _ae_int32x2_acc_ ## idx = AE_ROUND32F64SSYM(_ae_int64_acc_ ## idx); \
+  /* Add output zero point */ \
+  (_ae_int32x2_acc_ ## idx) = AE_ADD32S(_ae_int32x2_acc_ ## idx, AE_MOVDA32(out_zero_bias)); \
+
+/* For time batching */
+#define ADJUST_ACC_BATCH_ROW_ASYM8b(idx_row) \
+  ADJUST_ACC_BATCH_VEC_UNROLL(idx_row); \
+
+/* For time batching */
+#define ADJUST_ACC_BATCH_ASYM8b(idx_row, idx_vec) \
+  /* Multiply accumulator with 'out_multiplier', same as Tensorflow */ \
+  ae_int32x2 _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_SLAA32(AE_MOVINT32X2_FROMINT64(_ae_int64_acc_ ##idx_row ##_ ##idx_vec), left_shift); \
+  _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_MULFP32X2RAS(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, AE_MOVDA32(out_multiplier)); \
+  /* Shift by out_shift, same as Tensorflow */ \
+  _ae_int64_acc_ ##idx_row ##_ ##idx_vec = AE_SLAI64(AE_MOVINT64_FROMINT32X2(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec), 32); \
+  _ae_int64_acc_ ##idx_row ##_ ##idx_vec = AE_SRAA64(_ae_int64_acc_ ##idx_row ##_ ##idx_vec, right_shift); \
+  _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_ROUND32F64SSYM(_ae_int64_acc_ ##idx_row ##_ ##idx_vec); \
+  /* Add output zero point */ \
+  (_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec) = AE_ADD32S(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, AE_MOVDA32(out_zero_bias)); \
+
 /*---------------------------------------------------------*/
 /* ==================================================================================================== */
 #if (ROW_UNROLL == 1)
@@ -1647,8 +1793,8 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define SETUP_ROW_SUM_MAT2   UNROLL_SETUP_ROW_SUM_MAT2(0)   UNROLL_SETUP_ROW_SUM_MAT2(1)   UNROLL_SETUP_ROW_SUM_MAT2(2)   UNROLL_SETUP_ROW_SUM_MAT2(3)
 #define SETUP_MAT1           UNROLL_SETUP_MAT1(0)           UNROLL_SETUP_MAT1(1)           UNROLL_SETUP_MAT1(2)           UNROLL_SETUP_MAT1(3)
 #define SETUP_MAT2           UNROLL_SETUP_MAT2(0)           UNROLL_SETUP_MAT2(1)           UNROLL_SETUP_MAT2(2)           UNROLL_SETUP_MAT2(3)
-#define LOAD_MAT1           UNROLL_LOAD_MAT1(0)           UNROLL_LOAD_MAT1(1)           UNROLL_LOAD_MAT1(2)           UNROLL_LOAD_MAT1(3)
-#define LOAD_MAT2           UNROLL_LOAD_MAT2(0)           UNROLL_LOAD_MAT2(1)           UNROLL_LOAD_MAT2(2)           UNROLL_LOAD_MAT2(3)
+#define LOAD_MAT1            UNROLL_LOAD_MAT1(0)            UNROLL_LOAD_MAT1(1)            UNROLL_LOAD_MAT1(2)            UNROLL_LOAD_MAT1(3)
+#define LOAD_MAT2            UNROLL_LOAD_MAT2(0)            UNROLL_LOAD_MAT2(1)            UNROLL_LOAD_MAT2(2)            UNROLL_LOAD_MAT2(3)
 #define KERNEL_MAT1_VEC1     UNROLL_KERNEL_MAT1_VEC1(0)     UNROLL_KERNEL_MAT1_VEC1(1)     UNROLL_KERNEL_MAT1_VEC1(2)     UNROLL_KERNEL_MAT1_VEC1(3)
 #define KERNEL_MAT2_VEC2     UNROLL_KERNEL_MAT2_VEC2(0)     UNROLL_KERNEL_MAT2_VEC2(1)     UNROLL_KERNEL_MAT2_VEC2(2)     UNROLL_KERNEL_MAT2_VEC2(3)
 #define ADJUST_MAC_MAT1_VEC1 UNROLL_ADJUST_MAC_MAT1_VEC1(0) UNROLL_ADJUST_MAC_MAT1_VEC1(1) UNROLL_ADJUST_MAC_MAT1_VEC1(2) UNROLL_ADJUST_MAC_MAT1_VEC1(3)
@@ -1663,8 +1809,8 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define SETUP_ROW_SUM_MAT2   UNROLL_SETUP_ROW_SUM_MAT2(0)   UNROLL_SETUP_ROW_SUM_MAT2(1)   UNROLL_SETUP_ROW_SUM_MAT2(2)   UNROLL_SETUP_ROW_SUM_MAT2(3)   UNROLL_SETUP_ROW_SUM_MAT2(4)   UNROLL_SETUP_ROW_SUM_MAT2(5)   UNROLL_SETUP_ROW_SUM_MAT2(6)   UNROLL_SETUP_ROW_SUM_MAT2(7)
 #define SETUP_MAT1           UNROLL_SETUP_MAT1(0)           UNROLL_SETUP_MAT1(1)           UNROLL_SETUP_MAT1(2)           UNROLL_SETUP_MAT1(3)           UNROLL_SETUP_MAT1(4)           UNROLL_SETUP_MAT1(5)           UNROLL_SETUP_MAT1(6)           UNROLL_SETUP_MAT1(7)
 #define SETUP_MAT2           UNROLL_SETUP_MAT2(0)           UNROLL_SETUP_MAT2(1)           UNROLL_SETUP_MAT2(2)           UNROLL_SETUP_MAT2(3)           UNROLL_SETUP_MAT2(4)           UNROLL_SETUP_MAT2(5)           UNROLL_SETUP_MAT2(6)           UNROLL_SETUP_MAT2(7)
-#define LOAD_MAT1           UNROLL_LOAD_MAT1(0)           UNROLL_LOAD_MAT1(1)           UNROLL_LOAD_MAT1(2)           UNROLL_LOAD_MAT1(3)           UNROLL_LOAD_MAT1(4)           UNROLL_LOAD_MAT1(5)           UNROLL_LOAD_MAT1(6)           UNROLL_LOAD_MAT1(7)
-#define LOAD_MAT2           UNROLL_LOAD_MAT2(0)           UNROLL_LOAD_MAT2(1)           UNROLL_LOAD_MAT2(2)           UNROLL_LOAD_MAT2(3)           UNROLL_LOAD_MAT2(4)           UNROLL_LOAD_MAT2(5)           UNROLL_LOAD_MAT2(6)           UNROLL_LOAD_MAT2(7)
+#define LOAD_MAT1            UNROLL_LOAD_MAT1(0)        UNROLL_LOAD_MAT1(1)        UNROLL_LOAD_MAT1(2)        UNROLL_LOAD_MAT1(3)        UNROLL_LOAD_MAT1(4)        UNROLL_LOAD_MAT1(5)        UNROLL_LOAD_MAT1(6)        UNROLL_LOAD_MAT1(7)
+#define LOAD_MAT2            UNROLL_LOAD_MAT2(0)        UNROLL_LOAD_MAT2(1)        UNROLL_LOAD_MAT2(2)        UNROLL_LOAD_MAT2(3)        UNROLL_LOAD_MAT2(4)        UNROLL_LOAD_MAT2(5)        UNROLL_LOAD_MAT2(6)        UNROLL_LOAD_MAT2(7)
 #define KERNEL_MAT1_VEC1     UNROLL_KERNEL_MAT1_VEC1(0)     UNROLL_KERNEL_MAT1_VEC1(1)     UNROLL_KERNEL_MAT1_VEC1(2)     UNROLL_KERNEL_MAT1_VEC1(3)     UNROLL_KERNEL_MAT1_VEC1(4)     UNROLL_KERNEL_MAT1_VEC1(5)     UNROLL_KERNEL_MAT1_VEC1(6)     UNROLL_KERNEL_MAT1_VEC1(7)
 #define KERNEL_MAT2_VEC2     UNROLL_KERNEL_MAT2_VEC2(0)     UNROLL_KERNEL_MAT2_VEC2(1)     UNROLL_KERNEL_MAT2_VEC2(2)     UNROLL_KERNEL_MAT2_VEC2(3)     UNROLL_KERNEL_MAT2_VEC2(4)     UNROLL_KERNEL_MAT2_VEC2(5)     UNROLL_KERNEL_MAT2_VEC2(6)     UNROLL_KERNEL_MAT2_VEC2(7)
 #define ADJUST_MAC_MAT1_VEC1 UNROLL_ADJUST_MAC_MAT1_VEC1(0) UNROLL_ADJUST_MAC_MAT1_VEC1(1) UNROLL_ADJUST_MAC_MAT1_VEC1(2) UNROLL_ADJUST_MAC_MAT1_VEC1(3) UNROLL_ADJUST_MAC_MAT1_VEC1(4) UNROLL_ADJUST_MAC_MAT1_VEC1(5) UNROLL_ADJUST_MAC_MAT1_VEC1(6) UNROLL_ADJUST_MAC_MAT1_VEC1(7)
@@ -1697,7 +1843,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define SETUP_ACC_BATCH_TAIL                      UNROLL_SETUP_ACC_BATCH(0,0)             UNROLL_SETUP_ACC_BATCH(1,0)         UNROLL_SETUP_ACC_BATCH(2,0)         UNROLL_SETUP_ACC_BATCH(3,0)
 
 #define LOAD_VEC_BATCH                            UNROLL_LOAD_VEC_BATCH(0)                UNROLL_LOAD_VEC_BATCH(1)
-#define LOAD_BATCH_MAT1                                 UNROLL_LOAD_ROW_MAT1(0)                 UNROLL_LOAD_ROW_MAT1(1)             UNROLL_LOAD_ROW_MAT1(2)             UNROLL_LOAD_ROW_MAT1(3)
+#define LOAD_BATCH_MAT1                           UNROLL_LOAD_ROW_MAT1(0)                 UNROLL_LOAD_ROW_MAT1(1)             UNROLL_LOAD_ROW_MAT1(2)             UNROLL_LOAD_ROW_MAT1(3)
 
 #define KERNEL_MAT1_VEC_BATCH                     UNROLL_ROW_KERNEL_MAT1_VEC_BATCH(0)     UNROLL_ROW_KERNEL_MAT1_VEC_BATCH(1) UNROLL_ROW_KERNEL_MAT1_VEC_BATCH(2) UNROLL_ROW_KERNEL_MAT1_VEC_BATCH(3)
 #define KERNEL_MAT1_VEC_BATCH_VEC_UNROLL(idx_row) UNROLL_KERNEL_MAT1_VEC_BATCH(idx_row,0) UNROLL_KERNEL_MAT1_VEC_BATCH(idx_row,1)
@@ -1711,6 +1857,88 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define STORE_ACC_BATCH_VEC_UNROLL(idx_row)       UNROLL_STORE_ACC_BATCH(idx_row,0)       UNROLL_STORE_ACC_BATCH(idx_row,1)
 #define STORE_ACC_BATCH_TAIL                      UNROLL_STORE_ACC_BATCH(0,0)             UNROLL_STORE_ACC_BATCH(1,0)         UNROLL_STORE_ACC_BATCH(2,0)         UNROLL_STORE_ACC_BATCH(3,0)
 
+#define ADJUST_ACC_BATCH_TAIL                     UNROLL_ADJUST_ACC_BATCH(0, 0)           UNROLL_ADJUST_ACC_BATCH(1, 0)       UNROLL_ADJUST_ACC_BATCH(2, 0)       UNROLL_ADJUST_ACC_BATCH(3, 0)
+#define ADJUST_ACC_BATCH                          UNROLL_ROW_ADJUST_ACC(0)                UNROLL_ROW_ADJUST_ACC(1)                UNROLL_ROW_ADJUST_ACC(2)            UNROLL_ROW_ADJUST_ACC(3)
+#define ADJUST_ACC_BATCH_VEC_UNROLL(idx_row)      UNROLL_ADJUST_ACC_BATCH(idx_row,0)      UNROLL_ADJUST_ACC_BATCH(idx_row,1)
+
 #endif /* (ROW_UNROLL == 4 && VEC_UNROLL == 2)*/
+
+#define AE_SW_PRIME_64(p_char, tmp) \
+    WORD8 *p_char_align_##p_char =  (WORD8 *)((unsigned int)p_char & ~0x7); \
+    int sel_idx_##p_char = (unsigned int)p_char - (unsigned int)p_char_align_##p_char; \
+    ae_int8x8 sel_##p_char = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(g_sel_pattern[2 * sel_idx_##p_char], g_sel_pattern[2 * sel_idx_##p_char + 1])); \
+    AE_L8X8_IP(tmp, (ae_int8x8 *)p_char_align_##p_char, 8); 
+
+#define AE_SW_LA8X8_IP(d, tmp, p_char) { \
+      ae_int8x8 d_tmp; \
+      AE_L8X8_IP(d_tmp, (ae_int8x8 *)p_char_align_##p_char, 8);\
+      AE_DSEL8X8(d, tmp, tmp, d_tmp, sel_##p_char); \
+    }
+
+// Circular buffer size needs to be multiple of 8 
+#define AE_SW_PRIME_CIRC_64(p_char, tmp) \
+    WORD8 *p_char_align_##p_char =  (WORD8 *)((unsigned int)p_char & ~0x7); \
+    int sel_idx_##p_char = (unsigned int)p_char - (unsigned int)p_char_align_##p_char; \
+    ae_int8x8 sel_##p_char = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(g_sel_pattern[2 * sel_idx_##p_char], g_sel_pattern[2 * sel_idx_##p_char + 1])); \
+    AE_L8X8_XC(tmp, (ae_int8x8 *)p_char_align_##p_char, 8); 
+        
+#define AE_SW_LA8X8_IC(d, tmp, p_char) { \
+      ae_int8x8 d_tmp; \
+      AE_L8X8_XC(d_tmp, (ae_int8x8 *)p_char_align_##p_char, 8);\
+      AE_DSEL8X8(d, tmp, tmp, d_tmp, sel_##p_char); \
+    }
+        
+#define STORE8X8_1 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x80f7e6d5L, 0xc4b3a291L))
+#define STORE8X8_2 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x9180f7e6L, 0xd5c4b3a2L))
+#define STORE8X8_3 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xa29180f7L, 0xe6d5c4b3L))
+#define STORE8X8_4 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xb3a29180L, 0xf7e6d5c4L))
+
+#define AE_SW_S8_1_XP(d, p_char, offset) { \
+    ae_int8x8 d_tmp, d_tmp1;\
+    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_1); \
+    AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+    }
+
+#define AE_SW_S8_2_XP(d, p_char, offset) { \
+    ae_int8x8 d_tmp, d_tmp1;\
+    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_2); \
+    AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+    }
+
+#define AE_SW_S8_3_XP(d, p_char, offset) { \
+    ae_int8x8 d_tmp, d_tmp1;\
+    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_3); \
+    AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+    }
+
+#define AE_SW_S8_1_X(d, p_char, offset) { \
+    ae_int8x8 d_tmp, d_tmp1;\
+    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_1); \
+    AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+    }
+
+#define AE_SW_S8_2_X(d, p_char, offset) { \
+    ae_int8x8 d_tmp, d_tmp1;\
+    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_2); \
+    AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+    }
+
+#define AE_SW_S8_3_X(d, p_char, offset) { \
+    ae_int8x8 d_tmp, d_tmp1;\
+    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_3); \
+    AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+    }
+
+#define AE_SW_S8_4_IP(d, p_char, offset) { \
+    ae_int8x8 d_tmp, d_tmp1;\
+    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_4); \
+    AE_S8_0_IP(d_tmp , (ae_int8 *) p_char, offset);\
+    }
+
+#define AE_SW_S8_4_X(d, p_char, offset) { \
+    ae_int8x8 d_tmp, d_tmp1;\
+    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_4); \
+    AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+    }
 
 #endif /* __XA_NNLIB_COMMON_MACROS_H__ */

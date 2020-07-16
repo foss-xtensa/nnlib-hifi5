@@ -51,7 +51,7 @@ else
   ifeq ($(WARNING_AS_ERROR),1)
   CFLAGS += -Werror 
   endif
-  LDFLAGS = -mlongcalls
+  LDFLAGS = -mlongcalls -lm
 
 endif
 
@@ -81,6 +81,8 @@ ACTBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_activation_test
 GRUBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_gru_test
 LSTMBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_lstm_test
 CNNBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_cnn_test
+BASICBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_basic_test
+NORMBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_norm_test
 MODEL_TINY_CONVBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_model_tiny_conv_test
 MODEL_CONVBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_model_conv_test
 
@@ -100,6 +102,10 @@ LSTMOBJS = \
     xa_nn_lstm_testbench.o 
 CNNOBJS = \
     xa_nn_cnn_testbench.o 
+BASICOBJS = \
+    xa_nn_basic_testbench.o
+NORMOBJS = \
+    xa_nn_norm_testbench.o
 MODEL_TINY_CONVOBJS = \
 	xa_nn_model_tiny_conv_testbench.o
 MODEL_CONVOBJS = \
@@ -122,6 +128,8 @@ OBJS_GRUOBJS  = $(addprefix $(OBJDIR)/,$(GRUOBJS))
 OBJS_LSTMOBJS  = $(addprefix $(OBJDIR)/,$(LSTMOBJS))
 OBJS_UTILOBJS = $(addprefix $(OBJDIR)/,$(UTILOBJS))
 OBJS_CNNOBJS  = $(addprefix $(OBJDIR)/,$(CNNOBJS))
+OBJS_BASICOBJS  = $(addprefix $(OBJDIR)/,$(BASICOBJS))
+OBJS_NORMOBJS  = $(addprefix $(OBJDIR)/,$(NORMOBJS))
 OBJS_DATAOBJS = $(addprefix $(OBJDIR)/,$(DATAOBJS))
 OBJS_MODEL_TINY_CONVOBJS  = $(addprefix $(OBJDIR)/,$(MODEL_TINY_CONVOBJS))
 OBJS_MODEL_CONVOBJS  = $(addprefix $(OBJDIR)/,$(MODEL_CONVOBJS))
@@ -134,11 +142,13 @@ run:
 	xt-run --mem_model --nosummary xa_nn_gru_test
 	xt-run --mem_model --nosummary xa_nn_lstm_test
 	xt-run --mem_model --nosummary xa_nn_cnn_test
+	xt-run --mem_model --nosummary xa_nn_basic_test
+	xt-run --mem_model --nosummary xa_nn_norm_test
 	xt-run --mem_model --nosummary xa_nn_model_tiny_conv_test
 	xt-run --mem_model --nosummary xa_nn_model_conv_test
 
 all: NNLIB
-NNLIB: $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(MODEL_TINY_CONVBIN) $(MODEL_CONVBIN)
+NNLIB: $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(BASICBIN) $(NORMBIN) $(MODEL_TINY_CONVBIN) $(MODEL_CONVBIN)
 
 nn_activation: clean_util $(ACTBIN)
 nn_cnn: clean_util $(CNNBIN)
@@ -147,6 +157,8 @@ nn_gru: clean_util $(GRUBIN)
 nn_lstm: clean_util $(LSTMBIN)
 nn_matXvec: clean_util $(MATMULBIN)
 nn_pool: clean_util $(POOLBIN) 
+nn_basic: clean_util $(BASICBIN) 
+nn_norm: clean_util $(NORMBIN) 
 nn_model_tiny_conv: clean_util clean_data $(MODEL_TINY_CONVBIN) 
 nn_model_conv: clean_util clean_data $(MODEL_CONVBIN) 
 
@@ -177,6 +189,12 @@ $(LSTMBIN): $(OBJDIR) $(OBJS_LSTMOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
 $(CNNBIN): $(OBJDIR) $(OBJS_CNNOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
 	$(CC) -o $@ $(OBJS_CNNOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
 
+$(BASICBIN): $(OBJDIR) $(OBJS_BASICOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_BASICOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
+$(NORMBIN): $(OBJDIR) $(OBJS_NORMOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB)
+	$(CC) -o $@ $(OBJS_NORMOBJS) $(OBJS_UTILOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
+
 $(MODEL_TINY_CONVBIN): $(OBJDIR) $(OBJS_MODEL_TINY_CONVOBJS) $(OBJS_UTILOBJS) $(OBJS_DATAOBJS) $(NNLIBLIB)
 	$(CC) -o $@ $(OBJS_MODEL_TINY_CONVOBJS) $(OBJS_UTILOBJS) $(OBJS_DATAOBJS) $(NNLIBLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
 
@@ -187,12 +205,12 @@ $(MODEL_CONVBIN): $(OBJDIR) $(OBJS_MODEL_CONVOBJS) $(OBJS_UTILOBJS) $(OBJS_DATAO
 $(OBJDIR):
 	-$(MKPATH) $(OBJDIR)
 
-$(OBJS_MATMULOBJS) $(OBJS_CONVOBJS) $(OBJS_POOLOBJS) $(OBJS_UTILOBJS) $(OBJS_ACTOBJS) $(OBJS_GRUOBJS) $(OBJS_LSTMOBJS) $(OBJS_CNNOBJS) $(OBJS_MODEL_TINY_CONVOBJS) $(OBJS_MODEL_CONVOBJS) $(OBJS_DATAOBJS) : $(OBJDIR)/%.o: %.c
+$(OBJS_MATMULOBJS) $(OBJS_CONVOBJS) $(OBJS_POOLOBJS) $(OBJS_UTILOBJS) $(OBJS_ACTOBJS) $(OBJS_GRUOBJS) $(OBJS_LSTMOBJS) $(OBJS_CNNOBJS) $(OBJS_BASICOBJS) $(OBJS_NORMOBJS) $(OBJS_MODEL_TINY_CONVOBJS) $(OBJS_MODEL_CONVOBJS) $(OBJS_DATAOBJS) : $(OBJDIR)/%.o: %.c
 	@echo "Compiling $<"
 	$(QUIET) $(CC) $(OPT_O2) $(CFLAGS) $(INCLUDES) -o $@ -c $<
 
 
 clean:
-	-$(RM) $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(MODEL_TINY_CONVBIN) $(MODEL_CONVBIN)
+	-$(RM) $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(BASICBIN) $(NORMBIN) $(MODEL_TINY_CONVBIN) $(MODEL_CONVBIN)
 	-$(RM) $(OBJDIR)$(S)*.o
 
