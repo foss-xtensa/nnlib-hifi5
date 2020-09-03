@@ -27,6 +27,95 @@
 #include "xa_nnlib_common_macros_hifi5.h"
 #include "xa_nnlib_err_chk.h"
 
+static WORD32 xa_nn_conv2d_pointwise_nhwc_asym8xasym8(
+    UWORD8* __restrict__ p_out,
+    UWORD8* __restrict__ p_kernel,
+    UWORD8* __restrict__ p_inp,
+    WORD32* __restrict__ p_bias,
+    WORD32  input_height,
+    WORD32  input_width,
+    WORD32  input_channels,
+    WORD32  out_channels,
+    WORD32  input_zero_bias,
+    WORD32  kernel_zero_bias,
+    WORD32  out_multiplier,
+    WORD32  out_shift,
+    WORD32  out_zero_bias)
+{
+    int ret, out_plane_size;
+    out_plane_size = input_height*input_width;
+    int vec_offset, out_offset;
+
+    vec_offset = input_channels;
+    out_offset = out_channels;
+
+
+    ret = xa_nn_matmul_asym8xasym8_asym8(p_out,
+                                         p_kernel,
+                                         p_inp,
+                                         p_bias,
+                                         out_channels,
+                                         input_channels,
+                                         input_channels,
+                                         out_plane_size,
+                                         vec_offset,
+                                         out_offset,
+                                         1,
+                                         kernel_zero_bias,
+                                         input_zero_bias,
+                                         out_multiplier,
+                                         out_shift,
+                                         out_zero_bias
+                                         );
+    if(ret<0)
+        return ret;
+    return 0;
+}
+
+
+static WORD32 xa_nn_conv2d_pointwise_nchw_asym8xasym8(
+    UWORD8* __restrict__ p_out,
+    UWORD8* __restrict__ p_kernel,
+    UWORD8* __restrict__ p_inp,
+    WORD32* __restrict__ p_bias,
+    WORD32  input_height,
+    WORD32  input_width,
+    WORD32  input_channels,
+    WORD32  out_channels,
+    WORD32  input_zero_bias,
+    WORD32  kernel_zero_bias,
+    WORD32  out_multiplier,
+    WORD32  out_shift,
+    WORD32  out_zero_bias)
+{
+    int ret, out_plane_size;
+    out_plane_size = input_height*input_width;
+    int vec_offset, out_offset;
+
+    vec_offset = input_channels;
+    out_offset = 1;
+
+    ret = xa_nn_matmul_asym8xasym8_asym8(p_out,
+                                         p_kernel,
+                                         p_inp,
+                                         p_bias,
+                                         out_channels,
+                                         input_channels,
+                                         input_channels,
+                                         out_plane_size,
+                                         vec_offset,
+                                         out_offset,
+                                         out_plane_size,
+                                         kernel_zero_bias,
+                                         input_zero_bias,
+                                         out_multiplier,
+                                         out_shift,
+                                         out_zero_bias
+                                        );
+    if(ret<0)
+        return ret;
+    return 0;
+}
 WORD32 xa_nn_conv2d_pointwise_asym8xasym8(
     UWORD8* __restrict__ p_out,
     UWORD8* __restrict__ p_kernel,
@@ -36,11 +125,11 @@ WORD32 xa_nn_conv2d_pointwise_asym8xasym8(
     WORD32  input_width,
     WORD32  input_channels,
     WORD32  out_channels,
-    WORD32  input_offset,
-    WORD32  kernel_offset,
+    WORD32  input_zero_bias,
+    WORD32  kernel_zero_bias,
     WORD32  out_multiplier,
     WORD32  out_shift,
-    WORD32  out_offset,
+    WORD32  out_zero_bias,
     WORD32  out_data_format)
 {
     /* NULL pointer checks */
@@ -49,78 +138,53 @@ WORD32 xa_nn_conv2d_pointwise_asym8xasym8(
     XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
     XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
     /* Pointer alignment checks */
-    XA_NNLIB_ARG_CHK_ALIGN(p_out, ALIGNMENT, -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_kernel, ALIGNMENT, -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_inp, ALIGNMENT, -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_bias, ALIGNMENT, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD8), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_kernel, sizeof(WORD8), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(WORD8), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD32), -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((input_channels <= 0), -1);
-    XA_NNLIB_ARG_CHK_COND((input_offset < -255 || input_offset > 0), -1);
-    XA_NNLIB_ARG_CHK_COND((kernel_offset < -255 || kernel_offset > 0), -1);
+    XA_NNLIB_ARG_CHK_COND((input_zero_bias < -255 || input_zero_bias > 0), -1);
+    XA_NNLIB_ARG_CHK_COND((kernel_zero_bias < -255 || kernel_zero_bias > 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_shift < -31 || out_shift > 31), -1);
-    XA_NNLIB_ARG_CHK_COND((out_offset > 255 || out_offset < 0), -1);
+    XA_NNLIB_ARG_CHK_COND((out_zero_bias > 255 || out_zero_bias < 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_channels <= 0), -1);
-    XA_NNLIB_ARG_CHK_COND((out_data_format != 1), -1);
-    /* Implementation dependent checks */
-    XA_NNLIB_ARG_CHK_COND(((input_channels&3) != 0), -1);
+    XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
 
-#define ROWS_PROCESSED_PER_ITR    32
-    UWORD8 *pt_out[1], *pt_vec[1], *pt_inp;
-    WORD32 pt_bias[ROWS_PROCESSED_PER_ITR];
-    int i, j, ret, out_plane_size;
-    out_plane_size = input_height*input_width;
-    for(i = 0; i < out_channels; i++)
-    {
-        ae_int32x2 *ptx2_bias = (ae_int32x2 *)pt_bias;
-        ae_int32x2 bias_val = AE_MOVDA32(p_bias[i]);
-        for(j = 0; j < (ROWS_PROCESSED_PER_ITR>>1); j++)
-        {
-            ptx2_bias[j] = bias_val;
-        }
-        pt_vec[0] = &p_kernel[i*input_channels];
-        for(j = 0; j < (out_plane_size&(~(ROWS_PROCESSED_PER_ITR-1))); j+= ROWS_PROCESSED_PER_ITR)
-        {
-            pt_inp = &p_inp[j*input_channels];
-            pt_out[0] = &p_out[i*input_height*input_width+j];
-            ret = xa_nn_matXvec_batch_asym8xasym8_asym8(pt_out
-                                                       ,pt_inp
-                                                       ,pt_vec
-                                                       ,pt_bias
-                                                       ,ROWS_PROCESSED_PER_ITR
-                                                       ,input_channels
-                                                       ,input_channels
-                                                       ,1
-                                                       ,input_offset
-                                                       ,kernel_offset
-                                                       ,out_multiplier
-                                                       ,out_shift
-                                                       ,out_offset
-                                                       );
-            if(ret<0)
-                return ret;
-        }
-        if(j < out_plane_size)
-        {
-            pt_inp = &p_inp[j*input_channels];
-            pt_out[0] = &p_out[i*input_height*input_width+j];
-            ret = xa_nn_matXvec_batch_asym8xasym8_asym8(pt_out
-                                                       ,pt_inp
-                                                       ,pt_vec
-                                                       ,pt_bias
-                                                       ,(input_height*input_width-j)
-                                                       ,input_channels
-                                                       ,input_channels
-                                                       ,1
-                                                       ,input_offset
-                                                       ,kernel_offset
-                                                       ,out_multiplier
-                                                       ,out_shift
-                                                       ,out_offset
-                                                       );
-            if(ret<0)
-                return ret;
-        }
+    int ret = 0;
+
+    if(out_data_format == 0){
+        ret = xa_nn_conv2d_pointwise_nhwc_asym8xasym8(
+                p_out,
+                p_kernel,
+                p_inp,
+                p_bias,
+                input_height,
+                input_width,
+                input_channels,
+                out_channels,
+                input_zero_bias,
+                kernel_zero_bias,
+                out_multiplier,
+                out_shift,
+                out_zero_bias);
     }
-    return 0;
+    else if(out_data_format == 1){
+        ret = xa_nn_conv2d_pointwise_nchw_asym8xasym8(
+                p_out,
+                p_kernel,
+                p_inp,
+                p_bias,
+                input_height,
+                input_width,
+                input_channels,
+                out_channels,
+                input_zero_bias,
+                kernel_zero_bias,
+                out_multiplier,
+                out_shift,
+                out_zero_bias);
+    }
+    return ret;
 }

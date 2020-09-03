@@ -370,7 +370,6 @@ WORD32 xa_nn_maxpool_16(
                     );
         }
     }
-#if 0 //NHWC format support
     else
     {
         void *p_scratch_aligned = (void *)ALIGN_PTR(p_scratch, ALIGNMENT);
@@ -390,6 +389,5 @@ WORD32 xa_nn_maxpool_16(
                 ,out_width
                 ,p_scratch_aligned);
     }
-#endif
     return 0;
 }

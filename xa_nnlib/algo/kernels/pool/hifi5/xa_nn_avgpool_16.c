@@ -434,7 +434,6 @@ WORD32 xa_nn_avgpool_16(
                     );
         }
     }
-#if 0 //NHWC format support
     else
     {
         int i;
@@ -503,6 +502,5 @@ WORD32 xa_nn_avgpool_16(
                 ,p_den_height
                 ,p_den_width);
     }
-#endif
     return 0;
 }

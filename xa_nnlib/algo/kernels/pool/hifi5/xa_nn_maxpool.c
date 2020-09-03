@@ -99,6 +99,13 @@ WORD32 xa_nn_maxpool_getsize_nhwc(WORD32  inp_precision,
 {
     int scratch_bytewidth, scratch_size;
 
+    int full_buf_width;
+    int left_pad_aligned = ALIGNED_SIZE(x_padding, ALIGNMENT);
+    full_buf_width = kernel_width + (out_width - 1)*x_stride;
+    full_buf_width = XT_MAX(full_buf_width, x_padding + input_width);
+    int right_pad = full_buf_width - (x_padding + input_width);
+    full_buf_width = full_buf_width + left_pad_aligned + right_pad + kernel_width;
+    
     if(input_channels == 1)
     {
           scratch_size = xa_nn_maxpool_getsize_nchw(inp_precision
@@ -126,7 +133,7 @@ WORD32 xa_nn_maxpool_getsize_nhwc(WORD32  inp_precision,
     else if(inp_precision == 8)
     {
         scratch_bytewidth = sizeof(WORD8);
-        return ALIGNED_SIZE((input_channels*(input_width + 1)*scratch_bytewidth), ALIGNMENT);
+        return ALIGNED_SIZE(input_channels*(full_buf_width)*scratch_bytewidth, ALIGNMENT);
     }
     else if(inp_precision == 16)
     {

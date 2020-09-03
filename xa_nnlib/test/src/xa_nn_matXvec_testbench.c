@@ -275,6 +275,18 @@ void show_usage(void)
       XTPWR_PROFILER_STOP(0);\
     }
 
+#define MAT_VEC_MUL_OUT_STRIDE_FN_SYM8SXASYM8S_16(MPREC, VPREC, OPREC) \
+    if((MPREC == p_mat1->precision) && (VPREC == p_vec1->precision) && (OPREC == p_out->precision)) {\
+      memset(p_out->p, 0xca, cfg.rows*cfg.out_stride*sizeof(WORD16)); \
+      XTPWR_PROFILER_START(0);\
+      err = xa_nn_matXvec_out_stride_sym8sxasym8s_16 ( \
+          (WORD16 *)p_out->p, (WORD8 *) p_mat1->p, (WORD8 *)p_vec1->p, (WORD32 *)p_bias->p, \
+          cfg.rows, cfg.cols1, p_mat1->row_offset, cfg.out_stride, \
+          cfg.inp1_zero_bias, \
+          cfg.out_multiplier, cfg.out_shift);\
+      XTPWR_PROFILER_STOP(0);\
+    }
+
 #define MAT_VEC_MUL_FC_FN_F32(MPREC, VPREC, OPREC) \
     if((MPREC == p_mat1->precision) && (VPREC == p_vec1->precision) && (OPREC == p_out->precision)) {\
       XTPWR_PROFILER_START(0);\

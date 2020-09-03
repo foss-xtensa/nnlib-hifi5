@@ -65,8 +65,10 @@ typedef struct _test_config_t
   int  left_shift;
 #endif
   int  io_length;
+  int  vec_count;
   int  frames;
-  int  io_precision;
+  int  inp_precision;
+  int  out_precision;
   int  write_file;
   char kernel_name[MAX_KERNEL_NAME_LENGTH];
   char read_inp1_file_name[XA_MAX_CMD_LINE_LENGTH];
@@ -96,8 +98,10 @@ int default_config(test_config_t *p_cfg)
     p_cfg->input2_multiplier = 0x7fff;
     p_cfg->left_shift = 0;
     p_cfg->io_length  = 1024;
-    p_cfg->io_precision = -1;
+    p_cfg->vec_count  = 1;
     p_cfg->frames   = 2;  
+    p_cfg->inp_precision = -1;
+    p_cfg->out_precision = -1;
     strcpy(p_cfg->kernel_name, "elm_add");
     p_cfg->write_file = 0;  
     p_cfg->read_inp1_file_name[0] = '\0';
@@ -144,7 +148,9 @@ void parse_arguments(int argc, char** argv, test_config_t *p_cfg)
     ARGTYPE_ONETIME_CONFIG("-input2_multiplier",p_cfg->input2_multiplier);                
     ARGTYPE_ONETIME_CONFIG("-left_shift",p_cfg->left_shift);                           
     ARGTYPE_ONETIME_CONFIG("-io_length",p_cfg->io_length);                           
-    ARGTYPE_ONETIME_CONFIG("-io_precision",p_cfg->io_precision);                        
+    ARGTYPE_ONETIME_CONFIG("-inp_precision",p_cfg->inp_precision);                        
+    ARGTYPE_ONETIME_CONFIG("-out_precision",p_cfg->out_precision);                        
+    ARGTYPE_ONETIME_CONFIG("-vec_count",p_cfg->vec_count);                           
     ARGTYPE_ONETIME_CONFIG("-frames",p_cfg->frames);
     ARGTYPE_STRING("-kernel_name",p_cfg->kernel_name, MAX_KERNEL_NAME_LENGTH);
     ARGTYPE_ONETIME_CONFIG("-write_file",p_cfg->write_file);
@@ -166,9 +172,11 @@ void show_usage(void)
 {
     printf ("Usage xt-run <binary> [Options]\n");
     printf("\t-io_length: input/output vector length; Default=1024\n");
-    printf("\t-io_precision: -3 (asym8),  -1 (single prec float); Default=-1\n");
+    printf("\t-inp_precision: -4 (asym8s) -3 (asym8u),  -1 (single prec float); Default=-1\n");
+    printf("\t-out_precision: -4 (asym8s) -3 (asym8u),  -1 (single prec float); Default=-1\n");
+    printf("\t-vec_count: number of input vectors; Default=1\n");
     printf("\t-frames: Positive number; Default=2\n");
-    printf("\t-kernel_name: add, sub, mul, mul_acc, div, floor; Default=""elem_add""\n");
+    printf("\t-kernel_name: elm_add, elm_sub, elm_mul, elm_mul_acc, elm_div, elm_floor, dot_prod; Default=""elem_add""\n");
     printf("\t-write_file: set to 1 to write input and output vectors to file; Default=0\n");
     printf("\t-read_inp1_file_name: Full filename for reading inputs (order - inp) \n");
     printf("\t-read_inp2_file_name: Full filename for reading inputs (order - inp) \n");
@@ -194,8 +202,28 @@ void show_usage(void)
     printf ("\t-left_shift: global left_shift(Only needed in add_asym8); Default=0\n");
 }
 
+#define DOT_PROD_OUT_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_##IPREC##x##IPREC##_asym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD16 *) p_inp1->p,\
+                    (WORD16 *) p_inp2->p,\
+                    0,\
+                    cfg.io_length,\
+                    cfg.output_multiplier,\
+                    cfg.output_left_shift,\
+                    cfg.output_zero_bias,\
+                    cfg.vec_count\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
 #define BASIC_FLOAT32(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.io_precision)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_f32xf32_f32\
                 (\
@@ -208,7 +236,8 @@ void show_usage(void)
   }
 
 #define FLOOR_F32(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.io_precision)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_f32_f32\
                 (\
@@ -220,7 +249,8 @@ void show_usage(void)
   }
 
 #define ADD_ASYM8(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.io_precision)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_asym8xasym8_asym8\
                 (\
@@ -245,7 +275,8 @@ void show_usage(void)
   }
 
 #define MUL_ASYM8(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.io_precision)) {\
+  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_asym8xasym8_asym8\
                 (\
@@ -276,11 +307,13 @@ void show_usage(void)
     else FLOOR_F32(elm_floor, -1, -1) \
     else MUL_ASYM8(elm_mul, -3, -3) \
     else ADD_ASYM8(elm_add, -3, -3) \
+    else DOT_PROD_OUT_ASYM8S(dot_prod, 16, -4) \
     else {  printf("unsupported basic operation\n"); return -1;}
 #else
 #define PROCESS_BASIC_FUNC \
     MUL_ASYM8(elm_mul, -3, -3) \
     else ADD_ASYM8(elm_add, -3, -3) \
+    else DOT_PROD_OUT_ASYM8S(dot_prod, 16, -4) \
     else {  printf("unsupported basic operation\n"); return -1;}
 #endif
 
@@ -323,7 +356,7 @@ int xa_nn_main_process(int argc, char *argv[])
 
 
   // Set profiler name 
-  if(cfg.io_precision == -1)
+  if(cfg.inp_precision == -1)
   {
     sprintf(profiler_name, "%s_f32", cfg.kernel_name);
     
@@ -334,13 +367,17 @@ int xa_nn_main_process(int argc, char *argv[])
       return 0;
     }
   }
-  else if(cfg.io_precision == -3)
+  else if(cfg.inp_precision == -3)
   {
     sprintf(profiler_name, "%s_asym8", cfg.kernel_name);
   }
+  else if(cfg.inp_precision == 16 && cfg.out_precision == -4)
+  {
+    sprintf(profiler_name, "%s_16x16_asym8s", cfg.kernel_name);
+  }
   else
   {
-      printf("Precision not asym8 or float\n");
+      printf("Precision not supported\n");
       return -1;
   }
 
@@ -371,17 +408,31 @@ int xa_nn_main_process(int argc, char *argv[])
   // Open reference file if verify flag is enabled
   if(cfg.verify)
   {
-    ptr_ref =  create_buf1D(cfg.io_length, cfg.io_precision); 
-    
+    if(strcmp(cfg.kernel_name, "dot_prod") == 0)
+    {
+      ptr_ref =  create_buf1D(cfg.vec_count, cfg.out_precision); 
+    }
+    else
+    {
+      ptr_ref =  create_buf1D(cfg.io_length * cfg.vec_count, cfg.out_precision); 
+    }
+
     fptr_ref = file_open(pb_ref_file_path, cfg.read_ref_file_name, "rb", XA_MAX_CMD_LINE_LENGTH);
   }
 
   // Allocate Memory
-  p_inp1 = create_buf1D(cfg.io_length, cfg.io_precision); VALIDATE_PTR(p_inp1);
-  p_inp2 = create_buf1D(cfg.io_length, cfg.io_precision); VALIDATE_PTR(p_inp2);
-  p_out = create_buf1D(cfg.io_length, cfg.io_precision); VALIDATE_PTR(p_out);
-  
-  XTPWR_PROFILER_OPEN(0, profiler_name, profiler_params, cfg.io_length, "cyc/point", 0);
+  p_inp1 = create_buf1D(cfg.io_length * cfg.vec_count, cfg.inp_precision); VALIDATE_PTR(p_inp1);
+  p_inp2 = create_buf1D(cfg.io_length * cfg.vec_count, cfg.inp_precision); VALIDATE_PTR(p_inp2);
+  if(strcmp(cfg.kernel_name, "dot_prod") == 0)
+  {
+    p_out = create_buf1D(cfg.vec_count, cfg.out_precision); VALIDATE_PTR(p_out);
+  }
+  else
+  {
+    p_out = create_buf1D(cfg.io_length * cfg.vec_count, cfg.out_precision); VALIDATE_PTR(p_out);
+  }
+
+  XTPWR_PROFILER_OPEN(0, profiler_name, profiler_params, cfg.io_length * cfg.vec_count, "cyc/point", 0);
 
   // Frame processing loop
   for(frame = 0; frame < cfg.frames; frame++)
@@ -393,28 +444,6 @@ int xa_nn_main_process(int argc, char *argv[])
     // Call the activation specified on command line
     PROCESS_BASIC_FUNC
     
-/*
-    if(cfg.io_precision == -1)
-    {
-        if(strcmp(cfg.kernel_name, "elm_add"))
-        {
-            err = xa_nn_elm_add_f32xf32_f32((FLOAT32 *)p_out->p, (FLOAT32 *)p_inp1->p, (FLOAT32 *)p_inp2->p, cfg.io_length);
-        }
-        else if(strcmp(cfg.kernel_name, "elm_mul"))
-        {
-            err = xa_nn_elm_mul_f32xf32_f32((FLOAT32 *)p_out->p, (FLOAT32 *)p_inp1->p, (FLOAT32 *)p_inp2->p, cfg.io_length);
-        }
-    }
-    else if(cfg.io_precision == -3)
-    {
-        if(strcmp(cfg.kernel_name, "elm_add"))
-        {
-        }
-        else if(strcmp(cfg.kernel_name, "elm_mul"))
-        {
-        }
-    }
-*/
     XTPWR_PROFILER_UPDATE(0);
     XTPWR_PROFILER_PRINT(0);
 
@@ -425,7 +454,7 @@ int xa_nn_main_process(int argc, char *argv[])
     if(cfg.verify)
     {
       read_buf1D_from_file(fptr_ref, ptr_ref);
-      pass_count += compare_buf1D(ptr_ref, p_out, cfg.verify, cfg.io_precision, 1);
+      pass_count += compare_buf1D(ptr_ref, p_out, cfg.verify, cfg.out_precision, 1);
     }
     else
     {

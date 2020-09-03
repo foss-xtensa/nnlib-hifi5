@@ -19,10 +19,6 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "xa_type_def.h"
-#include "xtensa/tie/xt_hifi2.h"
-#include <xa_nnlib_kernels_api.h>
-
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
@@ -31,18 +27,8 @@
     inp = AE_MULFP32X2RAS(inp, AE_MOVDA32(multiplier)); \
     inp = AE_SRAA32SYMS(inp, right_shift);
 
-const long long sel_pattern[16] = {
- 0xf7e6d5c4L, 0xb3a29180L,
- 0xf7766554L, 0x43322110L,
- 0xf7e67564L, 0x53423120L,
- 0xf7e6d574L, 0x63524130L,
- 0xf7e6d5c4L, 0x73625140L,
- 0xf7e6d5c4L, 0xb3726150L,
- 0xf7e6d5c4L, 0xb3a27160L,
- 0xf7e6d5c4L, 0xb3a29170L,
-};
+extern const long long post_loop_sel_pattern[16];
 
-#if 1
 static inline void _xa_nn_dot_product_8_rows_1_vecs_aligned
     (ae_int32x2* out_0_0
     ,ae_int32x2* out_1_0
@@ -61,10 +47,10 @@ static inline void _xa_nn_dot_product_8_rows_1_vecs_aligned
   int rem_cols_16 = rem_g16?((cols1 - 16) & 15):(cols1 & 15);
   int rem_g8 = (rem_cols_16 > 8)?1:0;
   int rem_cols8 = rem_cols_16 % 8;  
-  ae_int8x8 sel1 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols8) * (!rem_g8 && !rem_g16)], sel_pattern[2 * (rem_cols8) * (!rem_g8 && !rem_g16) + 1])); 
-  ae_int8x8 sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols8) * (rem_g8 && !rem_g16)], sel_pattern[2 * (rem_cols8) * (rem_g8 && !rem_g16) + 1])); 
-  ae_int8x8 sel3 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols8) * (!rem_g8 && rem_g16)], sel_pattern[2 * (rem_cols8) * (!rem_g8 && rem_g16) + 1])); 
-  ae_int8x8 sel4 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols8) * (rem_g8 && rem_g16)], sel_pattern[2 * (rem_cols8) * (rem_g8 && rem_g16) + 1])); 
+  ae_int8x8 sel1 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols8) * (!rem_g8 && !rem_g16)], post_loop_sel_pattern[2 * (rem_cols8) * (!rem_g8 && !rem_g16) + 1])); 
+  ae_int8x8 sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols8) * (rem_g8 && !rem_g16)], post_loop_sel_pattern[2 * (rem_cols8) * (rem_g8 && !rem_g16) + 1])); 
+  ae_int8x8 sel3 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols8) * (!rem_g8 && rem_g16)], post_loop_sel_pattern[2 * (rem_cols8) * (!rem_g8 && rem_g16) + 1])); 
+  ae_int8x8 sel4 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols8) * (rem_g8 && rem_g16)], post_loop_sel_pattern[2 * (rem_cols8) * (rem_g8 && rem_g16) + 1])); 
   int c_itr = 0;
 
   ae_int8x8 neg_vec_bias = AE_MOVDA8((UWORD8)vec1_zero_bias);
@@ -141,13 +127,13 @@ static inline void _xa_nn_dot_product_8_rows_1_vecs_aligned
 
     AE_L8X8X2_IP(vec0_batch_0, vec0_batch_1, (ae_int8x16 *)p_vec_0, 16);
 
-    AE_DSEL8X8(vec0_batch_0, neg_vec_bias, vec0_batch_0, neg_vec_bias, sel1);
+    vec0_batch_0 = AE_SEL8X8(vec0_batch_0, neg_vec_bias, sel1);
     AE_MULAUUZB8Q8X8(acc_row0_vec0 , acc_row1_vec0 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec0_batch_0);
     AE_MULAUUZB8Q8X8(acc_row2_vec0 , acc_row3_vec0 , mat1_row4_0 , mat1_row5_0 , mat1_row6_0 , mat1_row7_0 ,vec0_batch_0);
     
     if(((rem_g8 || rem_ge16) && !flag_itr) || (rem_g8 && flag_itr))
     {
-      AE_DSEL8X8(vec0_batch_1, neg_vec_bias, vec0_batch_1, neg_vec_bias, sel2); 
+      vec0_batch_1 = AE_SEL8X8(vec0_batch_1, neg_vec_bias, sel2);
       AE_MULAUUZB8Q8X8(acc_row0_vec0 , acc_row1_vec0 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec0_batch_1);
       AE_MULAUUZB8Q8X8(acc_row2_vec0 , acc_row3_vec0 , mat1_row4_1 , mat1_row5_1 , mat1_row6_1 , mat1_row7_1 ,vec0_batch_1);
       flag_itr = 1;
@@ -178,10 +164,10 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_aligned
   int rem_cols_16 = rem_g16?((cols1 - 16) & 15):(cols1 & 15);
   int rem_g8 = (rem_cols_16 > 8)?1:0;
   int rem_cols8 = rem_cols_16 % 8;  
-  ae_int8x8 sel1 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols8) * (!rem_g8 && !rem_g16)], sel_pattern[2 * (rem_cols8) * (!rem_g8 && !rem_g16) + 1])); 
-  ae_int8x8 sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols8) * (rem_g8 && !rem_g16)], sel_pattern[2 * (rem_cols8) * (rem_g8 && !rem_g16) + 1])); 
-  ae_int8x8 sel3 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols8) * (!rem_g8 && rem_g16)], sel_pattern[2 * (rem_cols8) * (!rem_g8 && rem_g16) + 1])); 
-  ae_int8x8 sel4 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols8) * (rem_g8 && rem_g16)], sel_pattern[2 * (rem_cols8) * (rem_g8 && rem_g16) + 1])); 
+  ae_int8x8 sel1 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols8) * (!rem_g8 && !rem_g16)], post_loop_sel_pattern[2 * (rem_cols8) * (!rem_g8 && !rem_g16) + 1])); 
+  ae_int8x8 sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols8) * (rem_g8 && !rem_g16)], post_loop_sel_pattern[2 * (rem_cols8) * (rem_g8 && !rem_g16) + 1])); 
+  ae_int8x8 sel3 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols8) * (!rem_g8 && rem_g16)], post_loop_sel_pattern[2 * (rem_cols8) * (!rem_g8 && rem_g16) + 1])); 
+  ae_int8x8 sel4 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols8) * (rem_g8 && rem_g16)], post_loop_sel_pattern[2 * (rem_cols8) * (rem_g8 && rem_g16) + 1])); 
   
   int c_itr = 0;
   ae_int8x8 neg_vec_bias = AE_MOVDA8((UWORD8)vec1_zero_bias);
@@ -214,12 +200,12 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_aligned
     AE_L8X8X2_IP(mat1_row0_0, mat1_row0_1, (ae_int8x16 *)p_mat1_0, 16);
     AE_L8X8X2_IP(vec0_batch_0, vec0_batch_1, (ae_int8x16 *)p_vec_0, 16);
 
-    AE_DSEL8X8(vec0_batch_0, neg_vec_bias, vec0_batch_0, neg_vec_bias, sel1);
+    vec0_batch_0 = AE_SEL8X8(vec0_batch_0, neg_vec_bias, sel1);
     AE_MULAUUZB8Q8X8(acc_row0_vec0, acc_row0_vec1, mat1_row0_0, mat1_row0_0, mat1_row0_0, mat1_row0_0, vec0_batch_0);
     
     if(((rem_g8 || rem_ge16) && !flag_itr) || (rem_g8 && flag_itr))
     {
-      AE_DSEL8X8(vec0_batch_1, neg_vec_bias, vec0_batch_1, neg_vec_bias, sel2); 
+      vec0_batch_1 = AE_SEL8X8(vec0_batch_1, neg_vec_bias, sel2);
       AE_MULAUUZB8Q8X8(acc_row0_vec0, acc_row0_vec1, mat1_row0_1, mat1_row0_1, mat1_row0_1, mat1_row0_1, vec0_batch_1);
       flag_itr = 1;
     }
@@ -244,8 +230,8 @@ static inline void _xa_nn_dot_product_3_rows_1_vecs_unaligned
 {
   int rem_cols = (cols1 & 15);
   int rem_g8 = (rem_cols > 8)?1:0;
-  ae_int8x8 sel1 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols % 8) * !rem_g8], sel_pattern[2 * (rem_cols % 8) * !rem_g8 + 1])); \
-  ae_int8x8 sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols % 8) * rem_g8], sel_pattern[2 * (rem_cols % 8) * rem_g8 + 1])); \
+  ae_int8x8 sel1 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols % 8) * !rem_g8], post_loop_sel_pattern[2 * (rem_cols % 8) * !rem_g8 + 1])); \
+  ae_int8x8 sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols % 8) * rem_g8], post_loop_sel_pattern[2 * (rem_cols % 8) * rem_g8 + 1])); \
   int c_itr = 0;
 
   ae_int8x8 mat1_row0_0, mat1_row0_1;
@@ -288,12 +274,12 @@ static inline void _xa_nn_dot_product_3_rows_1_vecs_unaligned
 
     AE_LA8X8X2_IP(vec0_batch_0, vec0_batch_1, align_p_vec0, (ae_int8x16 *)p_vec_0);
 
-    AE_DSEL8X8(vec0_batch_0, neg_vec_bias, vec0_batch_0, neg_vec_bias, sel1);
+    vec0_batch_0 = AE_SEL8X8(vec0_batch_0, neg_vec_bias, sel1);
     AE_MULAUUZB8Q8X8(acc_row0_vec0, acc_row1_vec0, mat1_row0_0, mat1_row1_0, mat1_row2_0, neg_vec_bias, vec0_batch_0);
     
     if(rem_g8)
     {
-      AE_DSEL8X8(vec0_batch_1, neg_vec_bias, vec0_batch_1, neg_vec_bias, sel2); 
+      vec0_batch_1 = AE_SEL8X8(vec0_batch_1, neg_vec_bias, sel2);
       AE_MULAUUZB8Q8X8(acc_row0_vec0 , acc_row1_vec0 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , neg_vec_bias ,vec0_batch_1);
     }
   }
@@ -323,8 +309,8 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_unaligned
 
   int rem_cols = (cols1 & 15);
   int rem_g8 = (rem_cols > 8)?1:0;
-  ae_int8x8 sel1 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols % 8) * !rem_g8], sel_pattern[2 * (rem_cols % 8) * !rem_g8 + 1])); \
-  ae_int8x8 sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(sel_pattern[2 * (rem_cols % 8) * rem_g8], sel_pattern[2 * (rem_cols % 8) * rem_g8 + 1])); \
+  ae_int8x8 sel1 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols % 8) * !rem_g8], post_loop_sel_pattern[2 * (rem_cols % 8) * !rem_g8 + 1])); \
+  ae_int8x8 sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols % 8) * rem_g8], post_loop_sel_pattern[2 * (rem_cols % 8) * rem_g8 + 1])); \
   ae_int8x8 neg_vec_bias = AE_MOVDA8((UWORD8)vec1_zero_bias);
   int cols_count = cols1 - (cols1 & 15);
   for(c_itr = 0; c_itr < cols_count >> 4; c_itr++)
@@ -344,13 +330,12 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_unaligned
 
     AE_LA8X8X2_IP(vec0_batch_0, vec0_batch_1, align_p_vec_0, (ae_int8x16 *)p_vec_0);
 
-    AE_DSEL8X8(vec0_batch_0, neg_vec_bias, vec0_batch_0, neg_vec_bias, sel1); 
-
+    vec0_batch_0 = AE_SEL8X8(vec0_batch_0, neg_vec_bias, sel1);
     AE_MULAUUZB8Q8X8(acc_row0_vec0, acc_row0_vec1, mat1_row0_0, mat1_row0_0, mat1_row0_0, mat1_row0_0, vec0_batch_0);
     
     if(rem_g8)
     {
-      AE_DSEL8X8(vec0_batch_1, neg_vec_bias, vec0_batch_1, neg_vec_bias, sel2); 
+      vec0_batch_1 = AE_SEL8X8(vec0_batch_1, neg_vec_bias, sel2);
       AE_MULAUUZB8Q8X8(acc_row0_vec0 , acc_row0_vec1 , mat1_row0_1 , mat1_row0_1 , mat1_row0_1 , mat1_row0_1 ,vec0_batch_1);
     }
   }
@@ -358,7 +343,6 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_unaligned
   *out_0_0 = acc_row0_vec0;
   *out_1_0 = acc_row0_vec1;
 }
-#endif      
 
 WORD32 xa_nn_matXvec_asym8xasym8_asym8(
     UWORD8 * __restrict__ p_out,

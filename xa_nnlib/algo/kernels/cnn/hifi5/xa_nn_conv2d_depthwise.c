@@ -142,7 +142,6 @@ static VOID xa_nn_conv2d_depthwise_nchw_init
 
     circ_buf_size = (int)((unsigned)p_state->circ_buf.p_end - (unsigned)p_state->circ_buf.p_begin);
     /* Get aligned size so as to have next memory pointer aligned */
-    circ_buf_size = circ_buf_size;
 
     /* Every row of circular buffer is 8 byte aligned so don't need ALIGNED_SIZE for circular
     buffer size */

@@ -489,7 +489,7 @@ int xa_nn_main_process(int argc, char *argv[])
     else
     {
 #ifdef hifi5
-      if(cfg.inp_precision == 8)
+      if(cfg.inp_precision == PREC_8 || cfg.inp_precision == PREC_ASYM8U)
         input_channels_pad = cfg.input_channels;
       else
 #endif
