@@ -242,6 +242,22 @@ void show_usage(void)
     XTPWR_PROFILER_STOP(0);\
   }
 
+#define SOFTMAX_ASYM8s_16(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.activation,#KERNEL) && (IPREC == cfg.inp_precision) && (OPREC == p_out->precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_vec_##KERNEL##_asym8s_16\
+                (\
+                    (WORD16 *) p_out->p,\
+                    (WORD8 *) p_inp->p,\
+                    cfg.diffmin,\
+                    cfg.input_left_shift,\
+                    cfg.input_multiplier,\
+                    cfg.num_elements,\
+                    (WORD32 *)p_scratch->p\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
 #if HIFI_VFPU
 #define ACTIVATION_MIN_MAX_FN_F32(IPREC,OPREC, ACTIVATION) \
     if((IPREC == p_inp->precision) && (OPREC == p_out->precision) && !strcmp(cfg.activation,#ACTIVATION)) {\
@@ -355,6 +371,7 @@ void show_usage(void)
     else RELU_ASYM8_FN(-3, -3, relu)\
     else SOFTMAX_ASYM8(softmax, -3, -3) \
     else SOFTMAX_ASYM8s(softmax, -4, -4) \
+    else SOFTMAX_ASYM8s_16(softmax, -4, 16) \
     else SIGMOID_ASYM8(sigmoid, -3, -3) \
     else {  printf("unsupported activation\n"); return -1;} 
 
@@ -418,13 +435,17 @@ int xa_nn_main_process(int argc, char *argv[])
       return 0;
     }
   }
-  else if((cfg.inp_precision == -3) || (cfg.out_precision == -3))
+  else if((cfg.inp_precision == -3) && (cfg.out_precision == -3))
   {
     sprintf(profiler_name, "%s_asym8xasym8", cfg.activation);
   }
-  else if((cfg.inp_precision == -4) || (cfg.out_precision == -4))
+  else if((cfg.inp_precision == -4) && (cfg.out_precision == -4))
   {
     sprintf(profiler_name, "%s_asym8sxasym8s", cfg.activation);
+  }
+  else if((cfg.inp_precision == -4) && (cfg.out_precision == 16))
+  {
+    sprintf(profiler_name, "%s_asym8sx16", cfg.activation);
   }
   else
   {
@@ -467,7 +488,7 @@ int xa_nn_main_process(int argc, char *argv[])
   p_inp = create_buf1D(cfg.num_elements, cfg.inp_precision); VALIDATE_PTR(p_inp);
   p_out = create_buf1D(cfg.num_elements, cfg.out_precision); VALIDATE_PTR(p_out);
 
-  if(!strcmp(cfg.activation,"softmax") && (cfg.inp_precision == -3 || cfg.inp_precision == -4) && (cfg.out_precision == -3 || cfg.out_precision == -4))
+  if(!strcmp(cfg.activation,"softmax") && (cfg.inp_precision == -3 || cfg.inp_precision == -4) && (cfg.out_precision == -3 || cfg.out_precision == -4 || cfg.out_precision == 16))
   {
       scratch_size = get_softmax_scratch_size(cfg.inp_precision, cfg.out_precision, cfg.num_elements);
       p_scratch = create_buf1D(scratch_size, 8); VALIDATE_PTR(p_scratch);

@@ -574,6 +574,19 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s(
     WORD32 out_zero_bias
     );
 
+WORD32  xa_nn_matXvec_out_stride_sym8sxasym8s_16(
+    WORD16  * __restrict__ p_out,
+    const WORD8  * __restrict__ p_mat1,
+    const WORD8  * __restrict__ p_vec1,
+    const WORD32  * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols1,
+    WORD32 row_stride1,
+    WORD32 out_stride,
+    WORD32 vec1_zero_bias,
+    WORD32 out_multiplier,
+    WORD32 out_shift);
+
 WORD32 xa_nn_vec_sigmoid_32_32(
     WORD32       * __restrict__ p_out,         /*!< [out] result: vec_length x 1, Q16.15 */
     const WORD32 * __restrict__ p_vec,         /*!< [in] input data: vec_length x 1, Q6.25 */
@@ -1326,6 +1339,14 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
                             WORD32  vec_length,
                             pVOID   p_scratch);
 
+WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
+                    const   WORD8 * __restrict__ p_vec,
+                            WORD32  diffmin,
+                            WORD32  input_beta_left_shift,
+                            WORD32  input_beta_multiplier,
+                            WORD32  vec_length,
+                            pVOID   p_scratch);
+
 WORD32 xa_nn_vec_sigmoid_asym8u_asym8u(UWORD8 *p_out,
                       const UWORD8 *p_vec,
                             WORD32 zero_point,
@@ -1552,6 +1573,14 @@ WORD32 xa_nn_elm_mul_asym8uxasym8u_asym8u(UWORD8 * __restrict__ p_out,
                             WORD32  inp2_zero_bias,
                             WORD32  num_elm);
 
+WORD32 xa_nn_elm_quantize_asym16s_asym8s(WORD8 * __restrict__ p_out,
+                                    const WORD16 * __restrict__ p_inp,
+                                    WORD32  inp_zero_bias,
+                                    WORD32  out_zero_bias,
+                                    WORD32  out_shift,
+                                    WORD32  out_multiplier,
+                                    WORD32  num_elm);
+
 WORD32 xa_nn_l2_norm_f32(
     FLOAT32 * __restrict__ p_out,
     const FLOAT32 * __restrict__ p_inp,
@@ -1564,6 +1593,17 @@ WORD32 xa_nn_dot_prod_f32xf32_f32(
     const FLOAT32 * __restrict__ p_inp2,   /* pointer to input2 */
     WORD32 vec_length,
     WORD32 num_vecs);
+
+WORD32 xa_nn_dot_prod_16x16_asym8s(
+    WORD8 * __restrict__ p_out,                  /* pointer to output */
+    const WORD16 * __restrict__ p_inp1_start,    /* pointer to input1 */
+    const WORD16 * __restrict__ p_inp2_start,    /* pointer to input2 */
+    const WORD32 * bias_ptr,
+    WORD32 vec_length,
+    WORD32 out_multiplier,
+    WORD32 out_shift,
+    WORD32 out_zero_bias,
+    WORD32 vec_count);
 
 /* Mapping the functions names from previous naming convension for backward compatibility */
 #define xa_nn_matXvec_asym8xasym8_asym8 xa_nn_matXvec_asym8uxasym8u_asym8u

@@ -19,12 +19,13 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "xa_type_def.h"
-#include "common.h"
-#include "xa_nnlib_kernels_api.h"
+#include "xa_nnlib_common.h"
 #include "xa_nn_conv2d_std_state.h"
-#include "xa_nnlib_err_chk.h"
 
+#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2(inp, multiplier, left_shift, right_shift) \
+    inp = AE_SLAA32(inp, left_shift); \
+    inp = AE_MULFP32X2RAS(inp, AE_MOVDA32(multiplier)); \
+    inp = AE_SRAA32SYMS(inp, right_shift);
 
 static WORD32 conv_x_left_pad(
     WORD32 x_padding,
@@ -47,6 +48,9 @@ static WORD32 conv_x_left_pad(
   WORD32 left_shift, right_shift;
   out_width_over_x_pad = out_width_over_x_pad > out_width ? out_width : out_width_over_x_pad;
 
+  ae_int32x2 max_uint8 = AE_MOVDA32(255);
+  ae_int32x2 min_uint8 = AE_MOVDA32(0);
+  
   left_shift = out_shift<0?0:out_shift;
   right_shift = out_shift>0?0:-out_shift;
   /* When kernel convolves over x-left pad region only, output is just bias */
@@ -57,13 +61,9 @@ static WORD32 conv_x_left_pad(
       for(k=0;k<out_channels;k++)
       {
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
-        acc = AE_SLAA32(acc, left_shift);
-        acc = AE_MULFP32X2RAS(acc, AE_MOVDA32(out_multiplier));
-        ae_int64 acc64 = AE_SLAI64(AE_MOVINT64_FROMINT32X2(acc), 32);
-        acc64 = AE_SRAA64(acc64, right_shift);
-        acc = AE_ROUND32F64SSYM(acc64);
+        MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc, out_multiplier, left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
-        acc = AE_MAX32(AE_MIN32(acc, AE_MOVDA32(255)), AE_ZERO32());
+        AE_MINMAX32(acc, min_uint8, max_uint8);
         p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
     }
@@ -92,6 +92,9 @@ static WORD32 conv_x_right_pad(
   WORD32 left_shift, right_shift;
   WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad;
 
+  ae_int32x2 max_uint8 = AE_MOVDA32(255);
+  ae_int32x2 min_uint8 = AE_MOVDA32(0);
+  
   left_shift = out_shift<0?0:out_shift;
   right_shift = out_shift>0?0:-out_shift;
   /* When kernel convolves over x-right pad region only, output is just bias */
@@ -102,13 +105,9 @@ static WORD32 conv_x_right_pad(
       for(k=0;k<out_channels;k++)
       {
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
-        acc = AE_SLAA32(acc, left_shift);
-        acc = AE_MULFP32X2RAS(acc, AE_MOVDA32(out_multiplier));
-        ae_int64 acc64 = AE_SLAI64(AE_MOVINT64_FROMINT32X2(acc), 32);
-        acc64 = AE_SRAA64(acc64, right_shift);
-        acc = AE_ROUND32F64SSYM(acc64);
+        MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc, out_multiplier, left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
-        acc = AE_MAX32(AE_MIN32(acc, AE_MOVDA32(255)), AE_ZERO32());
+        AE_MINMAX32(acc, min_uint8, max_uint8);
         p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
     }
@@ -116,7 +115,7 @@ static WORD32 conv_x_right_pad(
   return out_width_over_x_r_pad;
 }
 
-WORD32 xa_nn_conv2d_std_asym8xasym8(
+WORD32 xa_nn_conv2d_std_asym8uxasym8u(
     UWORD8* __restrict__ p_out,
     const UWORD8* __restrict__ p_inp,
     const UWORD8* __restrict__ p_kernel,
@@ -150,7 +149,7 @@ WORD32 xa_nn_conv2d_std_asym8xasym8(
   /* Pointer alignment checks */
   //XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(UWORD8), -1);
   //XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(UWORD8), -1);
-  XA_NNLIB_ARG_CHK_ALIGN(p_kernel, ALIGNMENT, -1);
+  //XA_NNLIB_ARG_CHK_ALIGN(p_kernel, sizeof(UWORD8), -1);
   XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD32), -1);
   XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
   /* Basic Parameter checks */
@@ -181,7 +180,7 @@ WORD32 xa_nn_conv2d_std_asym8xasym8(
   WORD32 out_width_offset = out_data_format ? 1 : out_channels;
 
   WORD32 x_padding_var = x_padding;
-  WORD32 input_channels_pad = PADDED_SIZE(input_channels, (ALIGNMENT>>1));
+  WORD32 input_channels_pad = input_channels;
 
   /* When kernel convolves over x-left pad region only */
   WORD32 out_width_over_x_pad = 0;

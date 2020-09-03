@@ -19,19 +19,89 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "xa_type_def.h"
-#include "common.h"
-#include "xa_nnlib_kernels_api.h"
+#include "xa_nnlib_common.h"
 #include "xa_nn_conv2d_depthwise_state.h"
 #include "xa_nnlib_common_macros_hifi5.h"
-#include "xa_nnlib_err_chk.h"
-
-#include "xa_nnlib_common.h"
 
 #define MULTIPLYBYQUANTIZEDMULTIPLIER_X2(inp, multiplier, l_shift, r_shift) \
   inp = AE_SLAA32(inp, l_shift); \
   inp = AE_MULFP32X2RAS(inp, AE_MOVDA32(multiplier)); \
   inp = AE_SRAA32SYMS(inp, r_shift);
+
+#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(inp1, inp2, multiplier, l_shift, r_shift) \
+  inp1 = AE_SLAA32(inp1, l_shift); \
+  inp2 = AE_SLAA32(inp2, l_shift); \
+  AE_MULF2P32X4RAS(inp1, inp2, inp1, inp2, AE_MOVDA32(multiplier), AE_MOVDA32(multiplier)); \
+  inp1 = AE_SRAA32SYMS(inp1, r_shift); \
+  inp2 = AE_SRAA32SYMS(inp2, r_shift);
+  
+#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out, inp1, inp2, multiplier, l_shift, r_shift, out_off) \
+  AE_MUL2P32X4S(inp1, inp2, inp1, inp2, l_shift, l_shift); \
+  AE_MULF2P32X4RAS(inp1, inp2, inp1, inp2, AE_MOVDA32(multiplier), AE_MOVDA32(multiplier)); \
+  inp1 = AE_SRAA32SYMS(inp1, r_shift); \
+  inp2 = AE_SRAA32SYMS(inp2, r_shift); \
+  out = AE_SAT16X4(inp1, inp2); \
+  out = AE_ADD16S(AE_MOVDA16(out_off), out); \
+  AE_MINMAX16(out, AE_ZERO16(), AE_MOVDA16(255)); 
+
+#define INTERLEAVE_6(dst0, dst1, dst2, dst3, dst4, dst5, dst6, dst7, src0, src1, src2, src3, src4, src5) \
+ { \
+   ae_int8x8 tmp01_0, tmp01_1, tmp23_0, tmp23_1, tmp0123_0, tmp0123_1, tmp0123_2, tmp0123_3, tmp45_0, tmp45_1; \
+   AE_DSEL8X8(tmp01_0, tmp01_1, src0, src1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
+   AE_DSEL8X8(tmp23_0, tmp23_1, src2, src3, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
+   AE_DSEL8X8(tmp45_0, tmp45_1, src4, src5, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
+   AE_DSEL8X8(tmp0123_0, tmp0123_1, tmp01_0, tmp23_0, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe76dc54, 0xba329810)));\
+   AE_DSEL8X8(tmp0123_2, tmp0123_3, tmp01_1, tmp23_1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe76dc54, 0xba329810)));\
+   AE_DSEL8X8(dst0, dst1, tmp0123_0, tmp45_0, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc7600, 0xba984500)));\
+   AE_DSEL8X8(dst2, dst3, tmp0123_1, tmp45_0, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc3200, 0xba981000)));\
+   AE_DSEL8X8(dst4, dst5, tmp0123_2, tmp45_1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc7600, 0xba984500)));\
+   AE_DSEL8X8(dst6, dst7, tmp0123_3, tmp45_1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc3200, 0xba981000)));\
+ }
+
+#define INTERLEAVE_5(dst0, dst1, dst2, dst3, dst4, dst5, dst6, dst7, src0, src1, src2, src3, src4) \
+ { \
+   ae_int8x8 tmp01_0, tmp01_1, tmp23_0, tmp23_1, tmp0123_0, tmp0123_1, tmp0123_2, tmp0123_3, tmp45_0, tmp45_1; \
+   AE_DSEL8X8(tmp01_0, tmp01_1, src0, src1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
+   AE_DSEL8X8(tmp23_0, tmp23_1, src2, src3, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
+   AE_DSEL8X8(tmp0123_0, tmp0123_1, tmp01_0, tmp23_0, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe76dc54, 0xba329810)));\
+   AE_DSEL8X8(tmp0123_2, tmp0123_3, tmp01_1, tmp23_1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe76dc54, 0xba329810)));\
+   AE_DSEL8X8(dst0, dst1, tmp0123_0, src4, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc7000, 0xba986000)));\
+   AE_DSEL8X8(dst2, dst3, tmp0123_1, src4, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc5000, 0xba984000)));\
+   AE_DSEL8X8(dst4, dst5, tmp0123_2, src4, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc3000, 0xba982000)));\
+   AE_DSEL8X8(dst6, dst7, tmp0123_3, src4, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc1000, 0xba980000)));\
+ }
+
+#define INTERLEAVE_3(dst0, dst1, src0, src1, src2) \
+ { \
+   ae_int8x8 tmp01_0; \
+   tmp01_0 = AE_SEL8X8(AE_MOVINT8X8_FROMINT16X4(src0), AE_MOVINT8X8_FROMINT16X4(src1), AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x0e060c04, 0x0a020800)));\
+   AE_DSEL8X8(dst0, dst1, tmp01_0, AE_MOVINT8X8_FROMINT16X4(src2), AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe60dc40, 0xba209800)));\
+ }
+
+#define PACK_32X2(dst1, src1, src2) \
+  dst1 = AE_SEL8X8(AE_MOVINT8X8_FROMINT16X4(src1), AE_MOVINT8X8_FROMINT16X4(src2), AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x080a0c0e, 0x00020406)));
+
+#define SET_INP_PTR_X_Y(ptr, x, y) \
+          if((x < x_padding) || (x >= x_padding + input_width)) \
+            ptr = p_dummy_inp; \
+          else \
+            ptr = (ae_int8x8 *)(p_inp + (y - y_padding) * input_width * input_channels + (x - x_padding) * input_channels); \
+
+#define SET_INP_PTR_Y(ptr0, ptr1, ptr2, ptr3, ptr4, ptr5, y) \
+        if((y < y_padding) || (y >= y_padding + input_height)) \
+        { \
+          ptr0 = ptr1 = ptr2 = ptr3 = ptr4 = ptr5 = p_dummy_inp; \
+        } \
+        else \
+        { \
+          int x_idx = itr_ow * x_stride; \
+          SET_INP_PTR_X_Y(ptr0, x_idx, y); x_idx++; \
+          SET_INP_PTR_X_Y(ptr1, x_idx, y); x_idx++; \
+          SET_INP_PTR_X_Y(ptr2, x_idx, y); x_idx++; \
+          SET_INP_PTR_X_Y(ptr3, x_idx, y); x_idx++; \
+          SET_INP_PTR_X_Y(ptr4, x_idx, y); x_idx++; \
+          SET_INP_PTR_X_Y(ptr5, x_idx, y); x_idx++; \
+        } \
 
 /* 2D Convolution implementation */
 static inline void conv2d_nchw_asym8xasym8_hf5_convmul
@@ -589,11 +659,12 @@ static inline void conv2d_nhwc_asym8xasym8
     out1_a = AE_ZALIGN64();
     pt_bias = (const ae_int32x4 *)p_bias;
     bias_a = AE_LA128_PP(pt_bias);
+    int ysXkwXic = y_stride * kernel_width * inp_channels_pad;
 #pragma loop_count min=1
     for(itr_ch = 0; itr_ch < out_channels; itr_ch += 8)
     {
       pt_inp0 = (ae_int8x8 *)p_inp;
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, itr_ch + itr_oh * y_stride * kernel_width * inp_channels_pad);
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, itr_ch + itr_oh * ysXkwXic);
       pt_ker = (WORD8 *)(&p_ker[itr_ch]);
       d_acc0 = AE_ZERO32();
       d_acc1 = AE_ZERO32();
@@ -613,8 +684,8 @@ static inline void conv2d_nhwc_asym8xasym8
 #pragma loop_count min=1
       for(itr_kw = 0; itr_kw < kernel_height * kernel_width; itr_kw++)
       {
-        AE_L8X8_XC(d_inp0, pt_inp0, y_stride * kernel_width * inp_channels_pad);
-        AE_L8X8_XC(d_inp1, pt_inp0, inp_channels_pad - y_stride * kernel_width * inp_channels_pad);
+        AE_L8X8_XC(d_inp0, pt_inp0, ysXkwXic);
+        AE_L8X8_XC(d_inp1, pt_inp0, inp_channels_pad - ysXkwXic);
         AE_LA8X8_IP(d_ker, ker_a, ptae_ker);
         ptae_ker = (ae_int8x8 *)((WORD8 *)ptae_ker + (ker_channels_pad - 8));
         ker_a = AE_LA64_PP(ptae_ker);
@@ -632,23 +703,24 @@ static inline void conv2d_nhwc_asym8xasym8
       d_acc1 = AE_ADD32S(d_acc1, d_bias1);
       d_acc2 = AE_ADD32S(d_acc2, d_bias2);
       d_acc3 = AE_ADD32S(d_acc3, d_bias3);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(d_acc0, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(d_acc1, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(d_acc2, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(d_acc3, out_multiplier, left_shift, right_shift);
+      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(d_acc0, d_acc1, out_multiplier, left_shift, right_shift);
+      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(d_acc2, d_acc3, out_multiplier, left_shift, right_shift);
       d_acc0 = AE_ADD32S(d_acc0, AE_MOVDA32(out_zero_bias));
       d_acc1 = AE_ADD32S(d_acc1, AE_MOVDA32(out_zero_bias));
       d_acc2 = AE_ADD32S(d_acc2, AE_MOVDA32(out_zero_bias));
       d_acc3 = AE_ADD32S(d_acc3, AE_MOVDA32(out_zero_bias));
 
-      AE_MINMAX32(d_acc0, AE_ZERO32(), AE_MOVDA32(255));
-      AE_MINMAX32(d_acc1, AE_ZERO32(), AE_MOVDA32(255));
-      AE_MINMAX32(d_acc2, AE_ZERO32(), AE_MOVDA32(255));
-      AE_MINMAX32(d_acc3, AE_ZERO32(), AE_MOVDA32(255));
+      /* SATU instructions assumes number to be unsigned so clipping negative 
+      values to 0 */
+      d_acc0 = AE_MAX32(d_acc0, AE_ZERO32());
+      d_acc1 = AE_MAX32(d_acc1, AE_ZERO32());
+      d_acc2 = AE_MAX32(d_acc2, AE_ZERO32());
+      d_acc3 = AE_MAX32(d_acc3, AE_ZERO32());
 
       d_acc8x8 = AE_SEL8X8I(AE_SATU8X4X32_L(d_acc0, d_acc1), AE_SATU8X4X32_L(d_acc2, d_acc3), 3);
       if(out_channels - itr_ch >= 8)
       {
+#pragma frequency_hint FREQUENT
           AE_SA8X8_IP(d_acc8x8, out0_a, ae_out_ptr0);
           AE_SA64POS_FP(out0_a, ae_out_ptr0);
       }
@@ -670,25 +742,27 @@ static inline void conv2d_nhwc_asym8xasym8
       d_acc5 = AE_ADD32S(d_acc5, d_bias1);
       d_acc6 = AE_ADD32S(d_acc6, d_bias2);
       d_acc7 = AE_ADD32S(d_acc7, d_bias3);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(d_acc4, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(d_acc5, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(d_acc6, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(d_acc7, out_multiplier, left_shift, right_shift);
+      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(d_acc4, d_acc5, out_multiplier, left_shift, right_shift);
+      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(d_acc6, d_acc7, out_multiplier, left_shift, right_shift);
       d_acc4 = AE_ADD32S(d_acc4, AE_MOVDA32(out_zero_bias));
       d_acc5 = AE_ADD32S(d_acc5, AE_MOVDA32(out_zero_bias));
       d_acc6 = AE_ADD32S(d_acc6, AE_MOVDA32(out_zero_bias));
       d_acc7 = AE_ADD32S(d_acc7, AE_MOVDA32(out_zero_bias));
 
-      AE_MINMAX32(d_acc4, AE_ZERO32(), AE_MOVDA32(255));
-      AE_MINMAX32(d_acc5, AE_ZERO32(), AE_MOVDA32(255));
-      AE_MINMAX32(d_acc6, AE_ZERO32(), AE_MOVDA32(255));
-      AE_MINMAX32(d_acc7, AE_ZERO32(), AE_MOVDA32(255));
+      /* SATU instructions assumes number to be unsigned so clipping negative 
+      values to 0 */
+      d_acc4 = AE_MAX32(d_acc4, AE_ZERO32());
+      d_acc5 = AE_MAX32(d_acc5, AE_ZERO32());
+      d_acc6 = AE_MAX32(d_acc6, AE_ZERO32());
+      d_acc7 = AE_MAX32(d_acc7, AE_ZERO32());
 
       d_acc8x8 = AE_SEL8X8I(AE_SATU8X4X32_L(d_acc4, d_acc5), AE_SATU8X4X32_L(d_acc6, d_acc7), 3);
       if(out_height-itr_oh >= 2)
       {
+#pragma frequency_hint FREQUENT
         if(out_channels-itr_ch >= 8)
         {
+#pragma frequency_hint FREQUENT
             AE_SA8X8_IP(d_acc8x8, out1_a, ae_out_ptr1);
             AE_SA64POS_FP(out1_a, ae_out_ptr1);
         }

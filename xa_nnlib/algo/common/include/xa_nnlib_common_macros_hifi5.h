@@ -55,7 +55,6 @@
 #define INCREMENT_IN_BYTES_FOR_FLOAT32   4
 #define INCREMENT_IN_BYTES_FOR_FLOAT32x2 (INCREMENT_IN_BYTES_FOR_FLOAT32 * 2)
 
-#if 1
 /* Limit effective bias_shift and acc_shift to [-63 ... 63] */
 #define LIMIT_VARIABLE(_var, _left_limit, _right_limit) \
   _var = _var > _right_limit ? _right_limit : _var < _left_limit ? _left_limit : _var;
@@ -86,7 +85,6 @@
   ADJUST_ACC_LSH_AxB_C(A, B, C); \
   ADJUST_BIAS_LSH_AxB(A, B); \
 
-#endif /* 1 */
 /* ==================================================================================================== */
 #define SETUP_BIAS_f32 \
   xtfloat _xtfloat_bias = (xtfloat)0.0f; \
@@ -1887,58 +1885,106 @@ ae_int16 _ae_int16_bias = ZERO16; \
       AE_L8X8_XC(d_tmp, (ae_int8x8 *)p_char_align_##p_char, 8);\
       AE_DSEL8X8(d, tmp, tmp, d_tmp, sel_##p_char); \
     }
-        
-#define STORE8X8_1 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x80f7e6d5L, 0xc4b3a291L))
-#define STORE8X8_2 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x9180f7e6L, 0xd5c4b3a2L))
-#define STORE8X8_3 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xa29180f7L, 0xe6d5c4b3L))
-#define STORE8X8_4 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xb3a29180L, 0xf7e6d5c4L))
+       
+#define STORE8X8_1 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x00776655L, 0x44332211L))                                  
+#define STORE8X8_2 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x11007766L, 0x55443322L))                                  
+#define STORE8X8_3 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x22110077L, 0x66554433L))
+#define STORE8X8_4 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x33221100L, 0x77665544L))                                  
+#define STORE8X8_5 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x44332211L, 0x00776655L))                                  
+#define STORE8X8_6 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x55443322L, 0x11007766L))                                  
+#define STORE8X8_7 AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x00112233L, 0x44556677L))
 
 #define AE_SW_S8_1_XP(d, p_char, offset) { \
-    ae_int8x8 d_tmp, d_tmp1;\
-    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_1); \
-    AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
-    }
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_1); \
+     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
 
 #define AE_SW_S8_2_XP(d, p_char, offset) { \
-    ae_int8x8 d_tmp, d_tmp1;\
-    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_2); \
-    AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
-    }
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_2); \
+     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
 
 #define AE_SW_S8_3_XP(d, p_char, offset) { \
-    ae_int8x8 d_tmp, d_tmp1;\
-    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_3); \
-    AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
-    }
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_3); \
+     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+
+#define AE_SW_S8_4_XP(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_4); \
+     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+
+#define AE_SW_S8_5_XP(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_5); \
+     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+
+#define AE_SW_S8_6_XP(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_6); \
+     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+
+#define AE_SW_S8_7_XP(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_7); \
+     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
 
 #define AE_SW_S8_1_X(d, p_char, offset) { \
-    ae_int8x8 d_tmp, d_tmp1;\
-    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_1); \
-    AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
-    }
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_1); \
+     AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+     }
 
 #define AE_SW_S8_2_X(d, p_char, offset) { \
-    ae_int8x8 d_tmp, d_tmp1;\
-    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_2); \
-    AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
-    }
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_2); \
+     AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+     }
 
 #define AE_SW_S8_3_X(d, p_char, offset) { \
-    ae_int8x8 d_tmp, d_tmp1;\
-    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_3); \
-    AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
-    }
-
-#define AE_SW_S8_4_IP(d, p_char, offset) { \
-    ae_int8x8 d_tmp, d_tmp1;\
-    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_4); \
-    AE_S8_0_IP(d_tmp , (ae_int8 *) p_char, offset);\
-    }
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_3); \
+     AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+     }
 
 #define AE_SW_S8_4_X(d, p_char, offset) { \
-    ae_int8x8 d_tmp, d_tmp1;\
-    AE_DSEL8X8(d_tmp, d_tmp1, d, d, STORE8X8_4); \
+    ae_int8x8 d_tmp;\
+    d_tmp = AE_SEL8X8(d, d, STORE8X8_4); \
     AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
     }
+
+#define AE_SW_S8_5_X(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_5); \
+     AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+
+#define AE_SW_S8_6_X(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_6); \
+     AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+
+#define AE_SW_S8_7_X(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_7); \
+     AE_S8_0_X(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+
+#define AE_SW_S8_4_IP(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_4); \
+     AE_S8_0_IP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+ 
+/* Alignment checking */
+#define ALIGNED_PTR(ptr, alignment) ((((unsigned int)ptr & (alignment - 1))) == 0)
 
 #endif /* __XA_NNLIB_COMMON_MACROS_H__ */

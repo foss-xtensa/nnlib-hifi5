@@ -60,6 +60,7 @@ MATXVECO2OBJS = \
 	xa_nn_matXvec_f32.o \
 	xa_nn_matXvec_f32_batch.o \
 	xa_nn_matmul_8x8.o \
+	xa_nn_matmul_asym8xasym8.o 
 	
 
 ACTIVATIONSO2OBJS = \
@@ -137,6 +138,7 @@ POOLO2OBJS = \
 	xa_nn_avgpool_8.o \
 	xa_nn_avgpool_8_nhwc.o \
 	xa_nn_avgpool_16.o \
+	xa_nn_avgpool_16_nhwc.o \
 	xa_nn_avgpool_f32.o \
 	xa_nn_avgpool_f32_nhwc.o \
 	xa_nn_avgpool_asym8.o \
@@ -145,6 +147,7 @@ POOLO2OBJS = \
 	xa_nn_maxpool_8.o \
 	xa_nn_maxpool_8_nhwc.o\
 	xa_nn_maxpool_16.o \
+	xa_nn_maxpool_16_nhwc.o \
 	xa_nn_maxpool_f32.o \
 	xa_nn_maxpool_f32_nhwc.o \
 	xa_nn_maxpool_asym8.o \
@@ -168,11 +171,13 @@ BASICOBJS = \
     xa_nn_elm_mul_f32.o\
     xa_nn_elm_add_quant8.o\
     xa_nn_elm_mul_quant8.o\
+    xa_nn_elm_quantize.o\
     xa_nn_elm_add_f32.o \
     xa_nn_elm_sub_f32.o \
     xa_nn_elm_div_f32.o \
     xa_nn_elm_mul_acc_f32.o \
-    xa_nn_floor_f32.o
+    xa_nn_floor_f32.o \
+    xa_nn_dot_prod_16x16.o
 
 NORMO2OBJS = \
 	xa_nn_l2_norm_f32.o

@@ -27,6 +27,19 @@ Cadence HiFi 5 Neural Network (NN) Library
 Revision History
 ======================================================================
 
+Version 1.2.0 API 1.0: September 3, 2020
+
++ Intermediate Release of HiFi 5 NN Library
++ Tested using RI.2 tools and xt-xcc/xt-xc++ compiler
++ Adds support for quantized 8 bit variants of following kernels of TFLM
+    SVDF (Keyword benchmark support)
+    Standard convolution 
+    Average pooling 
+    Quantization
++ Other miscellaneous optimization improvements
+
+----------------------------------------------------------------------
+
 Version 1.1.0 API 1.0: July 15, 2020
 
 + Intermediate Release of HiFi 5 NN Library
