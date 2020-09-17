@@ -19,16 +19,6 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-/* ------------------------------------------------------------------------ */
-/* Copyright (c) 2017 by Cadence Design Systems, Inc. ALL RIGHTS RESERVED.  */
-/* These coded instructions, statements, and computer programs ("Cadence    */
-/* Libraries") are the copyrighted works of Cadence Design Systems Inc.      */
-/* Cadence IP is licensed for use with Cadence processor cores only and     */
-/* must not be used for any other processors and platforms. Your use of the */
-/* Cadence Libraries is subject to the terms of the license agreement you   */
-/* have entered into with Cadence Design Systems, or a sublicense granted   */
-/* to you by a direct Cadence licensee.                                     */
-/* ------------------------------------------------------------------------ */
 /* Common helper macros. */
 #include "common_fpu.h"
 #include "xa_type_def.h"

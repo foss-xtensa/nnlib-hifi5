@@ -28,7 +28,7 @@
 
 /* Identification Strings */
 #define LIBNAME "HiFi 5 Neural Network Library"
-#define LIBVERSION "1.2.0"
+#define LIBVERSION "1.2.1"
 
 #define LIB_APIVERSION_MAJOR 1
 #define LIB_APIVERSION_MINOR 0

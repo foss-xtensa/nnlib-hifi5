@@ -20,15 +20,6 @@
 
 ******************************************************************************/
 /* ------------------------------------------------------------------------ */
-/* Copyright (c) 2016 by Cadence Design Systems, Inc. ALL RIGHTS RESERVED.  */
-/* These coded instructions, statements, and computer programs (“Cadence    */
-/* Libraries”) are the copyrighted works of Cadence Design Systems Inc.	    */
-/* Cadence IP is licensed for use with Cadence processor cores only and     */
-/* must not be used for any other processors and platforms. Your use of the */
-/* Cadence Libraries is subject to the terms of the license agreement you   */
-/* have entered into with Cadence Design Systems, or a sublicense granted   */
-/* to you by a direct Cadence licensee.                                     */
-/* ------------------------------------------------------------------------ */
 /*  IntegrIT, Ltd.   www.integrIT.com, info@integrIT.com                    */
 /*                                                                          */
 /* DSP Library                                                              */
@@ -52,6 +43,13 @@
 
 #include "NatureDSP_types.h"
 #include "common.h"
+
+/* Renaming the symbols to avoid multiple definitions */
+#define expfminmax  xa_ndsp_expfminmax
+#define expftblf    xa_ndsp_expftblf
+#define expftbl_Q30 xa_ndsp_expftbl_Q30
+#define invln2_Q30  xa_ndsp_invln2_Q30
+#define log2_e      xa_ndsp_log2_e
 
 /* 
    polynomial coefficients for 2^x in range 0...1
