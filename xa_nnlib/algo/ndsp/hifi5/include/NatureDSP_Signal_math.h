@@ -20,15 +20,6 @@
 
 ******************************************************************************/
 /* ------------------------------------------------------------------------ */
-/* Copyright (c) 2019 by Cadence Design Systems, Inc. ALL RIGHTS RESERVED.  */
-/* These coded instructions, statements, and computer programs ("Cadence    */
-/* Libraries") are the copyrighted works of Cadence Design Systems Inc.	    */
-/* Cadence IP is licensed for use with Cadence processor cores only and     */
-/* must not be used for any other processors and platforms. Your use of the */
-/* Cadence Libraries is subject to the terms of the license agreement you   */
-/* have entered into with Cadence Design Systems, or a sublicense granted   */
-/* to you by a direct Cadence licensee.                                     */
-/* ------------------------------------------------------------------------ */
 /*  IntegrIT, Ltd.   www.integrIT.com, info@integrIT.com                    */
 /*                                                                          */
 /* DSP Library                                                              */
@@ -51,6 +42,40 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Renaming the symbols to avoid multiple definitions */
+//scl_sigmoidf_hifi5.o:
+#define c            xa_ndsp_c
+#define p            xa_ndsp_p
+#define scl_sigmoidf xa_ndsp_scl_sigmoidf
+//scl_tanhf_hifi5.o:
+#define scl_tanhf xa_ndsp_scl_tanhf
+//vec_alognf_hifi5.o:
+#define vec_antilognf xa_ndsp_vec_antilognf
+//vec_relu32x32_hifi5.o:
+#define vec_relu32x32 xa_ndsp_vec_relu32x32
+//vec_reluf_hifi5.o:
+#define vec_reluf xa_ndsp_vec_reluf
+//vec_sigmoid32x32_hifi5.o:
+#define polypow2         xa_ndsp_polypow2
+#define vec_sigmoid32x32 xa_ndsp_vec_sigmoid32x32
+//vec_sigmoidf_hifi5.o:
+#define c          xa_ndsp_c
+#define p          xa_ndsp_p
+#define __sigmoidf xa_ndsp___sigmoidf
+#define vec_sigmoidf xa_ndsp_vec_sigmoidf
+//vec_softmax32x32_hifi5.o:
+#define vec_softmax32x32 xa_ndsp_vec_softmax32x32
+//vec_softmaxf_hifi5.o:
+#define seq          xa_ndsp_seq
+#define vec_softmaxf xa_ndsp_vec_softmaxf
+//vec_tanh32x32_hifi5.o:
+#define polypow2      xa_ndsp_polypow2
+#define vec_tanh32x32 xa_ndsp_vec_tanh32x32
+//vec_tanhf_hifi5.o:
+#define __tanhf   xa_ndsp___tanhf
+#define vec_tanhf xa_ndsp_vec_tanhf
+  
 
 /*===========================================================================
   Mathematics:

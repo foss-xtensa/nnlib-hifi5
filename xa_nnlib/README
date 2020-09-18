@@ -27,6 +27,14 @@ Cadence HiFi 5 Neural Network (NN) Library
 Revision History
 ======================================================================
 
+Version 1.2.1 API 1.0: September 17, 2020
+
++ Patch release 
++ Tested using RI.2 tools and xt-xcc/xt-xc++ compiler
++ Adds a fix to avoid symbols clash with NatureDSP Library. 
+
+----------------------------------------------------------------------
+
 Version 1.2.0 API 1.0: September 3, 2020
 
 + Intermediate Release of HiFi 5 NN Library

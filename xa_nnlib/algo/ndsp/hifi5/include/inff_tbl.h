@@ -20,15 +20,6 @@
 
 ******************************************************************************/
 /* ------------------------------------------------------------------------ */
-/* Copyright (c) 2016 by Cadence Design Systems, Inc. ALL RIGHTS RESERVED.  */
-/* These coded instructions, statements, and computer programs (“Cadence    */
-/* Libraries”) are the copyrighted works of Cadence Design Systems Inc.	    */
-/* Cadence IP is licensed for use with Cadence processor cores only and     */
-/* must not be used for any other processors and platforms. Your use of the */
-/* Cadence Libraries is subject to the terms of the license agreement you   */
-/* have entered into with Cadence Design Systems, or a sublicense granted   */
-/* to you by a direct Cadence licensee.                                     */
-/* ------------------------------------------------------------------------ */
 /*  IntegrIT, Ltd.   www.integrIT.com, info@integrIT.com                    */
 /*                                                                          */
 /* DSP Library                                                              */
@@ -52,6 +43,12 @@
 
 #include "NatureDSP_types.h"
 #include "common.h"
+
+/* Renaming the symbols to avoid multiple definitions */
+#define minusInff  xa_ndsp_minusInff
+#define plusInff   xa_ndsp_plusInff
+#define realmaxf   xa_ndsp_realmaxf
+#define realminf   xa_ndsp_realminf
 
 externC const union ufloat32uint32 minusInff; /* -Inf */
 externC const union ufloat32uint32 plusInff ; /* +Inf */

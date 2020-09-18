@@ -20,15 +20,6 @@
 
 ******************************************************************************/
 /* ------------------------------------------------------------------------ */
-/* Copyright (c) 2018 by Cadence Design Systems, Inc. ALL RIGHTS RESERVED.  */
-/* These coded instructions, statements, and computer programs ("Cadence    */
-/* Libraries") are the copyrighted works of Cadence Design Systems Inc.	    */
-/* Cadence IP is licensed for use with Cadence processor cores only and     */
-/* must not be used for any other processors and platforms. Your use of the */
-/* Cadence Libraries is subject to the terms of the license agreement you   */
-/* have entered into with Cadence Design Systems, or a sublicense granted   */
-/* to you by a direct Cadence licensee.                                     */
-/* ------------------------------------------------------------------------ */
 /*  IntegrIT, Ltd.   www.integrIT.com, info@integrIT.com                    */
 /*                                                                          */
 /* DSP Library                                                              */
@@ -52,6 +43,10 @@
 #include "NatureDSP_types.h"
 #include "common.h"
 
+/* Renaming the symbols to avoid multiple definitions */
+#define log2f_coef    xa_ndsp_log2f_coef
+#define polypow2f_tbl xa_ndsp_polypow2f_tbl
+#define pow2f_coef    xa_ndsp_pow2f_coef
 /*
         polynomial coefficients for 2.^x, x=[-1...0)
         x=(-1:pow2(1,-16):0); y=2.^x; p=polyfit(x,y,6);
