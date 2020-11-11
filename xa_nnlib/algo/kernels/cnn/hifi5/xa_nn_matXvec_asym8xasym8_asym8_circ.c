@@ -1040,10 +1040,10 @@ WORD32 xa_nn_matXvec_asym8xasym8_asym8_circ(
         ae_int32x2 acc_row1_vec0, acc_row1_vec1, acc_row1_vec2, acc_row1_vec3;
         
         /* Initialize accumulators with bias */
-        AE_L32X2X2_I(acc_row0_vec0, acc_row0_vec1, (ae_int32x4*)bias_buffer, 0);
-        AE_L32X2X2_I(acc_row0_vec2, acc_row0_vec3, (ae_int32x4*)bias_buffer, 0);
-        AE_L32X2X2_I(acc_row1_vec0, acc_row1_vec1, (ae_int32x4*)bias_buffer, 0);
-        AE_L32X2X2_I(acc_row1_vec2, acc_row1_vec3, (ae_int32x4*)bias_buffer, 0);
+        AE_L32X2X2_I(acc_row0_vec0, acc_row1_vec0, (ae_int32x4*)bias_buffer, 0);
+        AE_L32X2X2_I(acc_row0_vec1, acc_row1_vec1, (ae_int32x4*)bias_buffer, 0);
+        AE_L32X2X2_I(acc_row0_vec2, acc_row1_vec2, (ae_int32x4*)bias_buffer, 0);
+        AE_L32X2X2_I(acc_row0_vec3, acc_row1_vec3, (ae_int32x4*)bias_buffer, 0);
 
         ae_int8x8 *p_mat1_0 = (ae_int8x8 *)p_mat1; 
         AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1_0, m_itr * row_stride1 * sizeof(WORD8));

@@ -51,7 +51,9 @@ else
   ifeq ($(WARNING_AS_ERROR),1)
   CFLAGS += -Werror 
   endif
-  LDFLAGS = -mlongcalls -lm
+  CFLAGS += -mtext-section-literals 
+  LDFLAGS = -Wl,--gc-sections \
+            -mlongcalls -lm
 
 endif
 
@@ -107,9 +109,9 @@ BASICOBJS = \
 NORMOBJS = \
     xa_nn_norm_testbench.o
 MODEL_TINY_CONVOBJS = \
-	xa_nn_model_tiny_conv_testbench.o
+  xa_nn_model_tiny_conv_testbench.o
 MODEL_CONVOBJS = \
-	xa_nn_model_conv_testbench.o
+  xa_nn_model_conv_testbench.o
 
 UTILOBJS = \
     xt_manage_buffers.o \

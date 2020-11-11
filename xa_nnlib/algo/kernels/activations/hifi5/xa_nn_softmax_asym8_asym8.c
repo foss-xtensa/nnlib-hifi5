@@ -81,7 +81,7 @@ static const int F2_ONE = 0x20000000;
 }
 
 
-ae_int32x2 one_over_one_plus_x_for_x_in_0_1(ae_int64 a)
+static ae_int32x2 one_over_one_plus_x_for_x_in_0_1(ae_int64 a)
 {
     ae_int64 s;
     ae_int32x2 half_den, m, x, half_denominator_times_x;

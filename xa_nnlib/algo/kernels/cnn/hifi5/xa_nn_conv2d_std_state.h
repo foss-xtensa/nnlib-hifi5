@@ -148,6 +148,23 @@ WORD32 xa_nn_matXvec_asym8xasym8_asym8_circ(
     WORD32 out_shift,
     WORD32 out_offset);
 
+WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
+    WORD8 * __restrict__ p_out,
+    WORD8 * __restrict__ p_mat1,
+    const WORD8 * __restrict__ p_vec1,
+    const WORD32 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols1,
+    WORD32 row_stride1,
+    WORD32 vec_count,
+    WORD32 vec_stride,
+    WORD32 out_col_offset,
+    WORD32 out_row_offset,
+    WORD32 mat1_offset,
+    WORD32 * p_out_multiplier,
+    WORD32 * p_out_shift,
+    WORD32 out_offset);
+
 VOID conv2d_std_init_cir_buf(
     WORD32 input_channels,
     WORD32 input_channels_pad,

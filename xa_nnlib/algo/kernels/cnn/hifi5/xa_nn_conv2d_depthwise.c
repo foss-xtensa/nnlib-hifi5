@@ -19,12 +19,9 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "xa_type_def.h"
-#include "common.h"
-#include "xa_nnlib_kernels_api.h"
+#include "xa_nnlib_common.h"
 #include "xa_nn_conv2d_depthwise_state.h"
 #include "xa_nnlib_common_macros_hifi5.h"
-#include "xa_nnlib_err_chk.h"
 
 static WORD32 xa_nn_conv2d_depthwise_nchw_getsize
   (WORD32 input_width
@@ -187,6 +184,41 @@ static WORD32 xa_nn_conv2d_depthwise_nhwc_getsize
     }
 }
 
+#ifndef DISABLE_DEPTHWISE_CONV2D_K3X3_SPECIAL_CASE
+
+#define KH_3X3 3
+#define KW_3X3 3
+
+static WORD32 xa_nn_conv2d_depthwise_getsize_k3x3
+  (WORD32 input_height
+  ,WORD32 input_width
+  ,WORD32 input_channels
+  ,WORD32 kernel_height
+  ,WORD32 kernel_width
+  )
+{
+  int total_size = 0;
+  /* Alignment */
+  total_size += ALIGNMENT_16;
+  /* Handle */
+  total_size += ALIGNED_SIZE(sizeof(xa_nn_conv2d_dw_k3x3_state_t), ALIGNMENT_16);
+  /* Initial accumulator values: output bias */
+  total_size += ALIGNED_SIZE(input_channels * sizeof(WORD32), ALIGNMENT_16);
+  /* Initial accumulator values: output bias + zero_point adjustment */
+  total_size += ALIGNED_SIZE(input_channels * sizeof(WORD32), ALIGNMENT_16);
+  /* Output multipliers: l_mult, out_multiplier, r_mult */
+  total_size += ALIGNED_SIZE(3 * input_channels * sizeof(WORD32), ALIGNMENT_16);
+  /* Dummy input buffer: 3 rows */ 
+  total_size += ALIGNED_SIZE(KH_3X3 * input_channels * sizeof(WORD8), ALIGNMENT_16);
+  /* Rearranged kernel 3x3  */ 
+  total_size += ALIGNED_SIZE(KH_3X3 * KW_3X3 * input_channels * sizeof(WORD8), ALIGNMENT_16);
+  /* Rearragned NCHW kernel */
+  total_size += ALIGNED_SIZE((KH_3X3 + 1) * (KW_3X3 + 1) * input_channels * sizeof(WORD8), ALIGNMENT_16);
+
+  return total_size;
+}
+#endif /* DISABLE_DEPTHWISE_CONV2D_K3X3_SPECIAL_CASE */
+
 static VOID xa_nn_conv2d_depthwise_nhwc_init
 (pVOID p_scratch
  ,WORD32 input_height
@@ -221,6 +253,78 @@ static VOID xa_nn_conv2d_depthwise_nhwc_init
 }
 
 
+static WORD32 xa_nn_conv2d_depthwise_getsize_generic
+(WORD32 input_height
+ ,WORD32 input_width
+ ,WORD32 input_channels
+ ,WORD32 kernel_height
+ ,WORD32 kernel_width
+ ,WORD32 channels_multiplier
+ ,WORD32 x_stride
+ ,WORD32 y_stride
+ ,WORD32 x_padding
+ ,WORD32 y_padding
+ ,WORD32 output_height
+ ,WORD32 output_width
+ ,WORD32 circ_buf_precision
+ ,WORD32 inp_data_format
+ )
+{
+  WORD32 scratch_bytewidth = 0;
+  WORD32 circ_buf_bytewidth = 0;
+  WORD32 total_size = 0;
+
+  switch (circ_buf_precision)
+  {
+    case 8: /* For 8b */
+    case 16: /* For 16b */
+      scratch_bytewidth = 8; /* 64b scratch */
+      circ_buf_bytewidth = (circ_buf_precision/8); /* bytewidth as per precision */
+      break;
+
+    case -1: /* For f32 */
+      scratch_bytewidth = 4; /* f32 scratch */
+      circ_buf_bytewidth = 4; /* bytewidth for f32 */
+      break;
+
+    case -3: /* For asym8 */
+    case -4: /* For asym8s */
+      scratch_bytewidth = 4;
+      circ_buf_bytewidth = 1;
+      break;
+
+    default:
+      return -1; /* Retunrning due to invalid input */
+      break;
+  }
+
+  if(inp_data_format == 0)
+  {
+    total_size = xa_nn_conv2d_depthwise_nhwc_getsize(input_height
+        ,input_channels
+        ,kernel_height
+        ,kernel_width
+        ,channels_multiplier
+        ,y_stride
+        ,y_padding
+        ,output_height
+        ,circ_buf_bytewidth);
+  }
+  else if(inp_data_format == 1)
+  {
+    total_size = xa_nn_conv2d_depthwise_nchw_getsize(input_width
+        ,kernel_height
+        ,kernel_width
+        ,x_stride
+        ,y_stride
+        ,x_padding
+        ,output_width
+        ,circ_buf_bytewidth
+        ,scratch_bytewidth);
+  }
+  return total_size;
+}
+
 WORD32 xa_nn_conv2d_depthwise_getsize
 (WORD32 input_height
  ,WORD32 input_width
@@ -238,73 +342,94 @@ WORD32 xa_nn_conv2d_depthwise_getsize
  ,WORD32 inp_data_format
  )
 {
-    XA_NNLIB_CHK_COND((input_height <= 0), -1);
-    XA_NNLIB_CHK_COND((input_width <= 0), -1);
-    XA_NNLIB_CHK_COND((input_channels <= 0), -1);
-    XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
-    XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
-    XA_NNLIB_CHK_COND((channels_multiplier <= 0), -1);
-    XA_NNLIB_CHK_COND((x_stride <= 0 || x_stride > kernel_width), -1);
-    XA_NNLIB_CHK_COND((y_stride <= 0 || y_stride > kernel_height), -1);
-    XA_NNLIB_CHK_COND((x_padding < 0), -1);
-    XA_NNLIB_CHK_COND((y_padding < 0), -1);
-    XA_NNLIB_CHK_COND((output_height <= 0), -1);
-    XA_NNLIB_CHK_COND((output_width <= 0), -1);
-    XA_NNLIB_CHK_COND((inp_data_format != 0 && inp_data_format != 1), -1);
+  XA_NNLIB_CHK_COND((input_height <= 0), -1);
+  XA_NNLIB_CHK_COND((input_width <= 0), -1);
+  XA_NNLIB_CHK_COND((input_channels <= 0), -1);
+  XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
+  XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
+  XA_NNLIB_CHK_COND((channels_multiplier <= 0), -1);
+  XA_NNLIB_CHK_COND((x_stride <= 0 || x_stride > kernel_width), -1); //TODO: x_stride > kernel_width is supported ?
+  XA_NNLIB_CHK_COND((y_stride <= 0 || y_stride > kernel_height), -1);
+  XA_NNLIB_CHK_COND((x_padding < 0), -1);
+  XA_NNLIB_CHK_COND((y_padding < 0), -1);
+  XA_NNLIB_CHK_COND((output_height <= 0), -1);
+  XA_NNLIB_CHK_COND((output_width <= 0), -1);
+  XA_NNLIB_CHK_COND((inp_data_format != 0 && inp_data_format != 1), -1);
 
-    WORD32 scratch_bytewidth = 0;
-    WORD32 circ_buf_bytewidth = 0;
-    WORD32 total_size = 0;
+  size_t total_size_special_case = 0;
+  size_t total_size_generic_case = 0;
 
-    switch (circ_buf_precision)
+  /* For single input channel case, use the standard convolution kernel */
+  if((input_channels == 1) &&
+     (circ_buf_precision == PREC_ASYM8S) &&
+     (inp_data_format == 0)
+     )
+  {
+    /* Alignment */
+    total_size_generic_case = ALIGNMENT_16;
+    /* Scratch buffer for rearranged kernel in NCHW format */ 
+    total_size_generic_case += ALIGNED_SIZE(channels_multiplier * kernel_height * kernel_width, ALIGNMENT_16);
+
+    total_size_generic_case += xa_nn_conv2d_std_getsize
+       (input_height
+       ,input_channels
+       ,kernel_height
+       ,kernel_width
+       ,y_stride
+       ,y_padding
+       ,output_height
+       ,circ_buf_precision
+      );
+  }
+  else
+  {
+#ifndef DISABLE_DEPTHWISE_CONV2D_K3X3_SPECIAL_CASE
+#if 0 // can't check alignment of p_kernel
+    if((channels_multiplier == 1) &&
+        (kernel_height == 3) &&
+        (kernel_width == 3) &&
+        ((y_stride == 1) || (y_stride == 2)) &&
+        (inp_data_format == 0) &&
+        (circ_buf_precision == PREC_ASYM8S) &&
+        ((input_channels & 0x3) == 0) &&
+        1)
+#else
+    if(circ_buf_precision == PREC_ASYM8S)
+#endif
     {
-        case 8: /* For 8b */
-        case 16: /* For 16b */
-            scratch_bytewidth = 8; /* 64b scratch */
-            circ_buf_bytewidth = (circ_buf_precision/8); /* bytewidth as per precision */
-            break;
-
-        case -1: /* For f32 */
-            scratch_bytewidth = 4; /* f32 scratch */
-            circ_buf_bytewidth = 4; /* bytewidth for f32 */
-            break;
-
-        case -3: /* For asym8 */
-        case -4: /* For asym8s */
-            scratch_bytewidth = 4;
-            circ_buf_bytewidth = 1;
-            break;
-
-        default:
-            return -1; /* Retunrning due to invalid input */
-            break;
+      total_size_special_case = xa_nn_conv2d_depthwise_getsize_k3x3
+        (input_height
+         ,input_width
+         ,input_channels
+         ,kernel_height
+         ,kernel_width
+        );
     }
-
-    if(inp_data_format == 0)
+#endif /* DISABLE_DEPTHWISE_CONV2D_K3X3_SPECIAL_CASE */
     {
-        total_size = xa_nn_conv2d_depthwise_nhwc_getsize(input_height
-                ,input_channels
-                ,kernel_height
-                ,kernel_width
-                ,channels_multiplier
-                ,y_stride
-                ,y_padding
-                ,output_height
-                ,circ_buf_bytewidth);
+      total_size_generic_case = xa_nn_conv2d_depthwise_getsize_generic
+        (input_height
+         ,input_width
+         ,input_channels
+         ,kernel_height
+         ,kernel_width
+         ,channels_multiplier
+         ,x_stride
+         ,y_stride
+         ,x_padding
+         ,y_padding
+         ,output_height
+         ,output_width
+         ,circ_buf_precision
+         ,inp_data_format
+        );
     }
-    else if(inp_data_format == 1)
-    {
-        total_size = xa_nn_conv2d_depthwise_nchw_getsize(input_width
-                ,kernel_height
-                ,kernel_width
-                ,x_stride
-                ,y_stride
-                ,x_padding
-                ,output_width
-                ,circ_buf_bytewidth
-                ,scratch_bytewidth);
-    }
-    return total_size;
+  }
+
+  if(total_size_special_case > total_size_generic_case)
+    return total_size_special_case;
+  else
+    return total_size_generic_case;
 }
 
 VOID xa_nn_conv2d_depthwise_init

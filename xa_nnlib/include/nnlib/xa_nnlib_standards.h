@@ -33,6 +33,8 @@ extern "C"
 #define HIFI_VFPU 1
 #elif ( (XCHAL_HAVE_HIFI3Z_VFPU) )
 #define HIFI_VFPU 1
+#elif ( (XCHAL_HAVE_HIFI3_VFPU) )
+#define HIFI_VFPU 1
 #else
 #define HIFI_VFPU 0
 #endif

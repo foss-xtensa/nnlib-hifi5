@@ -365,8 +365,8 @@ WORD32 xa_nn_avgpool_8(
     XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
     XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
     /* Pointer alignment checks */
-    XA_NNLIB_ARG_CHK_ALIGN(p_out, ALIGNMENT, -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_inp, ALIGNMENT, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD8), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(WORD8), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
