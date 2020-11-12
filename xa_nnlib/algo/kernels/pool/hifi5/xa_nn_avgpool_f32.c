@@ -25,24 +25,7 @@
 #include "xa_nn_avgpool_state.h"
 #include "xa_nnlib_err_chk.h"
 
-#if !HAVE_VFPU
-DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_avgpool_f32,(
-    FLOAT32* __restrict__ p_out,
-    const FLOAT32* __restrict__ p_inp,
-    WORD32  input_height,
-    WORD32  input_width,
-    WORD32  input_channels,
-    WORD32  kernel_height,
-    WORD32  kernel_width,
-    WORD32  x_stride,
-    WORD32  y_stride,
-    WORD32  x_padding,
-    WORD32  y_padding,
-    WORD32  out_height,
-    WORD32  out_width,
-    WORD32  out_data_format,
-    VOID *handle))
-#else /* #if !HAVE_VFPU */
+#if HAVE_VFPU
 static void avgpool_f32(
     FLOAT32* __restrict__ p_out,
     const FLOAT32* __restrict__ p_inp,
@@ -295,7 +278,27 @@ static void avgpool_f32(
         }
     }
 }
+#endif /* HAVE_VFPU */
 
+#if !HAVE_VFPU
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_avgpool_f32,(
+    FLOAT32* __restrict__ p_out,
+    const FLOAT32* __restrict__ p_inp,
+    WORD32  input_height,
+    WORD32  input_width,
+    WORD32  input_channels,
+    WORD32  kernel_height,
+    WORD32  kernel_width,
+    WORD32  x_stride,
+    WORD32  y_stride,
+    WORD32  x_padding,
+    WORD32  y_padding,
+    WORD32  out_height,
+    WORD32  out_width,
+    WORD32  inp_data_format,
+    WORD32  out_data_format,
+    VOID   *p_scratch))
+#else /* #if !HAVE_VFPU */
 WORD32 xa_nn_avgpool_f32(
     FLOAT32* __restrict__ p_out,
     const FLOAT32* __restrict__ p_inp,
@@ -312,7 +315,7 @@ WORD32 xa_nn_avgpool_f32(
     WORD32  out_width,
     WORD32  inp_data_format,
     WORD32  out_data_format,
-    VOID *p_scratch)
+    VOID   *p_scratch)
 {
     /* NULL pointer checks */
     XA_NNLIB_ARG_CHK_PTR(p_out, -1);

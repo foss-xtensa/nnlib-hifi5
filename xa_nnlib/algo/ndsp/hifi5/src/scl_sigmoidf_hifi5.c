@@ -68,7 +68,7 @@
   return result, Q16.15 or floating point
 -------------------------------------------------------------------------*/
 #if !HAVE_VFPU && !HAVE_FPU
-DISCARD_FUN(float32_t,scl_sigmoidf,(float32_t x))
+DISCARD_FUN_FOR_NONVOID_RETURN(float32_t,scl_sigmoidf,(float32_t x))
 #else
 float32_t scl_sigmoidf(float32_t x)
 {

@@ -261,6 +261,18 @@ void show_usage(void)
     XTPWR_PROFILER_STOP(0);\
   }
 
+#define CONV_KERNEL_SYM8S_PC_FN(KERNEL, KPREC, IPREC, OPREC, BPREC) \
+  (!strcmp(cfg.kernel_name,#KERNEL) && (KPREC == p_kernel->precision) && (IPREC == p_inp->precision)) {\
+    XTPWR_PROFILER_START(0);\
+    err = xa_nn_##KERNEL##_per_chan_sym8sxasym8s ( \
+        (WORD8 *)p_out->p, (WORD8 *) p_inp->p, (WORD8 *) p_kernel->p, (WORD32 *)p_bias->p, \
+        cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, cfg.out_channels, \
+        cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
+        cfg.input_zero_bias, cfg.p_out_multiplier, cfg.p_out_shift, cfg.out_zero_bias, \
+        cfg.out_data_format, p_scratch);\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
 #define CONV1D_KERNEL_FN(KERNEL, KPREC, IPREC, OPREC, BPREC) \
   (!strcmp(cfg.kernel_name,#KERNEL) && (KPREC == p_kernel->precision) && (IPREC == p_inp->precision)) {\
     XTPWR_PROFILER_START(0);\
@@ -382,7 +394,7 @@ void show_usage(void)
   (!strcmp(cfg.kernel_name,#KERNEL) && (KPREC == p_kernel->precision) && (IPREC == p_inp->precision)) {\
     XTPWR_PROFILER_START(0);\
     err = xa_nn_conv2d_depthwise_per_chan_sym8sxasym8s ( \
-        (WORD8 *) p_out->p, (const WORD8 *) p_kernel->p, (const WORD8 *) p_inp->p, (const WORD32 *)p_bias->p, \
+        (WORD8 *) p_dw_out->p, (const WORD8 *) p_kernel->p, (const WORD8 *) p_inp->p, (const WORD32 *)p_bias->p, \
         cfg.input_height, cfg.input_width, cfg.input_channels, cfg.kernel_height, cfg.kernel_width, cfg.channels_multiplier, \
         cfg.x_stride, cfg.y_stride, cfg.x_padding, cfg.y_padding, cfg.out_height, cfg.out_width, \
         cfg.input_zero_bias, cfg.p_out_multiplier, cfg.p_out_shift, cfg.out_zero_bias, \
@@ -390,6 +402,17 @@ void show_usage(void)
     XTPWR_PROFILER_STOP(0);\
     XTPWR_PROFILER_UPDATE(0); \
     XTPWR_PROFILER_PRINT(0); \
+    if(!err) { \
+        XTPWR_PROFILER_START(1);\
+        err = xa_nn_conv2d_pointwise_per_chan_sym8sxasym8s ( \
+            (WORD8 *) p_out->p, (WORD8 *) p_kernel_point->p, (WORD8 *) p_dw_out->p, (WORD32 *)p_bias_point->p, \
+            cfg.out_height, cfg.out_width, cfg.input_channels*cfg.channels_multiplier, cfg.out_channels, \
+            cfg.input_zero_bias, cfg.p_out_multiplier, cfg.p_out_shift, cfg.out_zero_bias, \
+            cfg.out_data_format); \
+        XTPWR_PROFILER_STOP(1);\
+        XTPWR_PROFILER_UPDATE(1); \
+        XTPWR_PROFILER_PRINT(1); \
+    } \
   }
 
 
@@ -399,6 +422,7 @@ void show_usage(void)
     else if CONV_KERNEL_FN(conv2d_std, 8, 8, 8, 8) \
     else if CONV_KERNEL_FN(conv2d_std, 16, 16, 16, 16) \
     else if CONV_KERNEL_ASYM8_FN(conv2d_std, -3, -3, -3, 32) \
+    else if CONV_KERNEL_SYM8S_PC_FN(conv2d_std,-5,-4,-4, 32) \
     else if CONV_KERNEL_F_FN(conv2d_std, -1, -1, -1, -1) \
     else if CONV_DS_KERNEL_F_FN(conv2d_depth, -1, -1, -1, -1) \
     else if CONV_DS_KERNEL_FN(conv2d_depth,8,16,16,16) \
@@ -418,6 +442,7 @@ void show_usage(void)
     else if CONV_KERNEL_FN(conv2d_std, 8, 8, 8, 8) \
     else if CONV_KERNEL_FN(conv2d_std, 16, 16, 16, 16) \
     else if CONV_KERNEL_ASYM8_FN(conv2d_std, -3, -3, -3, 32) \
+    else if CONV_KERNEL_SYM8S_PC_FN(conv2d_std,-5,-4,-4, 32) \
     else if CONV_DS_KERNEL_FN(conv2d_depth,8,16,16,16) \
     else if CONV_DS_KERNEL_FN(conv2d_depth,16,16,16,16) \
     else if CONV_DS_KERNEL_FN(conv2d_depth,8,8,8,8) \
@@ -542,10 +567,14 @@ int xa_nn_main_process(int argc, char *argv[])
     bias_point_size = cfg.out_channels;
     if(cfg.inp_precision == -4)
     {
-      cfg.p_out_multiplier = (int *)malloc(cfg.input_channels * cfg.channels_multiplier * sizeof(int));
-      cfg.p_out_shift = (int *)malloc(cfg.input_channels * cfg.channels_multiplier * sizeof(int));
+      //As output channels for depthwise convolution and pointwise
+      //convolution are different, we need to allocate space for
+      //p_out_multiplier and p_out_shift accordingly
+      int temp_channels = (cfg.out_channels > (cfg.input_channels * cfg.channels_multiplier)) ? cfg.out_channels : (cfg.input_channels * cfg.channels_multiplier);
+      cfg.p_out_multiplier = (int *)malloc(temp_channels*(sizeof(WORD32)));
+      cfg.p_out_shift = (int *)malloc(temp_channels*(sizeof(WORD32)));
       int itr_c;
-      for(itr_c = 0; itr_c < cfg.input_channels * cfg.channels_multiplier; itr_c++)
+      for(itr_c = 0; itr_c < temp_channels; itr_c++)
       {
         cfg.p_out_multiplier[itr_c] = cfg.out_multiplier;
         cfg.p_out_shift[itr_c] = cfg.out_shift;

@@ -19,13 +19,30 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-======================================================================
+===============================================================================
 Cadence HiFi 5 Neural Network (NN) Library
-======================================================================
+===============================================================================
 
-======================================================================
+===============================================================================
 Revision History
-======================================================================
+===============================================================================
+
+Version 1.3.0 API 1.0: Novmeber 12, 2020
+
++ Intermediate Release of HiFi 5 NN Library
++ Tested using RI.5 tools, xt-xcc/xt-xc++ and xt-clang/xt-clang++ compiler
++ Adds support for asymmetric quantized 8 bit (int8) variants of 
+  following TFLM operators
+    Add
+    AveragePool2D
+    Conv2D (Standard convolution and pointwise convolution)
+    MaxPool2D
+    Mul
++ Adds support for float32 variants of following TFLM operators
+    floor
++ Adds optimizations in depthwise convolution for 3x3 kernel size, int8 variant
+
+-------------------------------------------------------------------------------
 
 Version 1.2.1 API 1.0: September 17, 2020
 
@@ -33,7 +50,7 @@ Version 1.2.1 API 1.0: September 17, 2020
 + Tested using RI.2 tools and xt-xcc/xt-xc++ compiler
 + Adds a fix to avoid symbols clash with NatureDSP Library. 
 
-----------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 Version 1.2.0 API 1.0: September 3, 2020
 
@@ -46,7 +63,7 @@ Version 1.2.0 API 1.0: September 3, 2020
     Quantization
 + Other miscellaneous optimization improvements
 
-----------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 Version 1.1.0 API 1.0: July 15, 2020
 
@@ -58,7 +75,7 @@ Version 1.1.0 API 1.0: July 15, 2020
     Softmax
 + Other miscellaneous optimization improvements
 
-----------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 Version 1.0.0 API 1.0: July 23, 2019
 
@@ -74,6 +91,4 @@ Version 1.0.0 API 1.0: July 23, 2019
     LSTM layer
     CNN layer
 
-----------------------------------------------------------------------
-
- 
+-------------------------------------------------------------------------------

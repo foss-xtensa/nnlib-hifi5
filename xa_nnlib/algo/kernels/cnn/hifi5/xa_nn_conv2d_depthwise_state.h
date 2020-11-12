@@ -31,6 +31,35 @@ typedef struct _xa_nn_conv2d_dw_state_t
     pVOID p_scratch;
 } xa_nn_conv2d_dw_state_t;
 
+#ifndef DISABLE_DEPTHWISE_CONV2D_K3X3_SPECIAL_CASE
+typedef struct _xa_nn_conv2d_dw_k3x3_state_t
+{
+  /* Scratch buffer pointers */
+  WORD8 *p_dummy_inp;
+  WORD8 *p_kernel_rearranged;
+  WORD8 *p_kernel_nchw;
+  WORD32 *p_accu;
+  WORD32 *p_accu_zero_point;
+  WORD32 *p_scale_multipliers;
+
+  /* Output height loop counter */
+  int top_padded_region_output;
+  int bottom_padded_region_output;
+  int top_single_input_row_output;
+  int middle_single_input_row_output;
+  int top_two_input_row_output;
+  int six_input_row_output;
+  int three_input_row_output;
+  int bottom_single_input_row_output;
+  int bottom_two_input_row_output;
+
+  const WORD8 *p_inp0;
+  const WORD8 *p_inp1;
+  const WORD8 *p_inp2;
+  int inp0_offset, inp1_offset, inp2_offset;
+} xa_nn_conv2d_dw_k3x3_state_t;
+#endif
+
 VOID xa_nn_conv2d_depthwise_init
 (pVOID p_scratch
  ,WORD32 input_height

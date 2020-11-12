@@ -52,6 +52,7 @@ WORD32 xa_nn_conv2d_std_getsize(
   switch(input_precision)
   {
     case 8:
+    case -4:
       input_size = sizeof(WORD8);
       align_size = ALIGNMENT>>1;
       break;
@@ -77,7 +78,7 @@ WORD32 xa_nn_conv2d_std_getsize(
   WORD32 y_b_pad = kernel_height + (out_height - 1) * y_stride - (y_padding + input_height);
   y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
 
-  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U) //TODO: remove the condition when the padding requirement is removed for other variants.
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S) //TODO: remove the condition when the padding requirement is removed for other variants.
     input_channels_pad = input_channels;
   else
     input_channels_pad = PADDED_SIZE(input_channels, align_size);
@@ -116,6 +117,7 @@ VOID xa_nn_conv2d_std_init_state(
   switch(input_precision)
   {
     case 8:
+    case -4:
       input_size = sizeof(WORD8);
       align_size = ALIGNMENT>>1;
       break;
@@ -152,7 +154,7 @@ VOID xa_nn_conv2d_std_init_state(
   WORD32 y_b_pad = kernel_height + (out_height - 1) * y_stride - (y_padding + input_height);
   y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
 
-  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U) //TODO: remove the condition when the padding requirement is removed for other variants.
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S) //TODO: remove the condition when the padding requirement is removed for other variants.
     input_channels_pad = input_channels;
   else
     input_channels_pad = PADDED_SIZE(input_channels, align_size);

@@ -124,7 +124,7 @@ int default_config(test_config_t *p_cfg)
 void parse_arguments(int argc, char** argv, test_config_t *p_cfg)
 {
   int argidx;
-  for (argidx=1;argidx<argc;argidx++)
+  for (argidx=1; argidx<argc; argidx++)
   {
     if(strncmp((argv[argidx]), "-", 1) != 0)
     {
@@ -135,35 +135,35 @@ void parse_arguments(int argc, char** argv, test_config_t *p_cfg)
     ARGTYPE_INDICATE("--help", p_cfg->help);
     ARGTYPE_INDICATE("-help", p_cfg->help);
     ARGTYPE_INDICATE("-h", p_cfg->help);
-    ARGTYPE_ONETIME_CONFIG("-output_zero_bias",p_cfg->output_zero_bias);                       
-    ARGTYPE_ONETIME_CONFIG("-output_left_shift",p_cfg->output_left_shift);                        
-    ARGTYPE_ONETIME_CONFIG("-output_multiplier",p_cfg->output_multiplier);                
-    ARGTYPE_ONETIME_CONFIG("-output_activation_min",p_cfg->output_activation_min);            
-    ARGTYPE_ONETIME_CONFIG("-output_activation_max",p_cfg->output_activation_max);            
-    ARGTYPE_ONETIME_CONFIG("-input1_zero_bias",p_cfg->input1_zero_bias);                    
-    ARGTYPE_ONETIME_CONFIG("-input1_left_shift",p_cfg->input1_left_shift);                     
-    ARGTYPE_ONETIME_CONFIG("-input1_multiplier",p_cfg->input1_multiplier);                
-    ARGTYPE_ONETIME_CONFIG("-input2_zero_bias",p_cfg->input2_zero_bias);                    
-    ARGTYPE_ONETIME_CONFIG("-input2_left_shift",p_cfg->input2_left_shift);                     
-    ARGTYPE_ONETIME_CONFIG("-input2_multiplier",p_cfg->input2_multiplier);                
-    ARGTYPE_ONETIME_CONFIG("-left_shift",p_cfg->left_shift);                           
-    ARGTYPE_ONETIME_CONFIG("-io_length",p_cfg->io_length);                           
-    ARGTYPE_ONETIME_CONFIG("-inp_precision",p_cfg->inp_precision);                        
-    ARGTYPE_ONETIME_CONFIG("-out_precision",p_cfg->out_precision);                        
-    ARGTYPE_ONETIME_CONFIG("-vec_count",p_cfg->vec_count);                           
-    ARGTYPE_ONETIME_CONFIG("-frames",p_cfg->frames);
-    ARGTYPE_STRING("-kernel_name",p_cfg->kernel_name, MAX_KERNEL_NAME_LENGTH);
-    ARGTYPE_ONETIME_CONFIG("-write_file",p_cfg->write_file);
-    ARGTYPE_STRING("-read_inp1_file_name",p_cfg->read_inp1_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-read_inp2_file_name",p_cfg->read_inp2_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-read_ref_file_name",p_cfg->read_ref_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-write_inp1_file_name",p_cfg->write_inp1_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-write_inp2_file_name",p_cfg->write_inp2_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-write_out_file_name",p_cfg->write_out_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_ONETIME_CONFIG("-verify",p_cfg->verify);
+    ARGTYPE_ONETIME_CONFIG("-output_zero_bias", p_cfg->output_zero_bias);                       
+    ARGTYPE_ONETIME_CONFIG("-output_left_shift", p_cfg->output_left_shift);                        
+    ARGTYPE_ONETIME_CONFIG("-output_multiplier", p_cfg->output_multiplier);                
+    ARGTYPE_ONETIME_CONFIG("-output_activation_min", p_cfg->output_activation_min);            
+    ARGTYPE_ONETIME_CONFIG("-output_activation_max", p_cfg->output_activation_max);            
+    ARGTYPE_ONETIME_CONFIG("-input1_zero_bias", p_cfg->input1_zero_bias);                    
+    ARGTYPE_ONETIME_CONFIG("-input1_left_shift", p_cfg->input1_left_shift);                     
+    ARGTYPE_ONETIME_CONFIG("-input1_multiplier", p_cfg->input1_multiplier);                
+    ARGTYPE_ONETIME_CONFIG("-input2_zero_bias", p_cfg->input2_zero_bias);                    
+    ARGTYPE_ONETIME_CONFIG("-input2_left_shift", p_cfg->input2_left_shift);                     
+    ARGTYPE_ONETIME_CONFIG("-input2_multiplier", p_cfg->input2_multiplier);                
+    ARGTYPE_ONETIME_CONFIG("-left_shift", p_cfg->left_shift);                           
+    ARGTYPE_ONETIME_CONFIG("-io_length", p_cfg->io_length);                           
+    ARGTYPE_ONETIME_CONFIG("-inp_precision", p_cfg->inp_precision);                        
+    ARGTYPE_ONETIME_CONFIG("-out_precision", p_cfg->out_precision);                        
+    ARGTYPE_ONETIME_CONFIG("-vec_count", p_cfg->vec_count);                           
+    ARGTYPE_ONETIME_CONFIG("-frames", p_cfg->frames);
+    ARGTYPE_STRING("-kernel_name", p_cfg->kernel_name, MAX_KERNEL_NAME_LENGTH);
+    ARGTYPE_ONETIME_CONFIG("-write_file", p_cfg->write_file);
+    ARGTYPE_STRING("-read_inp1_file_name", p_cfg->read_inp1_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-read_inp2_file_name", p_cfg->read_inp2_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-read_ref_file_name", p_cfg->read_ref_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-write_inp1_file_name", p_cfg->write_inp1_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-write_inp2_file_name", p_cfg->write_inp2_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-write_out_file_name", p_cfg->write_out_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_ONETIME_CONFIG("-verify", p_cfg->verify);
     
     // If arg doesnt match with any of the above supported options, report option as invalid
-    printf("Invalid argument: %s\n",argv[argidx]);
+    printf("Invalid argument: %s\n", argv[argidx]);
     exit(1);
   }
 }
@@ -203,7 +203,7 @@ void show_usage(void)
 }
 
 #define DOT_PROD_OUT_ASYM8S(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
      && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_##IPREC##x##IPREC##_asym8s\
@@ -222,7 +222,7 @@ void show_usage(void)
   }
 
 #define BASIC_FLOAT32(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
      && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_f32xf32_f32\
@@ -236,7 +236,7 @@ void show_usage(void)
   }
 
 #define FLOOR_F32(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
      && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_f32_f32\
@@ -249,7 +249,7 @@ void show_usage(void)
   }
 
 #define ADD_ASYM8(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
      && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_asym8xasym8_asym8\
@@ -273,9 +273,34 @@ void show_usage(void)
                 );\
     XTPWR_PROFILER_STOP(0);\
   }
+#define ADD_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s_asym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    cfg.output_zero_bias,\
+                    cfg.output_left_shift,\
+                    cfg.output_multiplier,\
+                    cfg.output_activation_min,\
+                    cfg.output_activation_max,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
 
 #define MUL_ASYM8(KERNEL, IPREC, OPREC) \
-  if(!strcmp(cfg.kernel_name,#KERNEL) && (IPREC == cfg.inp_precision) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
      && (OPREC == cfg.out_precision)) {\
     XTPWR_PROFILER_START(0);\
         err = xa_nn_##KERNEL##_asym8xasym8_asym8\
@@ -295,6 +320,27 @@ void show_usage(void)
     XTPWR_PROFILER_STOP(0);\
   }
 
+#define MUL_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s_asym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    cfg.output_zero_bias,\
+                    cfg.output_left_shift,\
+                    cfg.output_multiplier,\
+                    cfg.output_activation_min,\
+                    cfg.output_activation_max,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
 
 #if HIFI_VFPU
 #define PROCESS_BASIC_FUNC \
@@ -306,13 +352,17 @@ void show_usage(void)
     else BASIC_FLOAT32(elm_div, -1, -1) \
     else FLOOR_F32(elm_floor, -1, -1) \
     else MUL_ASYM8(elm_mul, -3, -3) \
+	else MUL_ASYM8S(elm_mul, -4, -4) \
     else ADD_ASYM8(elm_add, -3, -3) \
+	else ADD_ASYM8S(elm_add, -4, -4) \
     else DOT_PROD_OUT_ASYM8S(dot_prod, 16, -4) \
     else {  printf("unsupported basic operation\n"); return -1;}
 #else
 #define PROCESS_BASIC_FUNC \
     MUL_ASYM8(elm_mul, -3, -3) \
+	else MUL_ASYM8S(elm_mul, -4, -4) \
     else ADD_ASYM8(elm_add, -3, -3) \
+	else ADD_ASYM8S(elm_add, -4, -4) \
     else DOT_PROD_OUT_ASYM8S(dot_prod, 16, -4) \
     else {  printf("unsupported basic operation\n"); return -1;}
 #endif
@@ -371,6 +421,10 @@ int xa_nn_main_process(int argc, char *argv[])
   {
     sprintf(profiler_name, "%s_asym8", cfg.kernel_name);
   }
+  else if(cfg.inp_precision == -4 && cfg.out_precision == -4)
+  {
+    sprintf(profiler_name, "%s_asym8s", cfg.kernel_name);
+  }
   else if(cfg.inp_precision == 16 && cfg.out_precision == -4)
   {
     sprintf(profiler_name, "%s_16x16_asym8s", cfg.kernel_name);
@@ -382,7 +436,7 @@ int xa_nn_main_process(int argc, char *argv[])
   }
 
   // Set profiler parameters
-  sprintf(profiler_params, "N=%d", cfg.io_length);
+  sprintf(profiler_params, "N=%d\n", cfg.io_length);
 
   // Open input file
   if(cfg.write_file)
