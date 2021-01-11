@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -51,7 +51,7 @@
 #define invln2_Q30  xa_ndsp_invln2_Q30
 #define log2_e      xa_ndsp_log2_e
 
-/* 
+/*
    polynomial coefficients for 2^x in range 0...1
 
    derived by MATLAB code:
@@ -62,7 +62,7 @@
    p(order+1)=1;
    p(order)=p(order)-(sum(p)-2);
 */
-externC const int32_t expftbl_Q30[8]; 
+externC const int32_t expftbl_Q30[8];
 externC const union ufloat32uint32 expfminmax[2];  /* minimum and maximum arguments of expf() input */
 externC const int32_t invln2_Q30; /* 1/ln(2), Q30 */
 externC const int32_t invln2_Q30; /* 1/ln(2), Q30 */

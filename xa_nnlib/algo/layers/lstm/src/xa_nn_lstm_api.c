@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,11 +20,8 @@
 
 ******************************************************************************/
 #include <string.h>
-#include <xtensa/tie/xt_hifi2.h>
-#include "xa_nnlib_lstm_api.h"
-#include "xa_nnlib_api.h"
-
 #include "xa_nnlib_common.h"
+#include "xa_nnlib_lstm_api.h"
 
 #ifdef hifi4
 #define XA_PAD_BYTES   8

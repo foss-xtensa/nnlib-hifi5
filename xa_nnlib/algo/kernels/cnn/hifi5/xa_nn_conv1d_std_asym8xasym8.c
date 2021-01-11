@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -216,8 +216,8 @@ WORD32 xa_nn_conv1d_std_asym8xasym8(
        ,out_channels /* rows */
        ,input_channelsXwidth_pad * kernel_height /* cols */
        ,out_channels_offset
-       ,input_zero_bias
        ,kernel_zero_bias
+       ,input_zero_bias
        ,out_multiplier
        ,out_shift
        ,out_zero_bias

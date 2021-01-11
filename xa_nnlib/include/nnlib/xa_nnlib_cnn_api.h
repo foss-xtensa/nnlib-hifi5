@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -99,7 +99,7 @@ typedef struct _xa_nnlib_cnn_init_config_t
     xa_nnlib_shape_t kernel_std_shape;      /* Standard 1D/2D Convolution Kernel (filter) Dimensions */
     xa_nnlib_shape_t kernel_ds_depth_shape; /* Depthwise Separable 2D Convolution - Depthwise Kernel (filter) Dimensions */
     xa_nnlib_shape_t kernel_ds_point_shape; /* Depthwise Separable 2D Convolution - Pointwise Kernel (filter) Dimensions */
-    
+
     xa_nnlib_shape_t bias_std_shape;        /* Standard 1D/2D Convolution Bias Dimensions */
     xa_nnlib_shape_t bias_ds_depth_shape;   /* Depthwise Separable 2D Convolution - Depthwise Bias Dimensions */
     xa_nnlib_shape_t bias_ds_point_shape;   /* Depthwise Separable 2D Convolution - Pointwise Bias Dimensions */
@@ -144,9 +144,9 @@ Int32 xa_nnlib_cnn_init(xa_nnlib_handle_t handle, xa_nnlib_cnn_init_config_t *co
 /************************************************************/
 Int32 xa_nnlib_cnn_set_config(xa_nnlib_handle_t handle, xa_nnlib_cnn_param_id_t param_id, void *params);
 
-Int32 xa_nnlib_cnn_get_config(xa_nnlib_handle_t handle, xa_nnlib_cnn_param_id_t param_id, void *params); 			
+Int32 xa_nnlib_cnn_get_config(xa_nnlib_handle_t handle, xa_nnlib_cnn_param_id_t param_id, void *params);
 
-Int32 xa_nnlib_cnn_process(xa_nnlib_handle_t handle, 
+Int32 xa_nnlib_cnn_process(xa_nnlib_handle_t handle,
                            void *scratch,
                            void *input,
                            void *output,

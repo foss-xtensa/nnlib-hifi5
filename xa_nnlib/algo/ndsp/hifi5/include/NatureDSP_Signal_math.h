@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -81,41 +81,41 @@ extern "C" {
   Mathematics:
   vec_recip            Reciprocal on Q31/Q15 Numbers
   vec_divide           Division
-  vec_log              Logarithm 
-  vec_antilog          Antilogarithm       
+  vec_log              Logarithm
+  vec_antilog          Antilogarithm
   vec_pow              Power function
   vec_sqrt             Square Root
   vec_rsqrt	           Reciprocal Square Root
   vec_sine,vec_cosine  Sine/Cosine
-  vec_tan              Tangent 
-  vec_atan             Arctangent 
+  vec_tan              Tangent
+  vec_atan             Arctangent
   vec_atan2            Full Quadrant Arctangent
   vec_tanh             Hyperbolic Tangent
   vec_sigmoid          Sigmoid
   vec_softmax          Softmax
-  vec_int2float        Integer to Float Conversion 
-  vec_float2int        Float to Integer Conversion 
+  vec_int2float        Integer to Float Conversion
+  vec_float2int        Float to Integer Conversion
 ===========================================================================*/
 
 /*-------------------------------------------------------------------------
   Reciprocal on Q63/Q31/Q15 Numbers
-  These routines return the fractional and exponential portion of the 
-  reciprocal of a vector x of Q31 or Q15 numbers. Since the reciprocal is 
-  always greater than 1, it returns fractional portion frac in Q(31-exp) 
-  or Q(15-exp) format and exponent exp so true reciprocal value in the 
-  Q0.31/Q0.15 may be found by shifting fractional part left by exponent 
+  These routines return the fractional and exponential portion of the
+  reciprocal of a vector x of Q31 or Q15 numbers. Since the reciprocal is
+  always greater than 1, it returns fractional portion frac in Q(31-exp)
+  or Q(15-exp) format and exponent exp so true reciprocal value in the
+  Q0.31/Q0.15 may be found by shifting fractional part left by exponent
   value.
 
   Mantissa accuracy is 1 LSB, so relative accuracy is:
-  vec_recip16x16, scl_recip16x16                   6.2e-5 
-  scl_recip32x32                                   2.4e-7 
+  vec_recip16x16, scl_recip16x16                   6.2e-5
+  scl_recip32x32                                   2.4e-7
   vec_recip32x32                                   9.2e-10
   vec_recip64x64                                   2.2e-19
 
-  Precision: 
-  64x64  64-bit input, 64-bit output. 
-  32x32  32-bit input, 32-bit output. 
-  16x16  16-bit input, 16-bit output. 
+  Precision:
+  64x64  64-bit input, 64-bit output.
+  32x32  32-bit input, 32-bit output.
+  16x16  16-bit input, 16-bit output.
 
   Input:
   x[N]    input data, Q63, Q31 or Q15
@@ -123,7 +123,7 @@ extern "C" {
 
   Output:
   frac[N] fractional part of result, Q(63-exp), Q(31-exp) or Q(15-exp)
-  exp[N]  exponent of result 
+  exp[N]  exponent of result
 
   Restriction:
   x,frac,exp should not overlap
@@ -135,7 +135,7 @@ extern "C" {
 
   Scalar versions:
   ----------------
-  Return packed value: 
+  Return packed value:
   scl_recip64x64():
   bits 55:0 fractional part
   bits 63:56 exponent
@@ -155,34 +155,34 @@ uint32_t scl_recip16x16 (int16_t x);
 
 /*-------------------------------------------------------------------------
   Division
-  These routines perform pair-wise division of vectors written in Q63, Q31 or 
-  Q15 format. They return the fractional and exponential portion of the division 
-  result. Since the division may generate result greater than 1, it returns 
-  fractional portion frac in Q(63-exp), Q(31-exp) or Q(15-exp) format and 
-  exponent exp so true division result in the Q0.31 may be found by shifting 
+  These routines perform pair-wise division of vectors written in Q63, Q31 or
+  Q15 format. They return the fractional and exponential portion of the division
+  result. Since the division may generate result greater than 1, it returns
+  fractional portion frac in Q(63-exp), Q(31-exp) or Q(15-exp) format and
+  exponent exp so true division result in the Q0.31 may be found by shifting
   fractional part left by exponent value.
-  Additional routine makes integer division of 64-bit number to 32-bit 
-  denominator forming 32-bit result. If result is overflown, 0x7fffffff 
+  Additional routine makes integer division of 64-bit number to 32-bit
+  denominator forming 32-bit result. If result is overflown, 0x7fffffff
   or 0x80000000 is returned depending on the signs of inputs.
   For division to 0, the result is not defined.
 
   Two versions of routines are available: regular versions (vec_divide64x32i,
-  vec_divide64x64, vec_divide32x32, vec_divide16x16) work 
-  with arbitrary arguments, faster versions (vec_divide32x32_fast, 
+  vec_divide64x64, vec_divide32x32, vec_divide16x16) work
+  with arbitrary arguments, faster versions (vec_divide32x32_fast,
   vec_divide16x16_fast) apply some restrictions.
 
   Accuracy is measured as accuracy of fractional part (mantissa):
-  vec_divide64x32i, scl_divide64x32                      :  1 LSB   
-  vec_divide64x64                                        :  2 LSB 
-  vec_divide32x32, vec_divide32x32_fast                  :  2 LSB (1.8e-9) 
-  scl_divide32x32                                        :  2 LSB (4.8e-7) 
+  vec_divide64x32i, scl_divide64x32                      :  1 LSB
+  vec_divide64x64                                        :  2 LSB
+  vec_divide32x32, vec_divide32x32_fast                  :  2 LSB (1.8e-9)
+  scl_divide32x32                                        :  2 LSB (4.8e-7)
   vec_divide16x16, scl_divide16x16, vec_divide16x16_fast :  2 LSB (1.2e-4)
 
-  Precision: 
-  64x32i integer division, 64-bit nominator, 32-bit denominator, 32-bit output. 
-  64x64  fractional division, 64-bit inputs, 64-bit output. 
-  32x32  fractional division, 32-bit inputs, 32-bit output. 
-  16x16  fractional division, 16-bit inputs, 16-bit output. 
+  Precision:
+  64x32i integer division, 64-bit nominator, 32-bit denominator, 32-bit output.
+  64x64  fractional division, 64-bit inputs, 64-bit output.
+  32x32  fractional division, 32-bit inputs, 32-bit output.
+  16x16  fractional division, 16-bit inputs, 16-bit output.
 
   Input:
   x[N]    nominator, 64-bit integer, Q63, Q31 or Q15
@@ -190,7 +190,7 @@ uint32_t scl_recip16x16 (int16_t x);
   N       length of vectors
   Output:
   frac[N] fractional parts of result, Q(63-exp), Q(31-exp) or Q(15-exp)
-  exp[N]  exponents of result 
+  exp[N]  exponents of result
 
   Restriction:
   For regular versions (vec_divide64x32i, vec_divide64x64, vec_divide32x32,
@@ -204,7 +204,7 @@ uint32_t scl_recip16x16 (int16_t x);
   Scalar versions:
   ----------------
   scl_divide64x32(): integer remainder
-  Return packed value: 
+  Return packed value:
   scl_divide64x64():
   bits 55:0 fractional part
   bits 63:56 exponent
@@ -216,33 +216,33 @@ uint32_t scl_recip16x16 (int16_t x);
   bits 31:16 exponent
 -------------------------------------------------------------------------*/
 void vec_divide64x32i
-                (int32_t *  frac, 
-                 const int64_t * x, 
+                (int32_t *  frac,
+                 const int64_t * x,
                  const int32_t * y, int N);
-void vec_divide64x64 
-                (int64_t * frac, 
+void vec_divide64x64
+                (int64_t * frac,
                  int16_t *exp,
-                 const int64_t * x, 
+                 const int64_t * x,
                  const int64_t * y, int N);
-void vec_divide32x32 
-                (int32_t * frac, 
+void vec_divide32x32
+                (int32_t * frac,
                  int16_t *exp,
-                 const int32_t * x, 
+                 const int32_t * x,
                  const int32_t * y, int N);
-void vec_divide16x16 
-                (int16_t * frac, 
+void vec_divide16x16
+                (int16_t * frac,
                  int16_t *exp,
-                 const int16_t * x, 
+                 const int16_t * x,
                  const int16_t * y, int N);
-void vec_divide32x32_fast 
-                (int32_t * frac, 
+void vec_divide32x32_fast
+                (int32_t * frac,
                  int16_t * exp,
-                 const int32_t * x, 
+                 const int32_t * x,
                  const int32_t * y, int N);
-void vec_divide16x16_fast 
-                (int16_t * frac, 
+void vec_divide16x16_fast
+                (int16_t * frac,
                  int16_t * exp,
-                 const int16_t * x, 
+                 const int16_t * x,
                  const int16_t * y, int N);
 
 int32_t  scl_divide64x32(int64_t x,int32_t y);
@@ -252,8 +252,8 @@ uint32_t scl_divide16x16(int16_t x,int16_t y);
 
 /*-------------------------------------------------------------------------
   Logarithm:
-  Different kinds of logarithm (base 2, natural, base 10). Fixed point 
-  functions represent results in Q25 format or return 0x80000000 on negative 
+  Different kinds of logarithm (base 2, natural, base 10). Fixed point
+  functions represent results in Q25 format or return 0x80000000 on negative
   of zero input.
 
   Precision:
@@ -267,23 +267,23 @@ uint32_t scl_divide16x16(int16_t x,int16_t y);
   floating point                             2 ULP
 
   NOTES:
-  1.  Although 32 and 24 bit functions provide the same accuracy, 32-bit 
+  1.  Although 32 and 24 bit functions provide the same accuracy, 32-bit
       functions have better input/output resolution (dynamic range)
-  2.  Scalar Floating point functions are compatible with standard ANSI C routines 
+  2.  Scalar Floating point functions are compatible with standard ANSI C routines
       and set errno and exception flags accordingly.
   3.  Floating point functions limit the range of allowable input values:
       A) If x<0, the result is set to NaN. In addition, scalar floating point
-         functions assign the value EDOM to errno and raise the "invalid" 
+         functions assign the value EDOM to errno and raise the "invalid"
          floating-point exception.
       B) If x==0, the result is set to minus infinity. Scalar floating  point
          functions assign the value ERANGE to errno and raise the "divide-by-zero"
          floating-point exception.
 
   Input:
-  x[N]  input data, Q16.15 or floating point 
+  x[N]  input data, Q16.15 or floating point
   N     length of vectors
   Output:
-  y[N]  result, Q25 or floating point 
+  y[N]  result, Q25 or floating point
 
   Restriction:
   x,y should not overlap
@@ -307,9 +307,9 @@ float32_t scl_log10f(float32_t x);
 
 /*-------------------------------------------------------------------------
   Antilogarithm
-  These routines calculate antilogarithm (base2, natural and base10). 
-  Fixed-point functions accept inputs in Q25 and form outputs in Q16.15 
-  format and return 0x7FFFFFFF in case of overflow and 0 in case of 
+  These routines calculate antilogarithm (base2, natural and base10).
+  Fixed-point functions accept inputs in Q25 and form outputs in Q16.15
+  format and return 0x7FFFFFFF in case of overflow and 0 in case of
   underflow.
 
   Precision:
@@ -318,14 +318,14 @@ float32_t scl_log10f(float32_t x);
   NOTE:
   1.  Although 32 and 24 bit functions provide the similar accuracy, 32-bit
       functions have better input/output resolution (dynamic range).
-  2.  Floating point functions are compatible with standard ANSI C routines 
+  2.  Floating point functions are compatible with standard ANSI C routines
       and set errno and exception flags accordingly.
 
   Input:
-  x[N]  input data,Q25 or floating point 
+  x[N]  input data,Q25 or floating point
   N     length of vectors
   Output:
-  y[N]  output data,Q16.15 or floating point  
+  y[N]  output data,Q16.15 or floating point
 
   Restriction:
   x,y should not overlap
@@ -354,9 +354,9 @@ float32_t scl_antilog10f(float32_t x);
 
 /*-------------------------------------------------------------------------
   Power function
-  This routine calculates power function for 32-bit fixed-point numbers or 
-  floating point numbers. 
-  For the fixed point API, The  base is represented in Q31, the exponent 
+  This routine calculates power function for 32-bit fixed-point numbers or
+  floating point numbers.
+  For the fixed point API, The  base is represented in Q31, the exponent
   is represented in Q6.25. Results are represented as normalized fixed point
   number with separate mantissa in Q31 and exponent.
 
@@ -364,22 +364,22 @@ float32_t scl_antilog10f(float32_t x);
   32x32  32-bit inputs, 32-bit outputs. Accuracy: 2 ULP
   f      floating point input, floating point output
 
-  Accuracy: 
+  Accuracy:
   2 LSB for fixed point API
   2 ULP under condition that |y|<=100
 
   Notes:
-1. Scalar floating point raise  to a power functions conform to ANSI C requirements on 
+1. Scalar floating point raise  to a power functions conform to ANSI C requirements on
    standard math library functions in respect to treatment of errno and floating-
-   point exceptions. Vectorized function do not touch errno and may raise or not raise 
+   point exceptions. Vectorized function do not touch errno and may raise or not raise
    floating point exceptions.
-2. For floating point API, If x<0 is finite, y is finite and not an integer value, 
+2. For floating point API, If x<0 is finite, y is finite and not an integer value,
    then the respective result z is set to NaN
-3. For fixed point API, function returns zero for all non-positive x. Fixed point 
+3. For fixed point API, function returns zero for all non-positive x. Fixed point
    functions never touch errno
 
     Special cases:
-          x   |   y    | Result |  Extra Conditions    
+          x   |   y    | Result |  Extra Conditions
       --------+--------+--------+---------------------
       floating point API
       --------+--------+--------+---------------------
@@ -387,21 +387,21 @@ float32_t scl_antilog10f(float32_t x);
         +/-0  | y      | +inf   | even y<0
         +/-0  | y      | +/-0   | odd y>0
         +/-0  | y      | 0      | even y>0
-        +/-1  | +/-inf | 1      | 
+        +/-1  | +/-inf | 1      |
         1     | y      | 1      | any y including NaN
         x     | +/-0   | 1      | any x including NaN
-        x     | y      | NaN    | finite x<0 and finite 
-              |        |        | non-integer y (see 
+        x     | y      | NaN    | finite x<0 and finite
+              |        |        | non-integer y (see
               |        |        | note 2)
         x     | -inf   | +inf   | |x|<1
         x     | -inf   | 0      | |x|>1
         x     | +inf   | 0      | |x|<1
         x     | +inf   | +inf   | |x|>1
         -inf  | y      | -0     | y an odd integer <0
-        -inf  | y      | 0      | y<0 and not an odd 
+        -inf  | y      | 0      | y<0 and not an odd
               |        |        | integer
         -inf  | y      | -inf   | y an odd integer >0
-        -inf  | y      | +inf   | y>0 and not an odd 
+        -inf  | y      | +inf   | y>0 and not an odd
               |        |        | integer
         +inf  | y      | 0      | y<0
         +inf  | y      | +inf   | y>0
@@ -416,19 +416,19 @@ float32_t scl_antilog10f(float32_t x);
   y[N]  input data,Q6.25 or floating point
   N     length of vectors
   Output (fixed point API):
-  m[N]  mantissa of output, Q31 
-  e[N]  exponent of output  
+  m[N]  mantissa of output, Q31
+  e[N]  exponent of output
   Output (floating point API):
   z[N]  results: floating point
 
   Restriction:
   z,x,y,m should not overlap
 -------------------------------------------------------------------------*/
-void vec_pow_32x32(int32_t *  m, int16_t *e, 
+void vec_pow_32x32(int32_t *  m, int16_t *e,
                    const int32_t *  x, const int32_t*  y, int N);
-void vec_powf (   float32_t * restrict z, 
-            const float32_t * restrict x, 
-            const float32_t * restrict y, 
+void vec_powf (   float32_t * restrict z,
+            const float32_t * restrict x,
+            const float32_t * restrict y,
             int N );
 float32_t scl_powf ( float32_t x, float32_t y );
 
@@ -437,19 +437,19 @@ float32_t scl_powf ( float32_t x, float32_t y );
   These routines calculate square root.
   NOTE: functions return 0x80000000 on negative argument for 32-bit outputs
   or 0x8000 for 16-bit outputs.
-  Two versions of functions available: regular version (vec_sqrt16x16, vec_sqrt32x32, 
-  vec_sqrt32x16, vec_sqrt64x32) with arbitrary 
-  arguments and faster version (vec_sqrt32x32_fast) that 
+  Two versions of functions available: regular version (vec_sqrt16x16, vec_sqrt32x32,
+  vec_sqrt32x16, vec_sqrt64x32) with arbitrary
+  arguments and faster version (vec_sqrt32x32_fast) that
   apply some restrictions.
 
-  Precision: 
+  Precision:
   16x16  16-bit inputs, 16-bit output. Accuracy: 2LSB
   32x32  32-bit inputs, 32-bit output. Accuracy: (2.6e-7*y+1LSB)
   32x16  32-bit input, 16-bit output.  Accuracy: 2 LSB
   64x32  64-bit inputs, 32-bit output. Accuracy: 2LSB
 
   Input:
-  x[N]  input data, Q15, Q31, Q63 
+  x[N]  input data, Q15, Q31, Q63
   N     length of vectors
   Output:
   y[N]  output data, Q15, Q31
@@ -479,11 +479,11 @@ int32_t scl_sqrt64x32(int64_t x);
 
 /*-------------------------------------------------------------------------
   Reciprocal Square Root
-  These routines return the fractional and exponential portion of the 
-  reciprocal square root of a vector x of Q31 or Q15 numbers. Since the 
-  reciprocal square root is always greater than 1, they return fractional 
-  portion frac in Q(31-exp) or Q(15-exp) format and exponent exp so true 
-  reciprocal value in the Q0.31/Q0.15 may be found by shifting fractional 
+  These routines return the fractional and exponential portion of the
+  reciprocal square root of a vector x of Q31 or Q15 numbers. Since the
+  reciprocal square root is always greater than 1, they return fractional
+  portion frac in Q(31-exp) or Q(15-exp) format and exponent exp so true
+  reciprocal value in the Q0.31/Q0.15 may be found by shifting fractional
   part left by exponent value.
 
   Mantissa accuracy is 1 LSB, so relative accuracy is:
@@ -491,23 +491,23 @@ int32_t scl_sqrt64x32(int64_t x);
   scl_rsqrt32x32	                2.4e-7
   vec_rsqrt32x32	                9.2e-10
 
-  Precision: 
+  Precision:
   16x16  16-bit inputs, 16-bit output. Accuracy: 2LSB
   32x32  32-bit inputs, 32-bit output. Accuracy: (2.6e-7*y+1LSB)
 
   Input:
-  x[N]     input data, Q15, Q31 
+  x[N]     input data, Q15, Q31
   N        length of vectors
   Output:
   frac[N]  fractional part of result, Q(31-exp) or Q(15-exp)
-  exp[N]   exponent of result 
+  exp[N]   exponent of result
 
   Restriction:
   x, fract, exp - should not overlap
 
   Scalar versions:
   ----------------
-  Returned packed value: 
+  Returned packed value:
   scl_rsqrt32x32():
   bits 23…0 fractional part
   bits 31…24 exponent
@@ -522,13 +522,13 @@ uint32_t scl_rsqrt32x32(int32_t x);
 uint32_t scl_rsqrt16x16(int16_t x);
 
 /*-------------------------------------------------------------------------
-  Sine/Cosine 
-  Fixed-point functions calculate sin(pi*x) or cos(pi*x) for numbers written 
-  in Q31 or Q15 format. Return results in the same format. 
+  Sine/Cosine
+  Fixed-point functions calculate sin(pi*x) or cos(pi*x) for numbers written
+  in Q31 or Q15 format. Return results in the same format.
   Floating point functions compute sin(x) or cos(x)
-  Two versions of functions available: regular version (vec_sine32x32, 
-  vec_cosine32x32, , vec_sinef, vec_cosinef) 
-  with arbitrary arguments and faster version (vec_sine32x32_fast, 
+  Two versions of functions available: regular version (vec_sine32x32,
+  vec_cosine32x32, , vec_sinef, vec_cosinef)
+  with arbitrary arguments and faster version (vec_sine32x32_fast,
   vec_cosine32x32_fast) that apply some restrictions.
   NOTE:
   1.  Scalar floating point functions are compatible with standard ANSI C
@@ -537,7 +537,7 @@ uint32_t scl_rsqrt16x16(int16_t x);
       [-102940.0, 102940.0] Whenever the input value does not belong to this
       range, the result is set to NaN.
 
-  Precision: 
+  Precision:
   32x32  32-bit inputs, 32-bit output. Accuracy: 1700 (7.9e-7)
   f      floating point. Accuracy 2 ULP
 
@@ -548,7 +548,7 @@ uint32_t scl_rsqrt16x16(int16_t x);
   y[N]  output data,Q31 or floating point
 
   Restriction:
-  Regular versions (vec_sine32x32, vec_cosine32x32, vec_sinef, 
+  Regular versions (vec_sine32x32, vec_cosine32x32, vec_sinef,
   vec_cosinef):
   x,y - should not overlap
 
@@ -573,18 +573,18 @@ float32_t scl_sinef   (float32_t x);
 float32_t scl_cosinef (float32_t x);
 
 /*-------------------------------------------------------------------------
-  Tangent 
-  Fixed point functions calculate tan(pi*x) for number written in Q31. 
+  Tangent
+  Fixed point functions calculate tan(pi*x) for number written in Q31.
   Floating point functions compute tan(x)
-  
-  Precision: 
+
+  Precision:
   32x32  32-bit inputs, 32-bit outputs. Accuracy: (1.3e-4*y+1LSB)
-                                        if abs(y)<=464873(14.19 in Q15) 
+                                        if abs(y)<=464873(14.19 in Q15)
                                         or abs(x)<pi*0.4776
   f      floating point.                Accuracy: 2 ULP
 
   NOTE:
-  1.  Scalar floating point function is compatible with standard ANSI C routines 
+  1.  Scalar floating point function is compatible with standard ANSI C routines
       and set errno and exception flags accordingly
   2.  Floating point functions limit the range of allowable input values: [-9099, 9099]
       Whenever the input value does not belong to this range, the result is set to NaN.
@@ -613,21 +613,21 @@ int32_t   scl_tan32x32 (int32_t x);
 float32_t scl_tanf   (float32_t x);
 
 /*-------------------------------------------------------------------------
-  Arctangent 
-  Functions calculate arctangent of number. Fixed point functions 
-  scale output to pi so it is always in range -0x20000000 : 0x20000000 
-  which corresponds to the real phases +pi/4 and represent input and output 
+  Arctangent
+  Functions calculate arctangent of number. Fixed point functions
+  scale output to pi so it is always in range -0x20000000 : 0x20000000
+  which corresponds to the real phases +pi/4 and represent input and output
   in Q31
   NOTE:
   1.  Scalar floating point function is compatible with standard ANSI C
       routines and sets errno and exception flags accordingly
 
   Accuracy:
-  24 bit version: 74000 (3.4e-5) 
+  24 bit version: 74000 (3.4e-5)
   32 bit version: 42    (2.0e-8)
   floating point: 2 ULP
 
-  Precision: 
+  Precision:
   32x32  32-bit inputs, 32-bit output.
   f      floating point
 
@@ -657,12 +657,12 @@ float32_t scl_atanf   (float32_t x);
 /*-------------------------------------------------------------------------
   Full-Quadrant Arc Tangent
   The functions compute the arc tangent of the ratios y[N]/x[N] and store the
-  result to output vector z[N]. 
+  result to output vector z[N].
   Floating point functions output is in radians. Fixed point functions
   scale its output by pi.
 
   NOTE:
-  1. Scalar floating point function is compatible with standard ANSI C routines and set 
+  1. Scalar floating point function is compatible with standard ANSI C routines and set
      errno and exception flags accordingly
   2. Scalar floating point function assigns EDOM to errno whenever y==0 and x==0.
 
@@ -671,7 +671,7 @@ float32_t scl_atanf   (float32_t x);
   floating point: 2 ULP
 
   Special cases:
-       y    |   x   |  result   |  extra conditions    
+       y    |   x   |  result   |  extra conditions
     --------|-------|-----------|---------------------
      +/-0   | -0    | +/-pi     |
      +/-0   | +0    | +/-0      |
@@ -682,7 +682,7 @@ float32_t scl_atanf   (float32_t x);
      +/-y   | -inf  | +/-pi     | finite y>0
      +/-y   | +inf  | +/-0      | finite y>0
      +/-inf | x     | +/-pi/2   | finite x
-     +/-inf | -inf  | +/-3*pi/4 | 
+     +/-inf | -inf  | +/-3*pi/4 |
      +/-inf | +inf  | +/-pi/4   |
 
   Input:
@@ -706,7 +706,7 @@ float32_t scl_atan2f (float32_t y, float32_t x);
   32x32  32-bit inputs, 32-bit output. Accuracy: 2 LSB.
   f      floating point input, floating point output, Accuracy: 2 ULP
   Input:
-  x[N]   input data, Q6.25 or floating point  
+  x[N]   input data, Q6.25 or floating point
   N      length of vectors
   Output:
   y[N]   result, Q16.15 or floating point
@@ -724,7 +724,7 @@ int32_t scl_tanh32x32(int32_t x);
 float32_t scl_tanhf  (float32_t x);
 /*-------------------------------------------------------------------------
   Sigmoid
-  The functions compute the sigmoid of input argument. 32-bit fixed-point 
+  The functions compute the sigmoid of input argument. 32-bit fixed-point
   functions accept inputs in Q6.25 and form outputs in Q16.15 format.
 
   Precision:
@@ -749,9 +749,9 @@ int32_t   scl_sigmoid32x32(int32_t x);
 float32_t scl_sigmoidf    (float32_t x);
 /*-------------------------------------------------------------------------
   Rectifier function
-  The functions compute the rectifier linear unit function of input argument. 
-  32-bit fixed-point functions accept inputs in Q6.25 and form outputs in 
-  Q16.15 format. Parameter K allows to set upper threshold for proper 
+  The functions compute the rectifier linear unit function of input argument.
+  32-bit fixed-point functions accept inputs in Q6.25 and form outputs in
+  Q16.15 format. Parameter K allows to set upper threshold for proper
   compression of output signal.
 
   Precision:
@@ -778,16 +778,16 @@ float32_t scl_reluf     (float32_t x, float32_t K);
 
 /*-------------------------------------------------------------------------
   Softmax
-  The function computes the softmax (normalized exponential function) of 
-  input data. 32-bit fixed-point functions accept inputs in Q6.25 and form 
-  outputs in Q16.15 format. 
+  The function computes the softmax (normalized exponential function) of
+  input data. 32-bit fixed-point functions accept inputs in Q6.25 and form
+  outputs in Q16.15 format.
 
   Precision:
   32x32  32-bit inputs, 32-bit output. Accuracy: 2 LSB (see Note below)
   f      floating point input, floating point output
 
-  Note: Accuracy of function may depend on amount of data and their 
-  distribution. Given accuracy is achieved for N=2 for any pair of data 
+  Note: Accuracy of function may depend on amount of data and their
+  distribution. Given accuracy is achieved for N=2 for any pair of data
   from input domain.
 
   Input:
@@ -806,7 +806,7 @@ void vec_softmaxf    (float32_t * y, const float32_t * x,int N);
   Integer to float conversion
   Routines convert integer to float and scale result up by 2^t.
 
-  Precision: 
+  Precision:
   f     32-bit input, floating point output
 
   Input:
@@ -824,10 +824,10 @@ float32_t scl_int2float (int32_t x, int t);
 
 /*-------------------------------------------------------------------------
   Float to integer conversion
-  routines scale floating point input down by 2^t and convert it to integer 
+  routines scale floating point input down by 2^t and convert it to integer
   with saturation
 
-  Precision: 
+  Precision:
   f     single precision floating point
 
   Input:

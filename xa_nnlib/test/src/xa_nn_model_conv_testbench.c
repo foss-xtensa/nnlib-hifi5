@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -600,11 +600,11 @@ int xa_nn_main_process(int argc, char *argv[])
   WORD32 conv1_scratch_size, maxp_scratch_size, conv2_scratch_size,max_scratch;
 
   // Get persistent size and allocate 
-  conv1_scratch_size = xa_nn_conv2d_std_getsize(CONV1_INPUT_HEIGHT,CONV1_INPUT_CHANNELS,CONV1_KERNEL_HEIGHT,CONV1_KERNEL_WIDTH,CONV1_Y_STRIDE,CONV1_Y_PADDING,CONV1_OUT_HEIGHT,cfg.precision); PRINT_VAR(conv1_scratch_size)
+  conv1_scratch_size = xa_nn_conv2d_std_getsize(CONV1_INPUT_HEIGHT,CONV1_INPUT_CHANNELS,CONV1_KERNEL_HEIGHT,CONV1_KERNEL_WIDTH,CONV1_Y_STRIDE,CONV1_Y_PADDING,CONV1_OUT_HEIGHT,CONV1_OUT_CHANNELS,cfg.precision); PRINT_VAR(conv1_scratch_size)
 
   maxp_scratch_size = xa_nn_maxpool_getsize(MAXP_INPUT_CHANNELS,cfg.precision,cfg.precision,MAXP_INPUT_HEIGHT,MAXP_INPUT_WIDTH,MAXP_KERNEL_HEIGHT,MAXP_KERNEL_WIDTH,MAXP_X_STRIDE,MAXP_Y_STRIDE,MAXP_X_PADDING,MAXP_Y_PADDING,MAXP_OUT_HEIGHT,MAXP_OUT_WIDTH,MAXP_OUT_DATA_FORMAT,MAXP_OUT_DATA_FORMAT); PRINT_VAR(maxp_scratch_size)
 
-  conv2_scratch_size = xa_nn_conv2d_std_getsize(CONV2_INPUT_HEIGHT,CONV2_INPUT_CHANNELS,CONV2_KERNEL_HEIGHT,CONV2_KERNEL_WIDTH,CONV2_Y_STRIDE,CONV2_Y_PADDING,CONV2_OUT_HEIGHT,cfg.precision); PRINT_VAR(conv2_scratch_size)
+  conv2_scratch_size = xa_nn_conv2d_std_getsize(CONV2_INPUT_HEIGHT,CONV2_INPUT_CHANNELS,CONV2_KERNEL_HEIGHT,CONV2_KERNEL_WIDTH,CONV2_Y_STRIDE,CONV2_Y_PADDING,CONV2_OUT_HEIGHT,CONV2_OUT_CHANNELS,cfg.precision); PRINT_VAR(conv2_scratch_size)
   if(conv1_scratch_size > maxp_scratch_size){
       if(conv1_scratch_size > conv2_scratch_size){
           max_scratch = conv1_scratch_size;

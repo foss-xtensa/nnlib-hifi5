@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -57,44 +57,44 @@
 
 #if !HAVE_VFPU
 DISCARD_FUN_FOR_NONVOID_RETURN(void, xa_nn_avgpool_f32_hwc,(
-        FLOAT32* __restrict__ p_out,
-const   FLOAT32* __restrict__ p_inp,
-        WORD32   input_height,
-        WORD32   input_width,
-        WORD32   input_channels,
-        WORD32   kernel_height,
-        WORD32   kernel_width,
-        WORD32   x_stride,
-        WORD32   y_stride,
-        WORD32   x_padding,
-        WORD32   y_padding,
-        WORD32   out_height,
-        WORD32   out_width,
-        pVOID    p_scratch_in,
-        FLOAT32  *p_zeros_mem,
-        FLOAT32  *p_den))
+      FLOAT32* __restrict__ p_out,
+const FLOAT32* __restrict__ p_inp,
+      WORD32   input_height,
+      WORD32   input_width,
+      WORD32   input_channels,
+      WORD32   kernel_height,
+      WORD32   kernel_width,
+      WORD32   x_stride,
+      WORD32   y_stride,
+      WORD32   x_padding,
+      WORD32   y_padding,
+      WORD32   out_height,
+      WORD32   out_width,
+      pVOID    p_scratch_in,
+      FLOAT32  *p_zeros_mem,
+      FLOAT32  *p_den))
 #else /* #if !HAVE_VFPU */
 
 /* Max pooling without using extra copy of input data
  * Works with unaligned input, output.
  */
 void xa_nn_avgpool_f32_hwc(
-        FLOAT32* __restrict__ p_out,
-const   FLOAT32* __restrict__ p_inp,
-        WORD32   input_height,
-        WORD32   input_width,
-        WORD32   input_channels,
-        WORD32   kernel_height,
-        WORD32   kernel_width,
-        WORD32   x_stride,
-        WORD32   y_stride,
-        WORD32   x_padding,
-        WORD32   y_padding,
-        WORD32   out_height,
-        WORD32   out_width,
-        pVOID    p_scratch_in,
-        FLOAT32  *p_zeros_mem,
-        FLOAT32  *p_den)
+      FLOAT32* __restrict__ p_out,
+const FLOAT32* __restrict__ p_inp,
+      WORD32   input_height,
+      WORD32   input_width,
+      WORD32   input_channels,
+      WORD32   kernel_height,
+      WORD32   kernel_width,
+      WORD32   x_stride,
+      WORD32   y_stride,
+      WORD32   x_padding,
+      WORD32   y_padding,
+      WORD32   out_height,
+      WORD32   out_width,
+      pVOID    p_scratch_in,
+      FLOAT32  *p_zeros_mem,
+      FLOAT32  *p_den)
 {
     FLOAT32 *p_scratch = (FLOAT32 *)(p_scratch_in);
 
@@ -155,6 +155,7 @@ const   FLOAT32* __restrict__ p_inp,
                 align_src3 = XT_LASX2PP(p_src3_temp);
                 align_dst = AE_ZALIGN64(); // zero alignment reg
 
+#pragma ymemory (p_src3_temp)
                 for(i = 0; i < (plane_size >> 1); i++)
                 {
                     xtfloatx2 temp, i1, i2, i3, out;
@@ -254,6 +255,7 @@ const   FLOAT32* __restrict__ p_inp,
 
                     align_dst = AE_ZALIGN64(); // zero alignment reg
 
+#pragma ymemory (p_src3_temp)
                     for(i = 0; i < (input_channels >> 1); i++)
                     {
                         xtfloatx2 i1, i2, i3, out;

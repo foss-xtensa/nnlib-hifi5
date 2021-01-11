@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,8 +19,7 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "xa_type_def.h"
-#include "xtensa/tie/xt_hifi2.h"
+#include "xa_nnlib_common.h"
 
 void xa_nn_elm_mul_16x16_16(WORD16 * __restrict__ p_out,
                       const WORD16 * __restrict__ p_inp1,

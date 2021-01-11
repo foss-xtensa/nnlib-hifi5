@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -455,11 +455,7 @@ int xa_nn_main_process(int argc, char *argv[])
     kernel_size       = cfg.channels_multiplier * cfg.input_channels      * cfg.kernel_height  * cfg.kernel_width;
 
     kernel_channels = cfg.input_channels * cfg.channels_multiplier;
-#ifdef hifi5
     kernel_width_pad = cfg.kernel_width;
-#else
-    kernel_width_pad   = (cfg.kernel_width + 3) & (~3);
-#endif
     kernel_size_pad = cfg.kernel_height * kernel_width_pad * kernel_channels;
     dw_out_size       = cfg.channels_multiplier * cfg.input_channels      * cfg.out_height     * cfg.out_width;
     kernel_point_size = cfg.out_channels        * cfg.channels_multiplier * cfg.input_channels * 1 * 1;

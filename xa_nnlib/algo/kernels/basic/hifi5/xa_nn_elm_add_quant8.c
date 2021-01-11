@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -302,15 +302,14 @@ WORD32 xa_nn_elm_add_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
     ae_int8x8 a0_7, b0_7;
     const ae_int32x2 activation_min = AE_MOVDA32(out_activation_min);
     const ae_int32x2 activation_max = AE_MOVDA32(out_activation_max);
-    const ae_int32x2 ZERO = AE_ZERO32();
 
-    const ae_int8x8  za = AE_SUB8(AE_MOVDA8(0), AE_MOVDA8(inp1_zero_bias));		// replicate 8-bit LSB input into 8x8 output
-    const ae_int8x8  zb = AE_SUB8(AE_MOVDA8(0), AE_MOVDA8(inp2_zero_bias));
+    const ae_int8x8  za = AE_MOVDA8(-inp1_zero_bias);
+    const ae_int8x8  zb = AE_MOVDA8(-inp2_zero_bias);
     const ae_int32x2 zc = AE_MOVDA32( out_zero_bias);
     
     const ae_int32x2 ma = AE_MOVDA32(inp1_multiplier);
     const ae_int32x2 mb = AE_MOVDA32(inp2_multiplier);
-    const ae_int32x2 mc = AE_MOVDA32( out_multiplier);	// Multiplier into 32x2 variable
+    const ae_int32x2 mc = AE_MOVDA32( out_multiplier);  // Multiplier into 32x2 variable
 
     xtbool io_pointers_aligned =    ((uintptr_t)p_a%8 == 0) &&
                                     ((uintptr_t)p_b%8 == 0) &&
@@ -340,25 +339,31 @@ WORD32 xa_nn_elm_add_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
             AE_L8X8_IP(a0_7, (ae_int8x8 *)p_a, 8*sizeof(WORD8));
             AE_L8X8_IP(b0_7, (ae_int8x8 *)p_b, 8*sizeof(WORD8));
 
-            AE_SUBW8(a0_3, a4_7, a0_7, za);					// add zero biases
+            // add zero biases
+            AE_SUBW8(a0_3, a4_7, a0_7, za);                                 
             AE_SUBW8(b0_3, b4_7, b0_7, zb);
 
-            AE_CVTA32X4F16S(shifted_a0_1, shifted_a2_3, a0_3, left_shift);	// LSH and promote to 32-bit
+            // LSH (and promote to 32-bit)
+            AE_CVTA32X4F16S(shifted_a0_1, shifted_a2_3, a0_3, left_shift);
             AE_CVTA32X4F16S(shifted_a4_5, shifted_a6_7, a4_7, left_shift);
 
             AE_CVTA32X4F16S(shifted_b0_1, shifted_b2_3, b0_3, left_shift);
             AE_CVTA32X4F16S(shifted_b4_5, shifted_b6_7, b4_7, left_shift);
 
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_a0_1, shifted_a0_1, ma, inp1_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_a2_3, shifted_a2_3, ma, inp1_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_a4_5, shifted_a4_5, ma, inp1_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_a6_7, shifted_a6_7, ma, inp1_left_shift);
+            // Scaled input, MultiplyByQuantizedMultiplierSmallerThanOneExp
+            AE_MULF2P32X4RAS(scaled_a0_1, scaled_a2_3, shifted_a0_1, shifted_a2_3, ma, ma);
+            AE_MULF2P32X4RAS(scaled_a4_5, scaled_a6_7, shifted_a4_5, shifted_a6_7, ma, ma);
+            scaled_a0_1 = AE_SRAA32SYMS(scaled_a0_1, -inp1_left_shift);
+            scaled_a2_3 = AE_SRAA32SYMS(scaled_a2_3, -inp1_left_shift);
+            scaled_a4_5 = AE_SRAA32SYMS(scaled_a4_5, -inp1_left_shift);
+            scaled_a6_7 = AE_SRAA32SYMS(scaled_a6_7, -inp1_left_shift);
 
-
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_b0_1, shifted_b0_1, mb, inp2_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_b2_3, shifted_b2_3, mb, inp2_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_b4_5, shifted_b4_5, mb, inp2_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_b6_7, shifted_b6_7, mb, inp2_left_shift);
+            AE_MULF2P32X4RAS(scaled_b0_1, scaled_b2_3, shifted_b0_1, shifted_b2_3, mb, mb);
+            AE_MULF2P32X4RAS(scaled_b4_5, scaled_b6_7, shifted_b4_5, shifted_b6_7, mb, mb);
+            scaled_b0_1 = AE_SRAA32SYMS(scaled_b0_1, -inp2_left_shift);
+            scaled_b2_3 = AE_SRAA32SYMS(scaled_b2_3, -inp2_left_shift);
+            scaled_b4_5 = AE_SRAA32SYMS(scaled_b4_5, -inp2_left_shift);
+            scaled_b6_7 = AE_SRAA32SYMS(scaled_b6_7, -inp2_left_shift);
 
             // Raw Sum
             raw_sum0_1 = AE_ADD32S(scaled_a0_1, scaled_b0_1);
@@ -366,18 +371,21 @@ WORD32 xa_nn_elm_add_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
             raw_sum4_5 = AE_ADD32S(scaled_a4_5, scaled_b4_5);
             raw_sum6_7 = AE_ADD32S(scaled_a6_7, scaled_b6_7);
 
-            // Raw Output
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(out0_1, raw_sum0_1, mc, out_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(out2_3, raw_sum2_3, mc, out_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(out4_5, raw_sum4_5, mc, out_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(out6_7, raw_sum6_7, mc, out_left_shift);
+            // Raw Output, MultiplyByQuantizedMultiplierSmallerThanOneExp
+            AE_MULF2P32X4RAS(out0_1, out2_3, raw_sum0_1, raw_sum2_3, mc, mc);
+            AE_MULF2P32X4RAS(out4_5, out6_7, raw_sum4_5, raw_sum6_7, mc, mc);
+            out0_1 = AE_SRAA32SYMS(out0_1, -out_left_shift);
+            out2_3 = AE_SRAA32SYMS(out2_3, -out_left_shift);
+            out4_5 = AE_SRAA32SYMS(out4_5, -out_left_shift);
+            out6_7 = AE_SRAA32SYMS(out6_7, -out_left_shift);
 
+            // Add out zero bias
             out0_1 = AE_ADD32S(out0_1, zc);
             out2_3 = AE_ADD32S(out2_3, zc);
             out4_5 = AE_ADD32S(out4_5, zc);
             out6_7 = AE_ADD32S(out6_7, zc);
 
-            // clamped_out
+            // Clamp output
             AE_MINMAX32(out0_1, activation_min, activation_max);
             AE_MINMAX32(out2_3, activation_min, activation_max);
             AE_MINMAX32(out4_5, activation_min, activation_max);
@@ -386,7 +394,6 @@ WORD32 xa_nn_elm_add_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
             // Store Output
             c0_3 = AE_SEL32I(out0_1, out2_3, 8);
             c4_7 = AE_SEL32I(out4_5, out6_7, 8);
-
             ae_int8x8 res = AE_SEL8X8I(AE_MOVINT8X8_FROMINT32X2(c0_3), AE_MOVINT8X8_FROMINT32X2(c4_7), 25);
 
             AE_S8X8_IP(res, (ae_int8x8 *)p_c, 8);
@@ -399,63 +406,72 @@ WORD32 xa_nn_elm_add_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
         for(i=0; i<num_simd8_ops; i++){
             AE_LA8X8_IP(a0_7, va_a, (ae_int8x8 *)p_a);
             AE_LA8X8_IP(b0_7, va_b, (ae_int8x8 *)p_b);
-            
+
+            // Add input zero bias
             AE_SUBW8(a0_3, a4_7, a0_7, za);
             AE_SUBW8(b0_3, b4_7, b0_7, zb);
-            
-            AE_CVTA32X4F16S(shifted_a0_1, shifted_a2_3, a0_3, left_shift);	// LSH and promote to 32-bit
+
+            // LSH (and promote to 32-bit)
+            AE_CVTA32X4F16S(shifted_a0_1, shifted_a2_3, a0_3, left_shift);
             AE_CVTA32X4F16S(shifted_a4_5, shifted_a6_7, a4_7, left_shift);
-            
+
             AE_CVTA32X4F16S(shifted_b0_1, shifted_b2_3, b0_3, left_shift);
             AE_CVTA32X4F16S(shifted_b4_5, shifted_b6_7, b4_7, left_shift);
-            
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_a0_1, shifted_a0_1, ma, inp1_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_a2_3, shifted_a2_3, ma, inp1_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_a4_5, shifted_a4_5, ma, inp1_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_a6_7, shifted_a6_7, ma, inp1_left_shift);
-            
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_b0_1, shifted_b0_1, mb, inp2_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_b2_3, shifted_b2_3, mb, inp2_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_b4_5, shifted_b4_5, mb, inp2_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(scaled_b6_7, shifted_b6_7, mb, inp2_left_shift);
-            
+
+            // Scaled input, MultiplyByQuantizedMultiplierSmallerThanOneExp
+            AE_MULF2P32X4RAS(scaled_a0_1, scaled_a2_3, shifted_a0_1, shifted_a2_3, ma, ma);
+            AE_MULF2P32X4RAS(scaled_a4_5, scaled_a6_7, shifted_a4_5, shifted_a6_7, ma, ma);
+            scaled_a0_1 = AE_SRAA32SYMS(scaled_a0_1, -inp1_left_shift);
+            scaled_a2_3 = AE_SRAA32SYMS(scaled_a2_3, -inp1_left_shift);
+            scaled_a4_5 = AE_SRAA32SYMS(scaled_a4_5, -inp1_left_shift);
+            scaled_a6_7 = AE_SRAA32SYMS(scaled_a6_7, -inp1_left_shift);
+
+            AE_MULF2P32X4RAS(scaled_b0_1, scaled_b2_3, shifted_b0_1, shifted_b2_3, mb, mb);
+            AE_MULF2P32X4RAS(scaled_b4_5, scaled_b6_7, shifted_b4_5, shifted_b6_7, mb, mb);
+            scaled_b0_1 = AE_SRAA32SYMS(scaled_b0_1, -inp2_left_shift);
+            scaled_b2_3 = AE_SRAA32SYMS(scaled_b2_3, -inp2_left_shift);
+            scaled_b4_5 = AE_SRAA32SYMS(scaled_b4_5, -inp2_left_shift);
+            scaled_b6_7 = AE_SRAA32SYMS(scaled_b6_7, -inp2_left_shift);
+
             // Raw Sum
             raw_sum0_1 = AE_ADD32S(scaled_a0_1, scaled_b0_1);
             raw_sum2_3 = AE_ADD32S(scaled_a2_3, scaled_b2_3);
             raw_sum4_5 = AE_ADD32S(scaled_a4_5, scaled_b4_5);
             raw_sum6_7 = AE_ADD32S(scaled_a6_7, scaled_b6_7);
-            
-            // Raw Output
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(out0_1, raw_sum0_1, mc, out_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(out2_3, raw_sum2_3, mc, out_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(out4_5, raw_sum4_5, mc, out_left_shift);
-            MultiplyByQuantizedMultiplierSmallerThanOneExp(out6_7, raw_sum6_7, mc, out_left_shift);
-            
+
+            // Raw Output, MultiplyByQuantizedMultiplierSmallerThanOneExp
+            AE_MULF2P32X4RAS(out0_1, out2_3, raw_sum0_1, raw_sum2_3, mc, mc);
+            AE_MULF2P32X4RAS(out4_5, out6_7, raw_sum4_5, raw_sum6_7, mc, mc);
+            out0_1 = AE_SRAA32SYMS(out0_1, -out_left_shift);
+            out2_3 = AE_SRAA32SYMS(out2_3, -out_left_shift);
+            out4_5 = AE_SRAA32SYMS(out4_5, -out_left_shift);
+            out6_7 = AE_SRAA32SYMS(out6_7, -out_left_shift);
+
+            // Add out zero bias
             out0_1 = AE_ADD32S(out0_1, zc);
             out2_3 = AE_ADD32S(out2_3, zc);
             out4_5 = AE_ADD32S(out4_5, zc);
             out6_7 = AE_ADD32S(out6_7, zc);
-            
-            // clamped_out
+
+            // Clamp output
             AE_MINMAX32(out0_1, activation_min, activation_max);
             AE_MINMAX32(out2_3, activation_min, activation_max);
             AE_MINMAX32(out4_5, activation_min, activation_max);
             AE_MINMAX32(out6_7, activation_min, activation_max);
-            
+
             // Store Output
             c0_3 = AE_SEL32I(out0_1, out2_3, 8);
             c4_7 = AE_SEL32I(out4_5, out6_7, 8);
             ae_int8x8 res = AE_SEL8X8I(AE_MOVINT8X8_FROMINT32X2(c0_3), AE_MOVINT8X8_FROMINT32X2(c4_7), 25);
-            
+
             AE_SA8X8_IP(res, va_c, (ae_int8x8 *)p_c);
         }
-        
         AE_SA64POS_FP(va_c, p_c);
     }
 
     for(i=0; i<num_scalar_ops; i++) {
-    ae_int32 a, b;
-    ae_int32x2 res, res_ab, multiplier_ab;
+        ae_int32 a, b;
+        ae_int32x2 res, res_ab, multiplier_ab;
 
         a = (ae_int32)(p_a[i] + inp1_zero_bias);            // add input biases
         b = (ae_int32)(p_b[i] + inp2_zero_bias);
@@ -466,7 +482,7 @@ WORD32 xa_nn_elm_add_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
         multiplier_ab = AE_MOVDA32X2(inp1_multiplier, inp2_multiplier);
         res_ab = AE_MULFP32X2RAS(res_ab, multiplier_ab);    // multiply inputs with respective multipliers
 
-        a = AE_MOVAD32_H(res_ab);	b = AE_MOVAD32_L(res_ab);
+        a = AE_MOVAD32_H(res_ab);   b = AE_MOVAD32_L(res_ab);
 
         a = AE_SRAA32SYMS(a, -inp1_left_shift);             // shift inputs with respective shifters
         b = AE_SRAA32SYMS(b, -inp2_left_shift);

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,10 +20,9 @@
 
 ******************************************************************************/
 #include <string.h>
-#include <xtensa/tie/xt_hifi2.h>
+#include "xa_nnlib_common.h"
 #include "common_fpu.h"
 #include "xa_nnlib_cnn_api.h"
-#include "xa_nnlib_api.h"
 
 #define ALIGN_MEM(_sptr) (((unsigned)((_sptr)+7))&(~7))
 #define ALIGN_SIZE(n) (((n)+7)&(~7))
@@ -348,6 +347,7 @@ Int32 xa_nnlib_cnn_get_scratch_fast(
                                              config->y_stride,
                                              config->y_padding,
                                              config->output_height,
+                                             config->output_channels,
                                              inp_precision);
   }
   else if(config->algo == XA_NNLIB_CNN_CONV2D_DS)

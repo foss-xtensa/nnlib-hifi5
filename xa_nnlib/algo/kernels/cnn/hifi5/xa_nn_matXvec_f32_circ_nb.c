@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,10 +19,8 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include<stdio.h>
-#include "xa_type_def.h"
 #include "common_fpu.h"
-#include "xtensa/tie/xt_hifi2.h"
+#include "xa_nnlib_common.h"
 
 #if HAVE_VFPU
 
@@ -37,7 +35,7 @@
   xtfloatx2 accu1_1_ ##N;\
   xtfloatx4 *p_mat1_ ##N = (xtfloatx4*)&p_mat[(row+N)*cols]; \
   accu1_ ##N = (xtfloatx2)0.0f; \
-  accu1_1_ ##N = (xtfloatx2)0.0f; 
+  accu1_1_ ##N = (xtfloatx2)0.0f;
 
 #define KERNEL_ROW_S(N) \
 { \
@@ -56,31 +54,31 @@
   AE_LSX2XC(temp_src2,p_src1, 8); \
   MADD_SX2X2(accu1_ ##N, accu1_1_ ##N, temp_src1, temp_src2, temp_in1, temp_in2);\
 }
-  
+
 #define STORE_ROW_S(N) \
   accu1_ ##N =(accu1_ ##N + accu1_1_ ##N);\
   xtfloat raccu1_ ##N = RADD_SX2(accu1_ ##N); \
   xtfloat bias_ ##N = p_bias[row+N]; \
-  p_out[(row+N)*out_offset] = ADD_S(raccu1_ ##N , bias_ ##N); 
+  p_out[(row+N)*out_offset] = ADD_S(raccu1_ ##N , bias_ ##N);
 
-#if (UNROLL_S == 1)  
+#if (UNROLL_S == 1)
 #define SETUP_S SETUP_ROW_S(0)
 #define KERNEL_S KERNEL_ROW_S_I(0)
 #define STORE_S STORE_ROW_S(0)
 
 #elif (UNROLL_S == 2)
-#define SETUP_S  SETUP_ROW_S(0)  SETUP_ROW_S(1) 
+#define SETUP_S  SETUP_ROW_S(0)  SETUP_ROW_S(1)
 #define KERNEL_S KERNEL_ROW_S_I(0) KERNEL_ROW_S(1)
-#define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1) 
+#define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1)
 
 #elif (UNROLL_S == 4)
-#define SETUP_S  SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3) 
+#define SETUP_S  SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3)
 #define KERNEL_S KERNEL_ROW_S_I(0) KERNEL_ROW_S(1) KERNEL_ROW_S(2) KERNEL_ROW_S(3)
-#define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3) 
+#define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3)
 #elif (UNROLL_S == 8)
-#define SETUP_S   SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3)  SETUP_ROW_S(4)  SETUP_ROW_S(5)  SETUP_ROW_S(6)  SETUP_ROW_S(7) 
+#define SETUP_S   SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3)  SETUP_ROW_S(4)  SETUP_ROW_S(5)  SETUP_ROW_S(6)  SETUP_ROW_S(7)
 #define KERNEL_S KERNEL_ROW_S_I(0) KERNEL_ROW_S(1) KERNEL_ROW_S(2) KERNEL_ROW_S(3) KERNEL_ROW_S(4) KERNEL_ROW_S(5) KERNEL_ROW_S(6) KERNEL_ROW_S(7)
-#define STORE_S   STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3)  STORE_ROW_S(4)  STORE_ROW_S(5)  STORE_ROW_S(6)  STORE_ROW_S(7) 
+#define STORE_S   STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3)  STORE_ROW_S(4)  STORE_ROW_S(5)  STORE_ROW_S(6)  STORE_ROW_S(7)
 
 #endif
 
@@ -89,7 +87,7 @@ WORD32 xa_nn_matXvec_f32_circ_nb(
   FLOAT32 * __restrict__ p_mat,
   FLOAT32 * __restrict__ p_vec,
   FLOAT32 * __restrict__ p_bias,
-  WORD32 rows, 
+  WORD32 rows,
   WORD32 cols,
   WORD32 out_offset)
 {
@@ -115,34 +113,34 @@ WORD32 xa_nn_matXvec_f32_circ_nb(
         {
           xtfloatx2 *p_src1 = (xtfloatx2 *)p_vec;
           SETUP_S;
-          for (col = 0; col < (cols>>2); col++) 
-          { 
+          for (col = 0; col < (cols>>2); col++)
+          {
               KERNEL_S;
           }
           STORE_S;
         }
       }
-      // Handle remaining rows 
+      // Handle remaining rows
       for (; row < rows ; row++)
       {
         xtfloatx2 *p_src1 = (xtfloatx2*)p_vec;
         xtfloatx2 accu1_0;
-        xtfloatx2 temp_in1; 
-        xtfloatx2 temp_in2; 
-        xtfloatx2 *p_mat1_0 = (xtfloatx2*)&p_mat[(row)*cols]; 
-        accu1_0 = (xtfloatx2)0.0f; 
-        for (col = 0; col < (cols>>2); col++) 
-        { 
-            AE_LSX2IP(temp_in1,p_mat1_0,8); 
+        xtfloatx2 temp_in1;
+        xtfloatx2 temp_in2;
+        xtfloatx2 *p_mat1_0 = (xtfloatx2*)&p_mat[(row)*cols];
+        accu1_0 = (xtfloatx2)0.0f;
+        for (col = 0; col < (cols>>2); col++)
+        {
+            AE_LSX2IP(temp_in1,p_mat1_0,8);
             AE_LSX2XC(temp_src1,p_src1,8);
             MADD_SX2(accu1_0,temp_src1,temp_in1);
-            AE_LSX2IP(temp_in2,p_mat1_0,8); 
+            AE_LSX2IP(temp_in2,p_mat1_0,8);
             AE_LSX2XC(temp_src2,p_src1,8);
             MADD_SX2(accu1_0,temp_src2,temp_in2);
-        } 
-        xtfloat raccu1_0 = RADD_SX2(accu1_0); 
-        xtfloat bias_0 = p_bias[row]; 
-        p_out[(row)*out_offset] = ADD_S(raccu1_0 , bias_0); 
+        }
+        xtfloat raccu1_0 = RADD_SX2(accu1_0);
+        xtfloat bias_0 = p_bias[row];
+        p_out[(row)*out_offset] = ADD_S(raccu1_0 , bias_0);
       }
   }
   else
@@ -154,21 +152,21 @@ WORD32 xa_nn_matXvec_f32_circ_nb(
       {
         xtfloat *p_src1 = (xtfloat*)p_vec;
         xtfloat accu1_0;
-        xtfloat temp_in1; 
-        xtfloat temp_in2; 
-        xtfloat *p_mat1_0 = (xtfloat*)&p_mat[(row)*cols]; 
-        accu1_0 = (xtfloat)0.0f; 
-        for (col = 0; col < cols>>1; col++) 
-        { 
-            AE_LSIP(temp_in1,p_mat1_0,4); 
+        xtfloat temp_in1;
+        xtfloat temp_in2;
+        xtfloat *p_mat1_0 = (xtfloat*)&p_mat[(row)*cols];
+        accu1_0 = (xtfloat)0.0f;
+        for (col = 0; col < cols>>1; col++)
+        {
+            AE_LSIP(temp_in1,p_mat1_0,4);
             AE_LSXC(temp_src1,p_src1,4);
             MADD_S(accu1_0,temp_src1,temp_in1);
-            AE_LSIP(temp_in2,p_mat1_0,4); 
+            AE_LSIP(temp_in2,p_mat1_0,4);
             AE_LSXC(temp_src2,p_src1,4);
             MADD_S(accu1_0,temp_src2,temp_in2);
-        } 
-        xtfloat bias_0 = p_bias[row]; 
-        p_out[(row)*out_offset] = ADD_S(accu1_0 , bias_0); 
+        }
+        xtfloat bias_0 = p_bias[row];
+        p_out[(row)*out_offset] = ADD_S(accu1_0 , bias_0);
       }
   }
   return 0;

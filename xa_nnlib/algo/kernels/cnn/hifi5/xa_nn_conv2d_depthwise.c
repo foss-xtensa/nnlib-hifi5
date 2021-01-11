@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -365,6 +365,7 @@ WORD32 xa_nn_conv2d_depthwise_getsize
      (inp_data_format == 0)
      )
   {
+    WORD32 out_channels = 0;/*Dummy variable for conv2d_std out_channels argument*/
     /* Alignment */
     total_size_generic_case = ALIGNMENT_16;
     /* Scratch buffer for rearranged kernel in NCHW format */ 
@@ -378,6 +379,7 @@ WORD32 xa_nn_conv2d_depthwise_getsize
        ,y_stride
        ,y_padding
        ,output_height
+       ,out_channels
        ,circ_buf_precision
       );
   }

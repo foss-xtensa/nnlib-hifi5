@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -31,6 +31,7 @@ WORD32 xa_nn_conv2d_std_getsize(
     WORD32 y_stride,
     WORD32 y_padding,
     WORD32 out_height,
+    WORD32 output_channels,
     WORD32 input_precision)
 {
   XA_NNLIB_CHK_COND((input_height <= 0), -1);
@@ -41,6 +42,9 @@ WORD32 xa_nn_conv2d_std_getsize(
   XA_NNLIB_CHK_COND((y_stride <= 0), -1);
   XA_NNLIB_CHK_COND((y_padding < 0), -1);
   XA_NNLIB_CHK_COND((out_height <= 0), -1);
+
+  /* Unused. HiFi4 API compatibility */
+  (void)output_channels;
 
   WORD32 mem_req = 0;
   WORD32 input_size;

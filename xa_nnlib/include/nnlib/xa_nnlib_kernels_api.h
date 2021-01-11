@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -812,6 +812,7 @@ WORD32 xa_nn_conv2d_std_getsize(
     WORD32 y_stride,
     WORD32 y_padding,
     WORD32 out_height,
+    WORD32 out_channels,
     WORD32 input_precision);
 
 WORD32 xa_nn_conv2d_std_8x16(
@@ -1064,76 +1065,76 @@ WORD32 xa_nn_conv2d_pointwise_16x16
   );
 
 WORD32 xa_nn_avgpool_8(
-    WORD8 *__restrict__ p_out,          /*!< [out] 8b result (WHD): out_height x out_width x input_channels */
-    WORD8 *__restrict__ p_inp,          /*!< [in] 8b input cube (WHD): input_height x input_width x input_channels */
-    WORD32  input_height,               /*!< [in] input height*/
-    WORD32  input_width,                /*!< [in] input width */
-    WORD32  input_channels,             /*!< [in] input channels */
-    WORD32  kernel_height,              /*!< [in] pooling window height */
-    WORD32  kernel_width,               /*!< [in] pooling window width */
-    WORD32  x_stride,                   /*!< [in] horizontal stride */
-    WORD32  y_stride,                   /*!< [in] vertical stride */
-    WORD32  x_padding,                  /*!< [in] left padding width */
-    WORD32  y_padding,                  /*!< [in] top padding height */
-    WORD32  out_height,                 /*!< [in] output height */
-    WORD32  out_width,                  /*!< [in] output width */
-    WORD32  inp_data_format,            /*!< [in] input data format: WHD */
-    WORD32  out_data_format,            /*!< [in] output data format: WHD */
-    VOID *p_scratch);                   /*!< [in] scratch memory of size given by xa_nn_avgpool_getsize with inp_precision=8 */
+      WORD8 *__restrict__ p_out,          /*!< [out] 8b result (WHD): out_height x out_width x input_channels */
+const WORD8 *__restrict__ p_inp,          /*!< [in] 8b input cube (WHD): input_height x input_width x input_channels */
+      WORD32  input_height,               /*!< [in] input height*/
+      WORD32  input_width,                /*!< [in] input width */
+      WORD32  input_channels,             /*!< [in] input channels */
+      WORD32  kernel_height,              /*!< [in] pooling window height */
+      WORD32  kernel_width,               /*!< [in] pooling window width */
+      WORD32  x_stride,                   /*!< [in] horizontal stride */
+      WORD32  y_stride,                   /*!< [in] vertical stride */
+      WORD32  x_padding,                  /*!< [in] left padding width */
+      WORD32  y_padding,                  /*!< [in] top padding height */
+      WORD32  out_height,                 /*!< [in] output height */
+      WORD32  out_width,                  /*!< [in] output width */
+      WORD32  inp_data_format,            /*!< [in] input data format: WHD */
+      WORD32  out_data_format,            /*!< [in] output data format: WHD */
+      VOID *p_scratch);                   /*!< [in] scratch memory of size given by xa_nn_avgpool_getsize with inp_precision=8 */
 
 WORD32 xa_nn_avgpool_16(
-    WORD16 *__restrict__ p_out,         /*!< [out] 16b result (WHD): out_height x out_width x input_channels */
-    WORD16 *__restrict__ p_inp,         /*!< [in] 16b input cube (WHD): input_height x input_width x input_channels */
-    WORD32  input_height,               /*!< [in] input height*/
-    WORD32  input_width,                /*!< [in] input width */
-    WORD32  input_channels,             /*!< [in] input channels */
-    WORD32  kernel_height,              /*!< [in] pooling window height */
-    WORD32  kernel_width,               /*!< [in] pooling window width */
-    WORD32  x_stride,                   /*!< [in] horizontal stride */
-    WORD32  y_stride,                   /*!< [in] vertical stride */
-    WORD32  x_padding,                  /*!< [in] left padding width */
-    WORD32  y_padding,                  /*!< [in] top padding height */
-    WORD32  out_height,                 /*!< [in] output height */
-    WORD32  out_width,                  /*!< [in] output width */
-    WORD32  inp_data_format,            /*!< [in] input data format: WHD */
-    WORD32  out_data_format,            /*!< [in] output data format: WHD */
-    VOID *p_scratch);                   /*!< [in] scratch memory of size given by xa_nn_avgpool_getsize with inp_precision=16 */
+      WORD16 *__restrict__ p_out,         /*!< [out] 16b result (WHD): out_height x out_width x input_channels */
+const WORD16 *__restrict__ p_inp,         /*!< [in] 16b input cube (WHD): input_height x input_width x input_channels */
+      WORD32  input_height,               /*!< [in] input height*/
+      WORD32  input_width,                /*!< [in] input width */
+      WORD32  input_channels,             /*!< [in] input channels */
+      WORD32  kernel_height,              /*!< [in] pooling window height */
+      WORD32  kernel_width,               /*!< [in] pooling window width */
+      WORD32  x_stride,                   /*!< [in] horizontal stride */
+      WORD32  y_stride,                   /*!< [in] vertical stride */
+      WORD32  x_padding,                  /*!< [in] left padding width */
+      WORD32  y_padding,                  /*!< [in] top padding height */
+      WORD32  out_height,                 /*!< [in] output height */
+      WORD32  out_width,                  /*!< [in] output width */
+      WORD32  inp_data_format,            /*!< [in] input data format: WHD */
+      WORD32  out_data_format,            /*!< [in] output data format: WHD */
+      VOID *p_scratch);                   /*!< [in] scratch memory of size given by xa_nn_avgpool_getsize with inp_precision=16 */
 
 WORD32 xa_nn_avgpool_f32(
-        FLOAT32 *__restrict__ p_out,        /*!< [out] f32b result (WHD) : out_height x out_width x input_channels */
-const   FLOAT32 *__restrict__ p_inp,        /*!< [in] f32b input cube (WHD) : input_height x input_width x input_channels */
-        WORD32  input_height,               /*!< [in] input height*/
-        WORD32  input_width,                /*!< [in] input width */
-        WORD32  input_channels,             /*!< [in] input channels */
-        WORD32  kernel_height,              /*!< [in] pooling window height */
-        WORD32  kernel_width,               /*!< [in] pooling window width */
-        WORD32  x_stride,                   /*!< [in] horizontal stride */
-        WORD32  y_stride,                   /*!< [in] vertical stride */
-        WORD32  x_padding,                  /*!< [in] left padding width */
-        WORD32  y_padding,                  /*!< [in] top padding height */
-        WORD32  out_height,                 /*!< [in] output height */
-        WORD32  out_width,                  /*!< [in] output width */
-        WORD32  inp_data_format,            /*!< [in] input data format: WHD */
-        WORD32  out_data_format,            /*!< [in] output data format: WHD */
-        VOID *p_scratch);                   /*!< [in] scratch memory of size given by xa_nn_avgpool_getsize with inp_precision=-1 */
+      FLOAT32 *__restrict__ p_out,        /*!< [out] f32b result (WHD) : out_height x out_width x input_channels */
+const FLOAT32 *__restrict__ p_inp,        /*!< [in] f32b input cube (WHD) : input_height x input_width x input_channels */
+      WORD32  input_height,               /*!< [in] input height*/
+      WORD32  input_width,                /*!< [in] input width */
+      WORD32  input_channels,             /*!< [in] input channels */
+      WORD32  kernel_height,              /*!< [in] pooling window height */
+      WORD32  kernel_width,               /*!< [in] pooling window width */
+      WORD32  x_stride,                   /*!< [in] horizontal stride */
+      WORD32  y_stride,                   /*!< [in] vertical stride */
+      WORD32  x_padding,                  /*!< [in] left padding width */
+      WORD32  y_padding,                  /*!< [in] top padding height */
+      WORD32  out_height,                 /*!< [in] output height */
+      WORD32  out_width,                  /*!< [in] output width */
+      WORD32  inp_data_format,            /*!< [in] input data format: WHD */
+      WORD32  out_data_format,            /*!< [in] output data format: WHD */
+      VOID *p_scratch);                   /*!< [in] scratch memory of size given by xa_nn_avgpool_getsize with inp_precision=-1 */
 
 WORD32 xa_nn_avgpool_asym8u(
-        UWORD8* __restrict__ p_out,
-const   UWORD8* __restrict__ p_inp,
-        WORD32  input_height,
-        WORD32  input_width,
-        WORD32  input_channels,
-        WORD32  kernel_height,
-        WORD32  kernel_width,
-        WORD32  x_stride,
-        WORD32  y_stride,
-        WORD32  x_padding,
-        WORD32  y_padding,
-        WORD32  out_height,
-        WORD32  out_width,
-        WORD32  inp_data_format,
-        WORD32  out_data_format,
-        VOID *p_scratch);
+      UWORD8* __restrict__ p_out,
+const UWORD8* __restrict__ p_inp,
+      WORD32  input_height,
+      WORD32  input_width,
+      WORD32  input_channels,
+      WORD32  kernel_height,
+      WORD32  kernel_width,
+      WORD32  x_stride,
+      WORD32  y_stride,
+      WORD32  x_padding,
+      WORD32  y_padding,
+      WORD32  out_height,
+      WORD32  out_width,
+      WORD32  inp_data_format,
+      WORD32  out_data_format,
+      VOID *p_scratch);
 
 WORD32 xa_nn_avgpool_getsize(
     WORD32 input_channels,
@@ -1153,76 +1154,76 @@ WORD32 xa_nn_avgpool_getsize(
     WORD32 out_data_format);
 
 WORD32 xa_nn_maxpool_8(
-    WORD8 *__restrict__ p_out,
-    WORD8 *__restrict__ p_inp ,
-    WORD32  input_height,
-    WORD32  input_width,
-    WORD32  input_channels,
-    WORD32  kernel_height,
-    WORD32  kernel_width,
-    WORD32  x_stride,
-    WORD32  y_stride,
-    WORD32  x_padding,
-    WORD32  y_padding,
-    WORD32  out_height,
-    WORD32  out_width,
-    WORD32  inp_data_format,
-    WORD32  out_data_format,
-    VOID   *p_scratch);
+      WORD8 *__restrict__ p_out,
+const WORD8 *__restrict__ p_inp ,
+      WORD32  input_height,
+      WORD32  input_width,
+      WORD32  input_channels,
+      WORD32  kernel_height,
+      WORD32  kernel_width,
+      WORD32  x_stride,
+      WORD32  y_stride,
+      WORD32  x_padding,
+      WORD32  y_padding,
+      WORD32  out_height,
+      WORD32  out_width,
+      WORD32  inp_data_format,
+      WORD32  out_data_format,
+      VOID   *p_scratch);
 
 WORD32 xa_nn_maxpool_16(
-    WORD16 *__restrict__ p_out,
-    WORD16 *__restrict__ p_inp ,
-    WORD32  input_height,
-    WORD32  input_width,
-    WORD32  input_channels,
-    WORD32  kernel_height,
-    WORD32  kernel_width,
-    WORD32  x_stride,
-    WORD32  y_stride,
-    WORD32  x_padding,
-    WORD32  y_padding,
-    WORD32  out_height,
-    WORD32  out_width,
-    WORD32  inp_data_format,
-    WORD32  out_data_format,
-    VOID   *p_scratch);
+      WORD16 *__restrict__ p_out,
+const WORD16 *__restrict__ p_inp ,
+      WORD32  input_height,
+      WORD32  input_width,
+      WORD32  input_channels,
+      WORD32  kernel_height,
+      WORD32  kernel_width,
+      WORD32  x_stride,
+      WORD32  y_stride,
+      WORD32  x_padding,
+      WORD32  y_padding,
+      WORD32  out_height,
+      WORD32  out_width,
+      WORD32  inp_data_format,
+      WORD32  out_data_format,
+      VOID   *p_scratch);
 
 WORD32 xa_nn_maxpool_f32(
-        FLOAT32 *__restrict__ p_out,
-const   FLOAT32 *__restrict__ p_inp ,
-        WORD32  input_height,
-        WORD32  input_width,
-        WORD32  input_channels,
-        WORD32  kernel_height,
-        WORD32  kernel_width,
-        WORD32  x_stride,
-        WORD32  y_stride,
-        WORD32  x_padding,
-        WORD32  y_padding,
-        WORD32  out_height,
-        WORD32  out_width,
-        WORD32  inp_data_format,            /*!< [in] input data format: WHD */
-        WORD32  out_data_format,
-        VOID   *p_scratch);
+      FLOAT32 *__restrict__ p_out,
+const FLOAT32 *__restrict__ p_inp ,
+      WORD32  input_height,
+      WORD32  input_width,
+      WORD32  input_channels,
+      WORD32  kernel_height,
+      WORD32  kernel_width,
+      WORD32  x_stride,
+      WORD32  y_stride,
+      WORD32  x_padding,
+      WORD32  y_padding,
+      WORD32  out_height,
+      WORD32  out_width,
+      WORD32  inp_data_format,            /*!< [in] input data format: WHD */
+      WORD32  out_data_format,
+      VOID   *p_scratch);
 
 WORD32 xa_nn_maxpool_asym8u(
-        UWORD8* __restrict__ p_out,
-const   UWORD8* __restrict__ p_inp,
-        WORD32  input_height,
-        WORD32  input_width,
-        WORD32  input_channels,
-        WORD32  kernel_height,
-        WORD32  kernel_width,
-        WORD32  x_stride,
-        WORD32  y_stride,
-        WORD32  x_padding,
-        WORD32  y_padding,
-        WORD32  out_height,
-        WORD32  out_width,
-        WORD32  inp_data_format,
-        WORD32  out_data_format,
-        VOID   *p_scratch);
+      UWORD8* __restrict__ p_out,
+const UWORD8* __restrict__ p_inp,
+      WORD32  input_height,
+      WORD32  input_width,
+      WORD32  input_channels,
+      WORD32  kernel_height,
+      WORD32  kernel_width,
+      WORD32  x_stride,
+      WORD32  y_stride,
+      WORD32  x_padding,
+      WORD32  y_padding,
+      WORD32  out_height,
+      WORD32  out_width,
+      WORD32  inp_data_format,
+      WORD32  out_data_format,
+      VOID   *p_scratch);
 
 WORD32 xa_nn_maxpool_getsize(
         WORD32 input_channels,
@@ -1355,6 +1356,14 @@ WORD32 xa_nn_vec_sigmoid_asym8u_asym8u(UWORD8 *p_out,
                             WORD32 input_left_shift,
                             WORD32 vec_length);
 
+WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
+                      const WORD8 *p_vec,
+                            WORD32 zero_point,
+                            WORD32 input_range_radius,
+                            WORD32 input_multiplier,
+                            WORD32 input_left_shift,
+                            WORD32 vec_length);
+
 int get_softmax_scratch_size(int inp_precision, int out_precision, int length);
 
 WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
@@ -1368,6 +1377,56 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
                                       int    activation_min,
                                       int    activation_max,
                                       WORD32 vec_length);
+
+WORD32 xa_nn_vec_relu_asym8u_asym8u( UWORD8 * __restrict__ p_out,
+                    const   UWORD8 * __restrict__ p_vec,
+                            WORD32 inp_zero_bias,
+                            WORD32 out_multiplier,
+                            WORD32 out_shift,
+                            WORD32 out_zero_bias,
+                            WORD32 quantized_activation_min,
+                            WORD32 quantized_activation_max,
+                            WORD32 vec_length);
+
+WORD32 xa_nn_vec_relu_asym8s_asym8s( WORD8 * __restrict__ p_out,
+                    const   WORD8 * __restrict__ p_vec,
+                            WORD32 inp_zero_bias,
+                            WORD32 out_multiplier,
+                            WORD32 out_shift,
+                            WORD32 out_zero_bias,
+                            WORD32 quantized_activation_min,
+                            WORD32 quantized_activation_max,
+                            WORD32 vec_length);
+
+WORD32 xa_nn_vec_prelu_asym8s_asym8s( WORD8 * __restrict__ p_out,
+                    const   WORD8 * __restrict__ p_vec,
+                    const   WORD8 * __restrict__ p_vec_alpha,
+                            WORD32 inp_zero_bias,
+                            WORD32 alpha_zero_bias,
+                            WORD32 alpha_multiplier,
+                            WORD32 alpha_shift,
+                            WORD32 out_multiplier,
+                            WORD32 out_shift,
+                            WORD32 out_zero_bias,
+                            WORD32 vec_length);
+
+WORD32 xa_nn_vec_hard_swish_asym8s_asym8s( WORD8 * __restrict__ p_out,
+                    const   WORD8 * __restrict__ p_vec,
+                            WORD32 inp_zero_bias,
+                            WORD16 reluish_multiplier,
+                            WORD32 reluish_shift,
+                            WORD16 out_multiplier,
+                            WORD32 out_shift,
+                            WORD32 out_zero_bias,
+                            WORD32 vec_length);
+
+WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
+                      const WORD8 *p_vec,
+                            WORD32 zero_point,
+                            WORD32 input_range_radius,
+                            WORD32 input_multiplier,
+                            WORD32 input_left_shift,
+                            WORD32 vec_length);
 
 WORD32 xa_nn_conv1d_std_asym8uxasym8u(
     UWORD8* __restrict__ p_out,
@@ -1634,6 +1693,40 @@ WORD32 xa_nn_elm_add_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
                             WORD32  left_shift,
                             WORD32  num_elm);
 
+WORD32 xa_nn_elm_sub_asym8uxasym8u_asym8u(UWORD8 * __restrict__ p_out,
+                            WORD32  out_zero_bias,
+                            WORD32  out_left_shift,
+                            WORD32  out_multiplier,
+                            WORD32  out_activation_min,
+                            WORD32  out_activation_max,
+                    const   UWORD8 * __restrict__ p_inp1,
+                            WORD32  inp1_zero_bias,
+                            WORD32  inp1_left_shift,
+                            WORD32  inp1_multiplier,
+                    const   UWORD8 * __restrict__ p_inp2,
+                            WORD32  inp2_zero_bias,
+                            WORD32  inp2_left_shift,
+                            WORD32  inp2_multiplier,
+                            WORD32  left_shift,
+                            WORD32  num_elm);
+
+WORD32 xa_nn_elm_sub_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
+                            WORD32  out_zero_bias,
+                            WORD32  out_left_shift,
+                            WORD32  out_multiplier,
+                            WORD32  out_activation_min,
+                            WORD32  out_activation_max,
+                    const    WORD8 * __restrict__ p_inp1,
+                            WORD32  inp1_zero_bias,
+                            WORD32  inp1_left_shift,
+                            WORD32  inp1_multiplier,
+                    const    WORD8 * __restrict__ p_inp2,
+                            WORD32  inp2_zero_bias,
+                            WORD32  inp2_left_shift,
+                            WORD32  inp2_multiplier,
+                            WORD32  left_shift,
+                            WORD32  num_elm);
+
 WORD32 xa_nn_elm_mul_asym8uxasym8u_asym8u(UWORD8 * __restrict__ p_out,
                             WORD32  out_zero_bias,
                             WORD32  out_shift,
@@ -1674,6 +1767,88 @@ WORD32 xa_nn_elm_quantize_asym16s_asym32s(WORD32 * __restrict__ p_out,
                                     WORD32  out_multiplier,
                                     WORD32  num_elm);
 
+WORD32 xa_nn_elm_max_8x8_8(  WORD8* __restrict__ p_out,
+                       const WORD8* __restrict__ p_in1,
+                       const WORD8* __restrict__ p_in2,
+                             WORD32              num_element);
+
+WORD32 xa_nn_elm_min_8x8_8(  WORD8* __restrict__ p_out,
+                       const WORD8* __restrict__ p_in1,
+                       const WORD8* __restrict__ p_in2,
+                             WORD32              num_element);
+
+WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
+                       const WORD8 * __restrict__ p_inp1,
+                             WORD32  inp1_zero_bias,
+                             WORD32  inp1_shift,
+                             WORD32  inp1_multiplier,
+                       const WORD8 * __restrict__ p_inp2,
+                             WORD32  inp2_zero_bias,
+                             WORD32  inp2_shift,
+                             WORD32  inp2_multiplier,
+                             WORD32  left_shift,
+                             WORD32  num_elm);
+
+WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
+                       const WORD8 * __restrict__ p_inp1,
+                             WORD32  inp1_zero_bias,
+                             WORD32  inp1_shift,
+                             WORD32  inp1_multiplier,
+                       const WORD8 * __restrict__ p_inp2,
+                             WORD32  inp2_zero_bias,
+                             WORD32  inp2_shift,
+                             WORD32  inp2_multiplier,
+                             WORD32  left_shift,
+                             WORD32  num_elm);
+
+WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
+                       const WORD8 * __restrict__ p_inp1,
+                             WORD32  inp1_zero_bias,
+                             WORD32  inp1_shift,
+                             WORD32  inp1_multiplier,
+                       const WORD8 * __restrict__ p_inp2,
+                             WORD32  inp2_zero_bias,
+                             WORD32  inp2_shift,
+                             WORD32  inp2_multiplier,
+                             WORD32  left_shift,
+                             WORD32  num_elm);
+
+WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
+                       const WORD8 * __restrict__ p_inp1,
+                             WORD32  inp1_zero_bias,
+                             WORD32  inp1_shift,
+                             WORD32  inp1_multiplier,
+                       const WORD8 * __restrict__ p_inp2,
+                             WORD32  inp2_zero_bias,
+                             WORD32  inp2_shift,
+                             WORD32  inp2_multiplier,
+                             WORD32  left_shift,
+                             WORD32  num_elm);
+
+WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
+                       const WORD8 * __restrict__ p_inp1,
+                             WORD32  inp1_zero_bias,
+                             WORD32  inp1_shift,
+                             WORD32  inp1_multiplier,
+                       const WORD8 * __restrict__ p_inp2,
+                             WORD32  inp2_zero_bias,
+                             WORD32  inp2_shift,
+                             WORD32  inp2_multiplier,
+                             WORD32  left_shift,
+                             WORD32  num_elm);
+
+WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
+                       const WORD8 * __restrict__ p_inp1,
+                             WORD32  inp1_zero_bias,
+                             WORD32  inp1_shift,
+                             WORD32  inp1_multiplier,
+                       const WORD8 * __restrict__ p_inp2,
+                             WORD32  inp2_zero_bias,
+                             WORD32  inp2_shift,
+                             WORD32  inp2_multiplier,
+                             WORD32  left_shift,
+                             WORD32  num_elm);
+
 WORD32 xa_nn_l2_norm_f32(
     FLOAT32 * __restrict__ p_out,
     const FLOAT32 * __restrict__ p_inp,
@@ -1712,6 +1887,7 @@ WORD32 xa_nn_dot_prod_16x16_asym8s(
 #define xa_nn_vec_sigmoid_asym8_asym8 xa_nn_vec_sigmoid_asym8u_asym8u
 #define xa_nn_elm_mul_asym8xasym8_asym8 xa_nn_elm_mul_asym8uxasym8u_asym8u
 #define xa_nn_elm_add_asym8xasym8_asym8 xa_nn_elm_add_asym8uxasym8u_asym8u
+#define xa_nn_elm_sub_asym8xasym8_asym8 xa_nn_elm_sub_asym8uxasym8u_asym8u
 #define xa_nn_avgpool_asym8 xa_nn_avgpool_asym8u
 #define xa_nn_maxpool_asym8 xa_nn_maxpool_asym8u
 

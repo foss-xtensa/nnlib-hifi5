@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,10 +19,7 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include<stdio.h>
-#include "xa_type_def.h"
-#include "xtensa/tie/xt_hifi2.h"
-
+#include "xa_nnlib_common.h"
 #define UNROLL_D  2
 
 WORD32 xa_nn_matXvec_16x16_16_circ(
@@ -30,11 +27,11 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
   WORD16 * __restrict__ p_mat,
   WORD16 * __restrict__ p_vec,
   WORD16 * __restrict__ p_bias,
-  WORD32 rows, 
-  WORD32 cols, 
+  WORD32 rows,
+  WORD32 cols,
   WORD32 row_offset,
-  WORD32 vec_count, 
-  WORD32 vec_offset, 
+  WORD32 vec_count,
+  WORD32 vec_offset,
   WORD32 out_col_offset,
   WORD32 out_row_offset,
   WORD32 bias_shift,
@@ -92,25 +89,25 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
 
 #pragma ymemory (p_mat1)
 #pragma ymemory (p_mat2)
-            for (col = 0; col < (cols >> 3); col++) 
-            { 
+            for (col = 0; col < (cols >> 3); col++)
+            {
                 ae_int16x4 in11, in12;
                 ae_int16x4 in21, in22;
 
                 ae_int16x4 src11, src12;
                 ae_int16x4 src21, src22;
 
-                AE_LA16X4X2_IC(in11 ,in12, align_mat1 ,p_mat1); 
-                AE_LA16X4X2_IC(in21, in22, align_mat2 ,p_mat2); 
+                AE_LA16X4X2_IC(in11 ,in12, align_mat1 ,p_mat1);
+                AE_LA16X4X2_IC(in21, in22, align_mat2 ,p_mat2);
 
-                AE_LA16X4X2_IP(src11, src12, align_src1, p_src1); 
-                AE_LA16X4X2_IP(src21, src22, align_src2, p_src2); 
+                AE_LA16X4X2_IP(src11, src12, align_src1, p_src1);
+                AE_LA16X4X2_IP(src21, src22, align_src2, p_src2);
 
                 AE_MULAAAA2Q16(accu1, accu2 , src11, src11, in11, in21);
                 AE_MULAAAA2Q16(accu1, accu2 , src12, src12, in12, in22);
                 AE_MULAAAA2Q16(accu3, accu4 , src21, src21, in11, in21);
                 AE_MULAAAA2Q16(accu3, accu4 , src22, src22, in12, in22);
-            } 
+            }
 
             if(cols & 7)
             {
@@ -123,7 +120,7 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
                 AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1, ((row + 0) * row_offset + (cols & ~7)) * sizeof(WORD16));
                 AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat2, ((row + 1) * row_offset + (cols & ~7)) * sizeof(WORD16));
 
-                for (col = 0; col < (cols & 7) ; col++) 
+                for (col = 0; col < (cols & 7) ; col++)
                 {
                     ae_int16x4 in11;
                     ae_int16x4 in21;
@@ -131,11 +128,11 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
                     ae_int16x4 src11;
                     ae_int16x4 src21;
 
-                    AE_L16_XC(in11, (ae_int16 *)p_mat1, 2); 
-                    AE_L16_XC(in21, (ae_int16 *)p_mat2, 2); 
+                    AE_L16_XC(in11, (ae_int16 *)p_mat1, 2);
+                    AE_L16_XC(in21, (ae_int16 *)p_mat2, 2);
 
-                    AE_L16_IP(src11, (ae_int16 *)p_src1, 2); 
-                    AE_L16_IP(src21, (ae_int16 *)p_src2, 2); 
+                    AE_L16_IP(src11, (ae_int16 *)p_src1, 2);
+                    AE_L16_IP(src21, (ae_int16 *)p_src2, 2);
 
                     AE_MULA16_00(accu1, in11, src11);
                     AE_MULA16_00(accu2, in21, src11);
@@ -144,9 +141,9 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
                 }
             }
 
-            accu1 = AE_SLAA64S(accu1, acc_shift); 
+            accu1 = AE_SLAA64S(accu1, acc_shift);
             accu2 = AE_SLAA64S(accu2, acc_shift);
-            accu3 = AE_SLAA64S(accu3, acc_shift); 
+            accu3 = AE_SLAA64S(accu3, acc_shift);
             accu4 = AE_SLAA64S(accu4, acc_shift);
 
             out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
@@ -154,9 +151,9 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
             out = AE_SAT16X4(out1_32, out2_32);
 
             p_dst1[(row+0) * out_row_offset] = AE_MOVAD16_3(out);
-            p_dst1[(row+1) * out_row_offset] = AE_MOVAD16_2(out); 
+            p_dst1[(row+1) * out_row_offset] = AE_MOVAD16_2(out);
             p_dst2[(row+0) * out_row_offset] = AE_MOVAD16_1(out);
-            p_dst2[(row+1) * out_row_offset] = AE_MOVAD16_0(out); 
+            p_dst2[(row+1) * out_row_offset] = AE_MOVAD16_0(out);
         }
 
         /* Process 1 row and 2 vectors for remaining rows */
@@ -182,20 +179,20 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
             align_src2 = AE_LA128_PP(p_src2);
 
 #pragma ymemory (p_mat1)
-            for (col = 0; col < (cols >> 3); col++) 
-            { 
+            for (col = 0; col < (cols >> 3); col++)
+            {
                 ae_int16x4 in11, in12;
                 ae_int16x4 src11, src12;
                 ae_int16x4 src21, src22;
 
-                AE_LA16X4X2_IC(in11 ,in12, align_mat1 ,p_mat1); 
+                AE_LA16X4X2_IC(in11 ,in12, align_mat1 ,p_mat1);
 
-                AE_LA16X4X2_IP(src11, src12, align_src1, p_src1); 
-                AE_LA16X4X2_IP(src21, src22, align_src2, p_src2); 
+                AE_LA16X4X2_IP(src11, src12, align_src1, p_src1);
+                AE_LA16X4X2_IP(src21, src22, align_src2, p_src2);
 
                 AE_MULAAAA2Q16(accu1, accu2 , src11, src21, in11, in11);
                 AE_MULAAAA2Q16(accu1, accu2 , src12, src22, in12, in12);
-            } 
+            }
 
             if(cols & 7)
             {
@@ -206,24 +203,24 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
 
                 AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1, ((row + 0) * row_offset + (cols & ~7)) * sizeof(WORD16));
 
-                for (col = 0; col < (cols & 7) ; col++) 
+                for (col = 0; col < (cols & 7) ; col++)
                 {
                     ae_int16x4 in11;
                     ae_int16x4 src11;
                     ae_int16x4 src21;
 
-                    AE_L16_XC(in11, (ae_int16 *)p_mat1, 2); 
+                    AE_L16_XC(in11, (ae_int16 *)p_mat1, 2);
 
-                    AE_L16_IP(src11, (ae_int16 *)p_src1, 2); 
-                    AE_L16_IP(src21, (ae_int16 *)p_src2, 2); 
+                    AE_L16_IP(src11, (ae_int16 *)p_src1, 2);
+                    AE_L16_IP(src21, (ae_int16 *)p_src2, 2);
 
                     AE_MULA16_00(accu1, in11, src11);
                     AE_MULA16_00(accu2, in11, src21);
                 }
             }
 
-            accu1 = AE_SLAA64S(accu1, acc_shift); 
-            accu2 = AE_SLAA64S(accu2, acc_shift); 
+            accu1 = AE_SLAA64S(accu1, acc_shift);
+            accu2 = AE_SLAA64S(accu2, acc_shift);
             out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
             out = AE_SAT16X4(out1_32, out1_32);
 
@@ -270,18 +267,18 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
 #pragma ymemory (p_mat1)
 #pragma ymemory (p_mat2)
 #pragma ymemory (p_mat3)
-            for (col = 0; col < (cols>>3); col++) 
-            { 
+            for (col = 0; col < (cols>>3); col++)
+            {
                 ae_int16x4 in11, in12;
                 ae_int16x4 in21, in22;
                 ae_int16x4 in31, in32;
                 ae_int16x4 src11, src12;
 
-                AE_LA16X4X2_IC(in11 ,in12, align_mat1 ,p_mat1); 
-                AE_LA16X4X2_IC(in21, in22, align_mat2 ,p_mat2); 
-                AE_LA16X4X2_IC(in31, in32, align_mat3 ,p_mat3); 
+                AE_LA16X4X2_IC(in11 ,in12, align_mat1 ,p_mat1);
+                AE_LA16X4X2_IC(in21, in22, align_mat2 ,p_mat2);
+                AE_LA16X4X2_IC(in31, in32, align_mat3 ,p_mat3);
 
-                AE_LA16X4X2_IP(src11, src12, align_src1, p_src1); 
+                AE_LA16X4X2_IP(src11, src12, align_src1, p_src1);
 
                 AE_MULAAAA2Q16(accu1, accu2 , src11, src11, in11, in21);
                 AE_MULAAAA2Q16(accu1, accu2 , src12, src12, in12, in22);
@@ -300,18 +297,18 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
                 AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat2, ((row + 1) * row_offset + (cols & ~7)) * sizeof(WORD16));
                 AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat3, ((row + 2) * row_offset + (cols & ~7)) * sizeof(WORD16));
 
-                for (col = 0; col < (cols & 7) ; col++) 
+                for (col = 0; col < (cols & 7) ; col++)
                 {
                     ae_int16x4 in11;
                     ae_int16x4 in21;
                     ae_int16x4 in31;
                     ae_int16x4 src11;
 
-                    AE_L16_XC(in11, (ae_int16 *)p_mat1, 2); 
-                    AE_L16_XC(in21, (ae_int16 *)p_mat2, 2); 
-                    AE_L16_XC(in31, (ae_int16 *)p_mat3, 2); 
+                    AE_L16_XC(in11, (ae_int16 *)p_mat1, 2);
+                    AE_L16_XC(in21, (ae_int16 *)p_mat2, 2);
+                    AE_L16_XC(in31, (ae_int16 *)p_mat3, 2);
 
-                    AE_L16_IP(src11, (ae_int16 *)p_src1, 2); 
+                    AE_L16_IP(src11, (ae_int16 *)p_src1, 2);
 
                     AE_MULA16_00(accu1, in11, src11);
                     AE_MULA16_00(accu2, in21, src11);
@@ -320,16 +317,16 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
             }
 
             accu3 = AE_ADD64S(accu3, accu4);
-            accu1 = AE_SLAA64S(accu1, acc_shift); 
+            accu1 = AE_SLAA64S(accu1, acc_shift);
             accu2 = AE_SLAA64S(accu2, acc_shift);
-            accu3 = AE_SLAA64S(accu3, acc_shift); 
+            accu3 = AE_SLAA64S(accu3, acc_shift);
 
             out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
             out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
             out = AE_SAT16X4(out1_32, out2_32);
 
             p_dst1[(row+0) * out_row_offset] = AE_MOVAD16_3(out);
-            p_dst1[(row+1) * out_row_offset] = AE_MOVAD16_2(out); 
+            p_dst1[(row+1) * out_row_offset] = AE_MOVAD16_2(out);
             p_dst1[(row+2) * out_row_offset] = AE_MOVAD16_1(out);
         }
 
@@ -354,15 +351,15 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
 
             align_src1 = AE_LA128_PP(p_src1);
 
-            for (col = 0; col < (cols>>3); col++) 
-            { 
+            for (col = 0; col < (cols>>3); col++)
+            {
                 ae_int16x4 in11, in12;
                 ae_int16x4 src11, src12;
 
-                AE_LA16X4X2_IC(in11 ,in12, align_mat1 ,p_mat1); 
-                AE_LA16X4X2_IP(src11, src12, align_src1, p_src1); 
+                AE_LA16X4X2_IC(in11 ,in12, align_mat1 ,p_mat1);
+                AE_LA16X4X2_IP(src11, src12, align_src1, p_src1);
                 AE_MULAAAA2Q16(accu1, accu2 , src11, src12, in11, in12);
-            } 
+            }
 
             if(cols & 7)
             {
@@ -372,19 +369,19 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
 
                 AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1, ((row + 0) * row_offset + (cols & ~7)) * sizeof(WORD16));
 
-                for (col = 0; col < (cols & 7) ; col++) 
+                for (col = 0; col < (cols & 7) ; col++)
                 {
                     ae_int16x4 in11;
                     ae_int16x4 src11;
 
-                    AE_L16_XC(in11, (ae_int16 *)p_mat1, 2); 
-                    AE_L16_IP(src11, (ae_int16 *)p_src1, 2); 
+                    AE_L16_XC(in11, (ae_int16 *)p_mat1, 2);
+                    AE_L16_IP(src11, (ae_int16 *)p_src1, 2);
                     AE_MULA16_00(accu1, in11, src11);
                 }
             }
 
             accu1 = AE_ADD64S(accu1, accu2);
-            accu1 = AE_SLAA64S(accu1, acc_shift); 
+            accu1 = AE_SLAA64S(accu1, acc_shift);
             out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
             out = AE_SAT16X4(out1_32, out1_32);
             p_dst1[(row+0) * out_row_offset] = AE_MOVAD16_0(out);

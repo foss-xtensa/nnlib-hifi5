@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -89,11 +89,14 @@
 #endif
 
 #ifndef AE_ADDCIRC16X4_XC
+/* Alignment requirement of 2 bytes */
 #define AE_ADDCIRC16X4_XC(ptr, inc) \
 { \
   ae_int16x4 dummy; \
   AE_L16_XC(dummy, (ae_int16*)ptr, inc); \
 }
+#else
+#define HW_AE_ADDCIRC16X4_XC
 #endif
 
 #ifndef AE_MULA16_00

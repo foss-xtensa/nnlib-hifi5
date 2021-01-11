@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -45,9 +45,9 @@ do {                                                                    \
 
 #else /* DISABLE_ARG_CHK */
 
-#define XA_NNLIB_ARG_CHK_PTR(_ptr, _err)                                
-#define XA_NNLIB_ARG_CHK_ALIGN(_ptr, _align, _err)                      
-#define XA_NNLIB_ARG_CHK_COND(_cond, _err)                              
+#define XA_NNLIB_ARG_CHK_PTR(_ptr, _err)
+#define XA_NNLIB_ARG_CHK_ALIGN(_ptr, _align, _err)
+#define XA_NNLIB_ARG_CHK_COND(_cond, _err)
 
 #endif /* DISABLE_ARG_CHK */
 
