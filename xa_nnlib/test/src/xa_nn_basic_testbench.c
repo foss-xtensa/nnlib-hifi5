@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -176,7 +176,7 @@ void show_usage(void)
     printf("\t-out_precision: -4 (asym8s) -3 (asym8u),  -1 (single prec float); Default=-1\n");
     printf("\t-vec_count: number of input vectors; Default=1\n");
     printf("\t-frames: Positive number; Default=2\n");
-    printf("\t-kernel_name: elm_add, elm_sub, elm_mul, elm_mul_acc, elm_div, elm_floor, dot_prod; Default=""elem_add""\n");
+    printf("\t-kernel_name: elm_add, elm_sub, elm_mul, elm_mul_acc, elm_div, elm_floor, elm_min, elm_max, dot_prod, elm_equal, elm_notequal, elm_greater, elm_greaterequal, elm_less, elm_lessequal; Default=""elm_add""\n");
     printf("\t-write_file: set to 1 to write input and output vectors to file; Default=0\n");
     printf("\t-read_inp1_file_name: Full filename for reading inputs (order - inp) \n");
     printf("\t-read_inp2_file_name: Full filename for reading inputs (order - inp) \n");
@@ -299,6 +299,58 @@ void show_usage(void)
     XTPWR_PROFILER_STOP(0);\
   }
 
+#define SUB_ASYM8(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8xasym8_asym8\
+                (\
+                    (unsigned char *) p_out->p,\
+                    cfg.output_zero_bias,\
+                    cfg.output_left_shift,\
+                    cfg.output_multiplier,\
+                    cfg.output_activation_min,\
+                    cfg.output_activation_max,\
+                    (unsigned char *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (unsigned char *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
+#define SUB_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s_asym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    cfg.output_zero_bias,\
+                    cfg.output_left_shift,\
+                    cfg.output_multiplier,\
+                    cfg.output_activation_min,\
+                    cfg.output_activation_max,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
 #define MUL_ASYM8(KERNEL, IPREC, OPREC) \
   if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
      && (OPREC == cfg.out_precision)) {\
@@ -341,6 +393,159 @@ void show_usage(void)
     XTPWR_PROFILER_STOP(0);\
   }
 
+#define MIN_8(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_8x8_8\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD8 *) p_inp1->p,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
+#define MAX_8(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_8x8_8\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD8 *) p_inp1->p,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
+#define EQUAL_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
+#define NOTEQUAL_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
+#define GREATER_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
+#define GREATEREQUAL_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
+#define LESS_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
+
+#define LESSEQUAL_ASYM8S(KERNEL, IPREC, OPREC) \
+  if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
+     && (OPREC == cfg.out_precision)) {\
+    XTPWR_PROFILER_START(0);\
+        err = xa_nn_##KERNEL##_asym8sxasym8s\
+                (\
+                    (WORD8 *) p_out->p,\
+                    (WORD8 *) p_inp1->p,\
+                    cfg.input1_zero_bias,\
+                    cfg.input1_left_shift,\
+                    cfg.input1_multiplier,\
+                    (WORD8 *) p_inp2->p,\
+                    cfg.input2_zero_bias,\
+                    cfg.input2_left_shift,\
+                    cfg.input2_multiplier,\
+                    cfg.left_shift,\
+                    cfg.io_length\
+                );\
+    XTPWR_PROFILER_STOP(0);\
+  }
 
 #if HIFI_VFPU
 #define PROCESS_BASIC_FUNC \
@@ -352,18 +557,38 @@ void show_usage(void)
     else BASIC_FLOAT32(elm_div, -1, -1) \
     else FLOOR_F32(elm_floor, -1, -1) \
     else MUL_ASYM8(elm_mul, -3, -3) \
-	else MUL_ASYM8S(elm_mul, -4, -4) \
+    else MUL_ASYM8S(elm_mul, -4, -4) \
     else ADD_ASYM8(elm_add, -3, -3) \
-	else ADD_ASYM8S(elm_add, -4, -4) \
+    else ADD_ASYM8S(elm_add, -4, -4) \
+    else SUB_ASYM8(elm_sub, -3, -3) \
+    else SUB_ASYM8S(elm_sub, -4, -4) \
+    else MIN_8(elm_min, -4, -4)\
+    else MAX_8(elm_max, -4, -4)\
     else DOT_PROD_OUT_ASYM8S(dot_prod, 16, -4) \
+    else EQUAL_ASYM8S(elm_equal, -4, -4) \
+    else NOTEQUAL_ASYM8S(elm_notequal, -4, -4) \
+    else GREATER_ASYM8S(elm_greater, -4, -4) \
+    else GREATEREQUAL_ASYM8S(elm_greaterequal, -4, -4) \
+    else LESS_ASYM8S(elm_less, -4, -4) \
+    else LESSEQUAL_ASYM8S(elm_lessequal, -4, -4) \
     else {  printf("unsupported basic operation\n"); return -1;}
 #else
 #define PROCESS_BASIC_FUNC \
     MUL_ASYM8(elm_mul, -3, -3) \
-	else MUL_ASYM8S(elm_mul, -4, -4) \
+    else MUL_ASYM8S(elm_mul, -4, -4) \
     else ADD_ASYM8(elm_add, -3, -3) \
-	else ADD_ASYM8S(elm_add, -4, -4) \
+    else ADD_ASYM8S(elm_add, -4, -4) \
+    else SUB_ASYM8(elm_sub, -3, -3) \
+    else SUB_ASYM8S(elm_sub, -4, -4) \
+    else MIN_8(elm_min, -4, -4)\
+    else MAX_8(elm_max, -4, -4)\
     else DOT_PROD_OUT_ASYM8S(dot_prod, 16, -4) \
+    else EQUAL_ASYM8S(elm_equal, -4, -4) \
+    else NOTEQUAL_ASYM8S(elm_notequal, -4, -4) \
+    else GREATER_ASYM8S(elm_greater, -4, -4) \
+    else GREATEREQUAL_ASYM8S(elm_greaterequal, -4, -4) \
+    else LESS_ASYM8S(elm_less, -4, -4) \
+    else LESSEQUAL_ASYM8S(elm_lessequal, -4, -4) \
     else {  printf("unsupported basic operation\n"); return -1;}
 #endif
 

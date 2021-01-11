@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,9 +19,8 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include<stdio.h>
-#include "xa_type_def.h"
-#include "xtensa/tie/xt_hifi2.h"
+#include "xa_nnlib_common.h"
+
 #define ZERO32   (0)
 
 #define ZERO64   AE_MOVINT64_FROMINT32X2(AE_MOVDA32(0))
@@ -83,24 +82,24 @@
 
 /**************************** Multiple of 4 ***********************************************************/
 
-#if (UNROLL_S == 1)  
+#if (UNROLL_S == 1)
 #define SETUP_S SETUP_ROW_S(0)
 #define KERNEL_S KERNEL_ROW_S_I(0)
 #define STORE_S STORE_ROW_S(0)
 
 #elif (UNROLL_S == 2)
-#define SETUP_S  SETUP_ROW_S(0)  SETUP_ROW_S(1) 
+#define SETUP_S  SETUP_ROW_S(0)  SETUP_ROW_S(1)
 #define KERNEL_S KERNEL_ROW_S_I(0) KERNEL_ROW_S(1)
-#define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1) 
+#define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1)
 
 #elif (UNROLL_S == 4)
-#define SETUP_S  SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3) 
+#define SETUP_S  SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3)
 #define KERNEL_S KERNEL_ROW_S_I(0) KERNEL_ROW_S(1) KERNEL_ROW_S(2) KERNEL_ROW_S(3)
-#define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3) 
+#define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3)
 #elif (UNROLL_S == 8)
-#define SETUP_S   SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3)  SETUP_ROW_S(4)  SETUP_ROW_S(5)  SETUP_ROW_S(6)  SETUP_ROW_S(7) 
+#define SETUP_S   SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3)  SETUP_ROW_S(4)  SETUP_ROW_S(5)  SETUP_ROW_S(6)  SETUP_ROW_S(7)
 #define KERNEL_S KERNEL_ROW_S_I(0) KERNEL_ROW_S(1) KERNEL_ROW_S(2) KERNEL_ROW_S(3) KERNEL_ROW_S(4) KERNEL_ROW_S(5) KERNEL_ROW_S(6) KERNEL_ROW_S(7)
-#define STORE_S   STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3)  STORE_ROW_S(4)  STORE_ROW_S(5)  STORE_ROW_S(6)  STORE_ROW_S(7) 
+#define STORE_S   STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3)  STORE_ROW_S(4)  STORE_ROW_S(5)  STORE_ROW_S(6)  STORE_ROW_S(7)
 
 #endif
 
@@ -109,8 +108,8 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
   WORD8 * __restrict__ p_mat,
   WORD8 * __restrict__ p_vec,
   WORD8 * __restrict__ p_bias,
-  WORD32 rows, 
-  WORD32 cols, 
+  WORD32 rows,
+  WORD32 cols,
   WORD32 out_offset,
   WORD32 bias_shift,
   WORD32 acc_shift)
@@ -175,7 +174,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
           ae_int8x8 temp_in7_1;
           ae_valignx2 align_p_vec;
           AE_LA8X8X2POS_PC(align_p_vec,p_src1);
-          for (col = 0; col < (cols>>4); col++) 
+          for (col = 0; col < (cols>>4); col++)
           {
               AE_L8X8X2_IP(temp_in0 ,temp_in0_1 , (ae_int8x16 *)p_mat1_0, 16);
               AE_L8X8X2_IP(temp_in1 ,temp_in1_1 , (ae_int8x16 *)p_mat1_1, 16);
@@ -207,7 +206,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
           accu1_5 = AE_MOVINT64_FROMINT32X2(AE_SEL32_LL(accu1_45,ZERO32));
           accu1_6 = AE_MOVINT64_FROMINT32X2(AE_SEL32_HH(accu1_67,ZERO32));
           accu1_7 = AE_MOVINT64_FROMINT32X2(AE_SEL32_LL(accu1_67,ZERO32));
-          
+
           accu1_0 = AE_SLAA64S(accu1_0 , -32);
           accu1_1 = AE_SLAA64S(accu1_1 , -32);
           accu1_2 = AE_SLAA64S(accu1_2 , -32);
@@ -227,7 +226,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
           STORE_ROW_WITHOUT_SHIFT(7);
         }
       }
-      // Handle remaining rows 
+      // Handle remaining rows
       for (; row < rows ; row++)
       {
           output_ptr = (ae_int8x8 *)(&p_out[(row)*out_offset]);
@@ -237,11 +236,11 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
           ae_int8x8 *p_mat1_0 =(ae_int8x8 *) (&p_mat[(row+0)*cols]);
           accu1_01 = ZERO32;
           accu1_23 = ZERO32;
-          
+
           ae_valign align_p_vec;
           AE_LA8X8POS_PC(align_p_vec,p_src1);
           ae_int8x8 temp_in0;
-          for (col = 0; col < (cols>>3); col++) 
+          for (col = 0; col < (cols>>3); col++)
           {
               AE_L8X8_IP(temp_in0 , p_mat1_0, 8);
               AE_LA8X8_IC(temp_src1, align_p_vec , p_src1);
@@ -292,7 +291,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
           ae_int8x8 temp_in7;
           ae_valign align_p_vec;
           AE_LA8X8POS_PC(align_p_vec,p_src1);
-          for (col = 0; col < (cols>>3); col++) 
+          for (col = 0; col < (cols>>3); col++)
           {
               AE_L8X8_IP(temp_in0 , p_mat1_0, 8);
               AE_L8X8_IP(temp_in1 , p_mat1_1, 8);
@@ -322,7 +321,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
           accu1_5 = AE_MOVINT64_FROMINT32X2(AE_SEL32_LL(accu1_45,ZERO32));
           accu1_6 = AE_MOVINT64_FROMINT32X2(AE_SEL32_HH(accu1_67,ZERO32));
           accu1_7 = AE_MOVINT64_FROMINT32X2(AE_SEL32_LL(accu1_67,ZERO32));
-          
+
           accu1_0 = AE_SLAA64S(accu1_0 , -32);
           accu1_1 = AE_SLAA64S(accu1_1 , -32);
           accu1_2 = AE_SLAA64S(accu1_2 , -32);
@@ -342,7 +341,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
           STORE_ROW_WITHOUT_SHIFT(7);
         }
       }
-      // Handle remaining rows 
+      // Handle remaining rows
       for (; row < rows ; row++)
       {
 
@@ -351,14 +350,14 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
           ae_int32x2 accu1_01;
           ae_int32x2 accu1_23;
           ae_int8x8 *p_mat1_0 =(ae_int8x8 *) (&p_mat[(row)*cols]);
-          
+
           accu1_01 = ZERO32;
           accu1_23 = ZERO32;
           ae_valign align_p_vec;
           AE_LA8X8POS_PC(align_p_vec,p_src1);
           ae_int8x8 temp_in0;
           ae_int8x8 zero_temp = AE_MOVINT8X8_FROMINT32X2(0);
-          for (col = 0; col < (cols>>3); col++) 
+          for (col = 0; col < (cols>>3); col++)
           {
               AE_L8X8_IP (temp_in0 , p_mat1_0, 8);
               AE_LA8X8_IC(temp_src1, align_p_vec , p_src1);
@@ -383,20 +382,20 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
 #pragma ymemory (p_mat1_1)
 #pragma ymemory (p_mat1_2)
 #pragma ymemory (p_mat1_3)
-          for (col = 0; col < (cols>>2); col++) { 
+          for (col = 0; col < (cols>>2); col++) {
             KERNEL_S;
           }
           STORE_S;
         }
       }
-      // Handle remaining rows 
+      // Handle remaining rows
       for (; row < rows ; row++)
       {
         WORD8 *p_src1 = p_vec;
         SETUP_ROW_S(0);
-        for (col = 0; col < (cols>>2); col++) { 
+        for (col = 0; col < (cols>>2); col++) {
           KERNEL_ROW_S_I(0);
-        } 
+        }
         STORE_ROW_S(0);
       }
   }

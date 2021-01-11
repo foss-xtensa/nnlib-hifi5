@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,11 +19,9 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "xa_type_def.h"
-#include "xtensa/tie/xt_hifi2.h"
-#include "xa_nnlib_kernels_api.h"
+#include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
-#include "stdio.h"
+
 WORD32 xa_nn_matXvec_16x8_16(
          WORD16 * __restrict__ p_out,  /* output */
          WORD16 * __restrict__ p_mat1, /* matrix1: rows x cols1 */
@@ -31,9 +29,9 @@ WORD32 xa_nn_matXvec_16x8_16(
          WORD8 * __restrict__ p_vec1,  /* vec1: cols1 x 1 */
          WORD8 * __restrict__ p_vec2,  /* vec2: cols2 x 1 */
          WORD16 * __restrict__ p_bias, /* bias */
-         WORD32 rows,                           
-         WORD32 cols1,                          
-         WORD32 cols2,                          
+         WORD32 rows,
+         WORD32 cols1,
+         WORD32 cols2,
          WORD32 row_stride1,           /* row stride for matrix1 */
          WORD32 row_stride2,           /* row stride for matrix2 */
          WORD32 acc_shift,               /* out accumulator shift amount */
@@ -60,13 +58,13 @@ WORD32 xa_nn_matXvec_16x8_16(
 #define SETUP_VEC2              SETUP_VEC2_8b_SINGLE
 #define UNROLL_LOAD_MAT1        LOAD_ROW_MAT1_16b
 #define UNROLL_LOAD_MAT2        LOAD_ROW_MAT2_16b
-#define LOAD_VEC1               LOAD_VEC1_8b_SINGLE 
+#define LOAD_VEC1               LOAD_VEC1_8b_SINGLE
 #define LOAD_VEC2               LOAD_VEC2_8b_SINGLE
 #define SETUP_BIAS              SETUP_BIAS_16b
 #define UNROLL_ADD_BIAS_ACC     ADD_BIAS_16b_ACC_FOR_16bx8b
 
   acc_shift=32+acc_shift;
-  
+
   if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && cols1 % 8 ==0 && cols2 %8 ==0)
   {
     /* All four pointers are non-null */
@@ -82,12 +80,12 @@ WORD32 xa_nn_matXvec_16x8_16(
         for(c_itr = 0; c_itr < (cols1 >> 3); c_itr++)
         {
             LOAD_VEC1;
-            LOAD_MAT1;    
+            LOAD_MAT1;
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(0,1);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(2,3);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(4,5);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(6,7);
-        } 
+        }
         SETUP_MAT2;
         SETUP_VEC2_8b_SINGLE;
         for(c_itr = 0; c_itr < (cols2 >> 3); c_itr++)
@@ -107,30 +105,30 @@ WORD32 xa_nn_matXvec_16x8_16(
     {
       for(; m_itr < rows; m_itr++)
       {
-        UNROLL_SETUP_ACC(0); 
+        UNROLL_SETUP_ACC(0);
         UNROLL_SETUP_ACC(1);
-        SETUP_VEC1; 
+        SETUP_VEC1;
         UNROLL_SETUP_MAT1(0);
         ae_int16x4 _ae_int16x4_mat1_1 = AE_ZERO16();
         ae_int16x4 _ae_int16x4_mat1_1_1 = AE_ZERO16();
         for(c_itr = 0; c_itr < (cols1 >> 3); c_itr++)
-        { 
+        {
           LOAD_VEC1;
           UNROLL_LOAD_MAT1(0);
           KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(0,1);
         }
 
-        SETUP_VEC2; 
+        SETUP_VEC2;
         UNROLL_SETUP_MAT2(0);
         ae_int16x4 _ae_int16x4_mat2_1 = AE_ZERO16();
         ae_int16x4 _ae_int16x4_mat2_1_1 = AE_ZERO16();
         for(c_itr = 0; c_itr < (cols2 >> 3); c_itr++)
-        { 
-          LOAD_VEC2; 
+        {
+          LOAD_VEC2;
           UNROLL_LOAD_MAT2(0);
           KERNEL_MAT2_16_VEC2_8_TWO_ACCUMULATOR(0,1);
         }
-        UNROLL_ADD_BIAS_ACC(0); 
+        UNROLL_ADD_BIAS_ACC(0);
         UNROLL_STORE_ACC(0);
       }
     }
@@ -155,7 +153,7 @@ WORD32 xa_nn_matXvec_16x8_16(
             LOAD_ROW_MAT1_16b_UNALIGNED_16x8(0);
             LOAD_ROW_MAT1_16b_UNALIGNED_16x8(1);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(0,1);
-        } 
+        }
         for(c_itr=cols_count;c_itr<cols1;c_itr++)
         {
             LOAD_ROW_MAT1_16b_UNALIGNED_SINGLE_ELEMENT_16x8(0);
@@ -181,8 +179,8 @@ WORD32 xa_nn_matXvec_16x8_16(
             LOAD_VEC2_8b_UNALIGNED_SINGLE_ELEMENT;
             KERNEL_MAT2_VEC2_16b_8b_UNALIGNED_SINGLE_ELEMENT;
         }
-        UNROLL_ADD_BIAS_ACC(0); 
-        UNROLL_ADD_BIAS_ACC(1); 
+        UNROLL_ADD_BIAS_ACC(0);
+        UNROLL_ADD_BIAS_ACC(1);
         UNROLL_STORE_ACC(0);
         UNROLL_STORE_ACC(1);
       }
@@ -204,7 +202,7 @@ WORD32 xa_nn_matXvec_16x8_16(
             LOAD_VEC1_8b_UNALIGNED;
             LOAD_ROW_MAT1_16b_UNALIGNED_16x8(0);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(0,1);
-        } 
+        }
         for(c_itr=cols_count;c_itr<cols1;c_itr++)
         {
             LOAD_ROW_MAT1_16b_UNALIGNED_SINGLE_ELEMENT_16x8(0);
@@ -228,7 +226,7 @@ WORD32 xa_nn_matXvec_16x8_16(
             LOAD_VEC2_8b_UNALIGNED_SINGLE_ELEMENT;
             KERNEL_MAT2_VEC2_16b_8b_UNALIGNED_SINGLE_ELEMENT_SINGLE_ROW;
         }
-        UNROLL_ADD_BIAS_ACC(0); 
+        UNROLL_ADD_BIAS_ACC(0);
         UNROLL_STORE_ACC(0);
       }
     }
@@ -248,12 +246,12 @@ WORD32 xa_nn_matXvec_16x8_16(
         for(c_itr = 0; c_itr < (cols1 >> 3); c_itr++)
         {
             LOAD_VEC1;
-            LOAD_MAT1;    
+            LOAD_MAT1;
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(0,1);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(2,3);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(4,5);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(6,7);
-        } 
+        }
         ADD_BIAS_ACC;
         STORE_ACC_8bx16b_AT_OUT_16x4(0,1,2,3);
         STORE_ACC_8bx16b_AT_OUT_16x4(4,5,6,7);
@@ -262,19 +260,19 @@ WORD32 xa_nn_matXvec_16x8_16(
     {
       for(; m_itr < rows; m_itr++)
       {
-        UNROLL_SETUP_ACC(0); 
+        UNROLL_SETUP_ACC(0);
         UNROLL_SETUP_ACC(1);
-        SETUP_VEC1; 
+        SETUP_VEC1;
         UNROLL_SETUP_MAT1(0);
         ae_int16x4 _ae_int16x4_mat1_1 = AE_ZERO16();
         ae_int16x4 _ae_int16x4_mat1_1_1 = AE_ZERO16();
         for(c_itr = 0; c_itr < (cols1 >> 3); c_itr++)
-        { 
+        {
           LOAD_VEC1;
           UNROLL_LOAD_MAT1(0);
           KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(0,1);
         }
-        UNROLL_ADD_BIAS_ACC(0); 
+        UNROLL_ADD_BIAS_ACC(0);
         UNROLL_STORE_ACC(0);
       }
     }
@@ -299,7 +297,7 @@ WORD32 xa_nn_matXvec_16x8_16(
             LOAD_ROW_MAT1_16b_UNALIGNED_16x8(0);
             LOAD_ROW_MAT1_16b_UNALIGNED_16x8(1);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(0,1);
-        } 
+        }
         for(c_itr=cols_count;c_itr<cols1;c_itr++)
         {
             LOAD_ROW_MAT1_16b_UNALIGNED_SINGLE_ELEMENT_16x8(0);
@@ -307,8 +305,8 @@ WORD32 xa_nn_matXvec_16x8_16(
             LOAD_VEC1_8b_UNALIGNED_SINGLE_ELEMENT;
             KERNEL_MAT1_VEC1_16b_8b_UNALIGNED_SINGLE_ELEMENT;
         }
-        UNROLL_ADD_BIAS_ACC(0); 
-        UNROLL_ADD_BIAS_ACC(1); 
+        UNROLL_ADD_BIAS_ACC(0);
+        UNROLL_ADD_BIAS_ACC(1);
         UNROLL_STORE_ACC(0);
         UNROLL_STORE_ACC(1);
       }
@@ -330,14 +328,14 @@ WORD32 xa_nn_matXvec_16x8_16(
             LOAD_VEC1_8b_UNALIGNED;
             LOAD_ROW_MAT1_16b_UNALIGNED_16x8(0);
             KERNEL_MAT1_16_VEC1_8_TWO_ACCUMULATOR(0,1);
-        } 
+        }
         for(c_itr=cols_count;c_itr<cols1;c_itr++)
         {
             LOAD_ROW_MAT1_16b_UNALIGNED_SINGLE_ELEMENT_16x8(0);
             LOAD_VEC1_8b_UNALIGNED_SINGLE_ELEMENT;
             KERNEL_MAT1_VEC1_16b_8b_UNALIGNED_SINGLE_ELEMENT_SINGLE_ROW;
         }
-        UNROLL_ADD_BIAS_ACC(0); 
+        UNROLL_ADD_BIAS_ACC(0);
         UNROLL_STORE_ACC(0);
       }
     }

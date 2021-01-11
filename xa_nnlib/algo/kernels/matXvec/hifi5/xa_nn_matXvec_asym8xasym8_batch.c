@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,9 +19,7 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "xa_type_def.h"
-#include "xtensa/tie/xt_hifi2.h"
-#include <xa_nnlib_kernels_api.h>
+#include "xa_nnlib_common.h"
 
 #ifdef ROW_UNROLL
 #undef ROW_UNROLL
@@ -30,9 +28,7 @@
 
 #define GET_SUM_BY_MULTIPLY
 
-#include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
-#include "xa_nnlib_err_chk.h"
 
 WORD32 xa_nn_matXvec_batch_asym8xasym8_asym8(
     UWORD8 ** __restrict__ p_out,

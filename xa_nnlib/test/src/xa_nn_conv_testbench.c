@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -466,8 +466,8 @@ int xa_nn_main_process(int argc, char *argv[])
   char profiler_params[MAX_PROFILER_PARAMS_LENGTH]; 
   void *p_scratch;
   int inp_size=0, kernel_size, out_size;
-  int kernel_size_pad, input_channels_pad, kernel_width_pad;
-  int kernel_channels, kernel_channels_pad;
+  int kernel_size_pad, input_channels_pad;
+  int kernel_channels;
   int input_channelsXwidth_pad;
   int kernel_point_size, dw_out_size;
   int bias_size, bias_point_size;
@@ -513,12 +513,10 @@ int xa_nn_main_process(int argc, char *argv[])
     }
     else
     {
-#ifdef hifi5
-      if(cfg.inp_precision == PREC_8 || cfg.inp_precision == PREC_ASYM8U)
+      if(cfg.inp_precision == PREC_8 || cfg.inp_precision == PREC_ASYM8U || cfg.inp_precision == PREC_ASYM8S)
         input_channels_pad = cfg.input_channels;
       else
-#endif
-      input_channels_pad = (cfg.input_channels + 4 - 1) & ~(4 - 1);
+        input_channels_pad = (cfg.input_channels + 4 - 1) & ~(4 - 1);
     }
     kernel_size_pad = cfg.kernel_height * cfg.kernel_width * input_channels_pad;
     bias_size = cfg.out_channels;
@@ -541,25 +539,7 @@ int xa_nn_main_process(int argc, char *argv[])
     kernel_size       = cfg.channels_multiplier * cfg.input_channels      * cfg.kernel_height  * cfg.kernel_width;
 
     kernel_channels = cfg.channels_multiplier * cfg.input_channels;
-#ifdef hifi5
-    kernel_channels_pad = kernel_channels;
-    kernel_width_pad = cfg.kernel_width;
-#else
-    if(cfg.inp_data_format == 0)
-    {
-      kernel_width_pad = cfg.kernel_width;
-      if(cfg.inp_precision == -1)        
-        kernel_channels_pad   = ((kernel_channels + 1) & (~1));
-      else
-        kernel_channels_pad   = ((kernel_channels + 3) & (~3));
-    }
-    else
-    {
-      kernel_width_pad   = (cfg.kernel_width + 3) & (~3);
-      kernel_channels_pad = kernel_channels;
-    }
-#endif
-    kernel_size_pad = cfg.kernel_height * kernel_width_pad * kernel_channels_pad;
+    kernel_size_pad = cfg.kernel_height * cfg.kernel_width * kernel_channels;
     dw_out_size       = cfg.channels_multiplier * cfg.input_channels      * cfg.out_height     * cfg.out_width;
     kernel_point_size = cfg.out_channels        * cfg.channels_multiplier * cfg.input_channels * 1 * 1;
     out_size          = cfg.out_channels        * cfg.out_height          * cfg.out_width;
@@ -713,11 +693,11 @@ int xa_nn_main_process(int argc, char *argv[])
   {
     if(cfg.inp_data_format == 0)
     {
-      p_kernel = create_buf2D(cfg.kernel_height * cfg.kernel_width, kernel_channels, kernel_channels_pad, cfg.kernel_precision, 0);         VALIDATE_PTR(p_kernel);
+      p_kernel = create_buf2D(cfg.kernel_height * cfg.kernel_width, kernel_channels, kernel_channels, cfg.kernel_precision, 0);         VALIDATE_PTR(p_kernel);
     }
     else if(cfg.inp_data_format == 1)
     {
-      p_kernel = create_buf2D(kernel_channels * cfg.kernel_height, cfg.kernel_width, kernel_width_pad, cfg.kernel_precision, 0);            VALIDATE_PTR(p_kernel);
+      p_kernel = create_buf2D(kernel_channels * cfg.kernel_height, cfg.kernel_width, cfg.kernel_width, cfg.kernel_precision, 0);            VALIDATE_PTR(p_kernel);
     }
     p_bias = create_buf1D(bias_size, cfg.bias_precision);                      VALIDATE_PTR(p_bias);
     p_kernel_point = create_buf1D(kernel_point_size, cfg.kernel_precision);    VALIDATE_PTR(p_kernel_point);
@@ -740,7 +720,8 @@ int xa_nn_main_process(int argc, char *argv[])
   // Get persistent size and allocate 
   if(!strcmp(cfg.kernel_name,"conv2d_std"))
   {
-    scratch_size = xa_nn_conv2d_std_getsize(cfg.input_height,cfg.input_channels,cfg.kernel_height,cfg.kernel_width,cfg.y_stride,cfg.y_padding,cfg.out_height,cfg.inp_precision); PRINT_VAR(scratch_size)
+    scratch_size = xa_nn_conv2d_std_getsize(cfg.input_height,cfg.input_channels,cfg.kernel_height,cfg.kernel_width,cfg.y_stride,cfg.y_padding,
+        cfg.out_height, cfg.out_channels, cfg.inp_precision); PRINT_VAR(scratch_size)
   }
   else if(!strcmp(cfg.kernel_name,"conv2d_depth"))
   {

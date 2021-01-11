@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -61,20 +61,20 @@
  */
 
 void xa_nn_maxpool_8_hwc(
-        WORD8* __restrict__ p_out,
-const   WORD8* __restrict__ p_inp,
-        WORD32   input_height,
-        WORD32   input_width,
-        WORD32   input_channels,
-        WORD32   kernel_height,
-        WORD32   kernel_width,
-        WORD32   x_stride,
-        WORD32   y_stride,
-        WORD32   x_padding,
-        WORD32   y_padding,
-        WORD32   out_height,
-        WORD32   out_width,
-        pVOID    p_scratch_in)
+      WORD8* __restrict__ p_out,
+const WORD8* __restrict__ p_inp,
+      WORD32   input_height,
+      WORD32   input_width,
+      WORD32   input_channels,
+      WORD32   kernel_height,
+      WORD32   kernel_width,
+      WORD32   x_stride,
+      WORD32   y_stride,
+      WORD32   x_padding,
+      WORD32   y_padding,
+      WORD32   out_height,
+      WORD32   out_width,
+      pVOID    p_scratch_in)
 {
     WORD8 *p_scratch = (WORD8 *)(p_scratch_in);
 

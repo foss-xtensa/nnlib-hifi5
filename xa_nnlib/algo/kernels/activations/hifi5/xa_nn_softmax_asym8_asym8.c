@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -116,7 +116,8 @@ static ae_int32x2 one_over_one_plus_x_for_x_in_0_1(ae_int64 a)
 
     return x;
 }
-ae_int32x2 GetReciprocal(ae_int64 x, int x_integerbits, int *lsh)
+
+static ae_int32x2 GetReciprocal(ae_int64 x, int x_integerbits, int *lsh)
 {
     int headroom_plus_one;
     ae_int64 shifted_sum_minus_one, CT_Q31;

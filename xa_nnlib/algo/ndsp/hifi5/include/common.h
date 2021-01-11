@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -77,12 +77,12 @@
 #define __Pragma(a)
 #endif
 
-#define IS_ALIGN(p) ((((int)(p))&0x7) == 0) 
+#define IS_ALIGN(p) ((((int)(p))&0x7) == 0)
 
 #ifdef _MSC_VER
-    #define ALIGN(x)    _declspec(align(x)) 
+    #define ALIGN(x)    _declspec(align(x))
 #else
-    #define ALIGN(x)    __attribute__((aligned(x))) 
+    #define ALIGN(x)    __attribute__((aligned(x)))
 #endif
 
 #define INV_TBL_BITS 7
@@ -164,7 +164,7 @@ typedef const short * cint16_ptr;
 // Conditionalization support
 //-----------------------------------------------------
 /* place DISCARD_FUN(retval_type,name) instead of function definition for functions
-   to be discarded from the executable 
+   to be discarded from the executable
    THIS WORKS only for external library functions declared as extern "C" and
    not supported for internal references without "C" qualifier!
 */
@@ -205,9 +205,9 @@ retval_type name arglist \
 #endif
 
 #ifdef __cplusplus
-#define externC extern "C" 
+#define externC extern "C"
 #else
-#define externC extern 
+#define externC extern
 #endif
 
 /* maximum size (in bytes) allocated storage on stack by temporary arrays inside library functions */

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,12 +20,9 @@
 
 ******************************************************************************/
 #include "common_fpu.h"
-#include "xa_type_def.h"
-#include <xtensa/tie/xt_hifi2.h>
-#include "xa_nnlib_kernels_api.h"
+#include "xa_nnlib_common.h"
 #include "xa_nn_conv2d_depthwise_state.h"
 #include "xa_nnlib_common_macros_hifi5.h"
-#include "xa_nnlib_err_chk.h"
 
 static WORD32 xa_nn_conv2d_pointwise_nhwc_per_chan_sym8sxasym8s(
     WORD8* __restrict__ p_out,

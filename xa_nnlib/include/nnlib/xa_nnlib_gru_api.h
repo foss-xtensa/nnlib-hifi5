@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -130,7 +130,7 @@ typedef struct _xa_nnlib_gru_biases_t
   coeff_t *b_z; xa_nnlib_shape_t shape_b_z;
   coeff_t *b_r; xa_nnlib_shape_t shape_b_r;
   coeff_t *b_h; xa_nnlib_shape_t shape_b_h;
-} xa_nnlib_gru_biases_t; 
+} xa_nnlib_gru_biases_t;
 
 #if defined(__cplusplus)
 extern "C" {
@@ -153,9 +153,9 @@ Int32 xa_nnlib_gru_init(xa_nnlib_handle_t handle, xa_nnlib_gru_init_config_t *co
 /************************************************************/
 Int32 xa_nnlib_gru_set_config(xa_nnlib_handle_t handle, xa_nnlib_gru_param_id_t param_id, void *params);
 
-Int32 xa_nnlib_gru_get_config(xa_nnlib_handle_t handle, xa_nnlib_gru_param_id_t param_id, void *params); 			
+Int32 xa_nnlib_gru_get_config(xa_nnlib_handle_t handle, xa_nnlib_gru_param_id_t param_id, void *params);
 
-Int32 xa_nnlib_gru_process(xa_nnlib_handle_t handle, 
+Int32 xa_nnlib_gru_process(xa_nnlib_handle_t handle,
     void *scratch,
     void *input,
     void *output,

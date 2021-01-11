@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -54,23 +54,23 @@ extern "C" {
 
 /*-------------------------------------------------------------------------
   Matrix Multiply
-  These functions compute the expression z = 2^lsh * x * y for the matrices 
-  x and y. The columnar dimension of x must match the row dimension of y. 
-  The resulting matrix has the same number of rows as x and the same number 
+  These functions compute the expression z = 2^lsh * x * y for the matrices
+  x and y. The columnar dimension of x must match the row dimension of y.
+  The resulting matrix has the same number of rows as x and the same number
   of columns as y.
   Transposing API allows to interpret input yt as transposed matrix y.
 
   NOTE: lsh factor is not relevant for floating point routines.
 
-  Functions require scratch memory for storing intermediate data. This 
-  scratch memory area should be aligned on 16 byte boundary and its size is 
+  Functions require scratch memory for storing intermediate data. This
+  scratch memory area should be aligned on 16 byte boundary and its size is
   calculated by dedicated scratch allocation functions.
 
-  Two versions of functions available: regular version (mtx_mpy[t]32x32, 
-  mtx_mpy[t]16x16, mtx_mpy[t]8x16, mtx_mpy[t]8x8, mtx[t]_mpyf) with 
-  arbitrary arguments and faster version (mtx_mpy[t]32x32_fast, 
-  mtx_mpy[t]16x16_fast, mtx_mpy[t]8x16_fast, mtx_mpy[t]8x8_fast, 
-  mtx_mpy[t]f_fast, cntx_mpyt32x32_fast, cntx_mpytf_fast) that apply 
+  Two versions of functions available: regular version (mtx_mpy[t]32x32,
+  mtx_mpy[t]16x16, mtx_mpy[t]8x16, mtx_mpy[t]8x8, mtx[t]_mpyf) with
+  arbitrary arguments and faster version (mtx_mpy[t]32x32_fast,
+  mtx_mpy[t]16x16_fast, mtx_mpy[t]8x16_fast, mtx_mpy[t]8x8_fast,
+  mtx_mpy[t]f_fast, cntx_mpyt32x32_fast, cntx_mpytf_fast) that apply
   some restrictions
 
   Precision:
@@ -83,39 +83,39 @@ extern "C" {
   Input:
   x[M*N]      input matrix x, Q7, Q15, Q31 or floating point
   y[N*P]      input matrix y, Q7, Q15, Q31 or floating point
-  yt[P*N]     transposed input matrix y. Q31,Q15, Q7 floating point. (for 
+  yt[P*N]     transposed input matrix y. Q31,Q15, Q7 floating point. (for
               transposing API only)
   M           number of rows in matrix x and z
   N           number of columns in matrix x and number of rows in matrix y
   P           number of columns in matrices y and z
   lsh         left shift applied to the result (applied to the fixed-
-              point functions only) 
+              point functions only)
   Output:
-  z[M*P]      output matrix z, Q7, Q15, Q31 or floating point 
+  z[M*P]      output matrix z, Q7, Q15, Q31 or floating point
   Scratch:
-  pScr        size in bytes defined by corresponding scratch allocation 
+  pScr        size in bytes defined by corresponding scratch allocation
               functions
 
   Restrictions:
-  For regular routines mpy[t]32x32, mtx_mpy[t]16x16, mtx_mpy[t]8x8, 
+  For regular routines mpy[t]32x32, mtx_mpy[t]16x16, mtx_mpy[t]8x8,
   mtx_mpy[t]8x16, mtx_mpy[t]f):
   pScr    aligned on 16-byte boundary
   x,y,z   should not overlap
 
-  For faster routines (mtx_mpy[t]32x32_fast, mtx_mpy[t]16x16_fast, 
-  mtx_mpy[t]8x8_fast, mtx_mpy[t]8x16_fast, 
+  For faster routines (mtx_mpy[t]32x32_fast, mtx_mpy[t]16x16_fast,
+  mtx_mpy[t]8x8_fast, mtx_mpy[t]8x16_fast,
   mtx_mpy[t]f_fast):
   x,y,z       should not overlap
   x,y,z,pScr  aligned on 16-byte boundary
-  M,N,P       multiplies of 4 for mtx_mpy[t]32x32_fast, mtx_mpy[t]16x16_fast, 
+  M,N,P       multiplies of 4 for mtx_mpy[t]32x32_fast, mtx_mpy[t]16x16_fast,
               mtx_mpy[t]8x8_fast, mtx_mpy[t]8x16_fast, mtx_mpy[t]f_fast
               multiplies of 32 for cntx_mpyt32x32_fast, cntx_mpytf_fast
   lsh         should be in range:
-              -31...31 for mtx_mpy32x32, mtx_mpy32x32_fast, cntx_mpyt32x32_fast, 
+              -31...31 for mtx_mpy32x32, mtx_mpy32x32_fast, cntx_mpyt32x32_fast,
                        cntx_mpytf_fast
-              -15...15 for mtx_mpy16x16, mtx_mpy16x16_fast, mtx_mpy[t]8x8, 
-                       mtx_mpy[t]8x8_fast, mtx_mpy[t]8x16, 
-                       mtx_mpy[t]8x16_fast 
+              -15...15 for mtx_mpy16x16, mtx_mpy16x16_fast, mtx_mpy[t]8x8,
+                       mtx_mpy[t]8x8_fast, mtx_mpy[t]8x16,
+                       mtx_mpy[t]8x16_fast
 
 -------------------------------------------------------------------------*/
 void mtx_mpy32x32 ( void* pScr,
@@ -190,17 +190,17 @@ void mtx_mpytf_fast( void* pScr,
                      float32_t* z, const float32_t* x, const float32_t* yt,
                      int M, int N, int P);
 void cmtx_mpyt32x32_fast ( void* pScr,
-                     complex_fract32*  z, 
-                     const complex_fract32*  x, 
+                     complex_fract32*  z,
+                     const complex_fract32*  x,
                      const complex_fract32*  yt,
                      int M, int N, int P, int lsh );
 void cmtx_mpytf_fast ( void* pScr,
-                     complex_float*  z, 
-                     const complex_float *  x, 
+                     complex_float*  z,
+                     const complex_float *  x,
                      const complex_float *  yt,
                      int M, int N, int P );
 
-// scratch allocation functions 
+// scratch allocation functions
 size_t mtx_mpy16x16_getScratchSize      (int M, int N, int P);
 size_t mtx_mpy8x8_getScratchSize        (int M, int N, int P);
 size_t mtx_mpy8x16_getScratchSize       (int M, int N, int P);
@@ -227,17 +227,17 @@ size_t cmtx_mpytf_fast_getScratchSize     (int M, int N, int P);
 
 /*-------------------------------------------------------------------------
   Matrix by Vector Multiply
-  These functions compute the expression z = 2^lsh * x * y for the matrices 
-  x and vector y. 
+  These functions compute the expression z = 2^lsh * x * y for the matrices
+  x and vector y.
   NOTE: lsh factor is not relevant for floating point routines.
 
-  Two versions of functions available: regular version (mtx_vecmpy32x32,  
-  mtx_vecmpy16x16, mtx_vecmpy8x8, mtx_vecmpy8x16, mtx_vecmpyf) with arbitrary 
-  arguments and faster version (mtx_vecmpy32x32_fast, mtx_vecmpy16x16_fast, 
-  mtx_vecmpy8x8_fast, mtx_vecmpy8x16_fast,  mtx_vecmpyf_fast) that apply 
+  Two versions of functions available: regular version (mtx_vecmpy32x32,
+  mtx_vecmpy16x16, mtx_vecmpy8x8, mtx_vecmpy8x16, mtx_vecmpyf) with arbitrary
+  arguments and faster version (mtx_vecmpy32x32_fast, mtx_vecmpy16x16_fast,
+  mtx_vecmpy8x8_fast, mtx_vecmpy8x16_fast,  mtx_vecmpyf_fast) that apply
   some restrictions
 
-  Precision: 
+  Precision:
   32x32 32-bit input, 32-bit output
   16x16 16-bit input, 16-bit output
   8x8   8-bit inputs, 8-bit output
@@ -250,7 +250,7 @@ size_t cmtx_mpytf_fast_getScratchSize     (int M, int N, int P);
   M      number of rows in matrix x
   N      number of columns in matrix x
   lsh    additional left shift(applied to the fixed-
-         point functions only) 
+         point functions only)
   Output:
   z[M]   output vector,Q31,Q15 or floating point
 
@@ -259,15 +259,15 @@ size_t cmtx_mpytf_fast_getScratchSize     (int M, int N, int P);
   mtx_vecmpy8x16,  mtx_vecmpyf)
   x,y,z should not overlap
 
-  For faster routines  (mtx_vecmpy32x32_fast, mtx_vecmpy16x16_fast, 
+  For faster routines  (mtx_vecmpy32x32_fast, mtx_vecmpy16x16_fast,
   mtx_vecmpy8x8_fast, mtx_vecmpy8x16_fast, mtx_vecmpyf_fast)
   x,y,z   should not overlap
   x,y     aligned on 16-byte boundary
   N, M    multiples of 4
   lsh     should be in range:
           -31...31 for mtx_vecmpy32x32, mtx_vecmpy32x32_fast
-          -15...15 for mtx_vecmpy16x16, mtx_vecmpy16x16_fast, 
-                   mtx_vecmpy8x8_fast, mtx_vecmpy8x16_fast   
+          -15...15 for mtx_vecmpy16x16, mtx_vecmpy16x16_fast,
+                   mtx_vecmpy8x8_fast, mtx_vecmpy8x16_fast
 -------------------------------------------------------------------------*/
 void mtx_vecmpy32x32 ( int32_t* z,
                  const int32_t* x,
@@ -311,7 +311,7 @@ void mtx_vecmpyf_fast ( float32_t* z,
                   int M, int N);
 
 /*-------------------------------------------------------------------------
-  Vector by Vector Multiply 
+  Vector by Vector Multiply
   These functions compute the expression y = 2^lsh*x*xt for the input column
   vector x and its Hermitian transpose xt.
 
@@ -324,7 +324,7 @@ void mtx_vecmpyf_fast ( float32_t* z,
   Input:
   x[N]    input vector, Q31 or floating point
   N       size of vector x
-  lsh     bidirectional left shift applied to the result (fixed point 
+  lsh     bidirectional left shift applied to the result (fixed point
           functions only).
   Output:
   y[N*N]  output matrix, Q31 or floating point
@@ -344,7 +344,7 @@ void cmtx_vecmpytf_fast (     complex_float* y,
 
 /*-------------------------------------------------------------------------
   Three Matrices Product
-  These functions compute the expression z = 2^lsh*((2^-rsh*x*y)*xt) for 
+  These functions compute the expression z = 2^lsh*((2^-rsh*x*y)*xt) for
   square input matrices x and y, where xt is the Hermitian transpose of the
   matrix x.
 
@@ -362,7 +362,7 @@ void cmtx_vecmpytf_fast (     complex_float* y,
   x[N*N]  input matrix x, Q31 or floating point
   y[N*N]  input matrix y, Q31 or floating point
   N       number of rows and columns in matrices x, y and z
-  rsh     right shift applied to intermediate results to avoid overflow (fixed 
+  rsh     right shift applied to intermediate results to avoid overflow (fixed
           point functions only)
   lsh     bidirectional left shift applied to the result (fixed point functions
           only)
@@ -381,16 +381,16 @@ void cmtx_vecmpytf_fast (     complex_float* y,
 -------------------------------------------------------------------------*/
 void cmtx_lrmpy32x32_fast ( void* pScr,
                         complex_fract32* z,
-                  const complex_fract32* x, 
+                  const complex_fract32* x,
                   const complex_fract32* y,
                   int N, int rsh, int lsh );
 void cmtx_lrmpyf_fast ( void* pScr,
                         complex_float* z,
-                  const complex_float* x, 
+                  const complex_float* x,
                   const complex_float* y,
                   int N );
 
-// scratch allocation functions 
+// scratch allocation functions
 size_t cmtx_lrmpy32x32_fast_getScratchSize(int N);
 size_t cmtx_lrmpyf_fast_getScratchSize    (int N);
 
@@ -398,7 +398,7 @@ size_t cmtx_lrmpyf_fast_getScratchSize    (int N);
   Matrix Transpose
   These functions transpose matrices.
 
-  Precision: 
+  Precision:
   32x32 32-bit input, 32-bit output
   16x16 16-bit input, 16-bit output
   8x8   8-bit inputs, 8-bit output
@@ -412,11 +412,11 @@ size_t cmtx_lrmpyf_fast_getScratchSize    (int N);
   y[N][M] output vector,Q31,Q15,Q7 or floating point
 
   Restriction:
-  For regular routines (mtx_transpose_32x32, mtx_transpose_16x16, 
+  For regular routines (mtx_transpose_32x32, mtx_transpose_16x16,
   mtx_transpose_8x8, mtx_transposef):
   x,y should not overlap
 
-  For faster routines (mtx_transpose 32x32_fast, mtx_transpose 16x16_fast, 
+  For faster routines (mtx_transpose 32x32_fast, mtx_transpose 16x16_fast,
   mtx_transpose_8x8_fast, mtx_transposef_fast)
   x,y   should not overlap
   x,y   aligned on 16-byte boundary

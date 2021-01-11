@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -33,9 +33,9 @@ extern WORD32 xa_nn_matXvec_16x8_16(
          WORD8 * __restrict__ p_vec1,     /* vec1: cols1 x 1 */
          WORD8 * __restrict__ p_vec2,     /* vec2: cols2 x 1 */
          WORD16 * __restrict__ p_bias,    /* bias */
-         WORD32 rows,                           
-         WORD32 cols1,                          
-         WORD32 cols2,                          
+         WORD32 rows,
+         WORD32 cols1,
+         WORD32 cols2,
          WORD32 row_stride1,              /* row stride for matrix1 */
          WORD32 row_stride2,              /* row stride for matrix2 */
          WORD32 acc_shift,                /* out accumulator shift amount */

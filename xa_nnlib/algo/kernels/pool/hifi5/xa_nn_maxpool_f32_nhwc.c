@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -48,20 +48,20 @@
 
 #if !HAVE_VFPU
 DISCARD_FUN_FOR_NONVOID_RETURN(void, xa_nn_maxpool_f32_hwc,(
-        FLOAT32* __restrict__ p_out,
-const   FLOAT32* __restrict__ p_inp,
-        WORD32   input_height,
-        WORD32   input_width,
-        WORD32   input_channels,
-        WORD32   kernel_height,
-        WORD32   kernel_width,
-        WORD32   x_stride,
-        WORD32   y_stride,
-        WORD32   x_padding,
-        WORD32   y_padding,
-        WORD32   out_height,
-        WORD32   out_width,
-        pVOID    p_scratch_in))
+      FLOAT32* __restrict__ p_out,
+const FLOAT32* __restrict__ p_inp,
+      WORD32   input_height,
+      WORD32   input_width,
+      WORD32   input_channels,
+      WORD32   kernel_height,
+      WORD32   kernel_width,
+      WORD32   x_stride,
+      WORD32   y_stride,
+      WORD32   x_padding,
+      WORD32   y_padding,
+      WORD32   out_height,
+      WORD32   out_width,
+      pVOID    p_scratch_in))
 #else /* #if !HAVE_VFPU */
 
 /* Max pooling without using extra copy of input data
@@ -69,20 +69,20 @@ const   FLOAT32* __restrict__ p_inp,
  */
 
 void xa_nn_maxpool_f32_hwc(
-        FLOAT32* __restrict__ p_out,
-const   FLOAT32* __restrict__ p_inp,
-        WORD32   input_height,
-        WORD32   input_width,
-        WORD32   input_channels,
-        WORD32   kernel_height,
-        WORD32   kernel_width,
-        WORD32   x_stride,
-        WORD32   y_stride,
-        WORD32   x_padding,
-        WORD32   y_padding,
-        WORD32   out_height,
-        WORD32   out_width,
-        pVOID    p_scratch_in)
+      FLOAT32* __restrict__ p_out,
+const FLOAT32* __restrict__ p_inp,
+      WORD32   input_height,
+      WORD32   input_width,
+      WORD32   input_channels,
+      WORD32   kernel_height,
+      WORD32   kernel_width,
+      WORD32   x_stride,
+      WORD32   y_stride,
+      WORD32   x_padding,
+      WORD32   y_padding,
+      WORD32   out_height,
+      WORD32   out_width,
+      pVOID    p_scratch_in)
 {
     FLOAT32 *p_scratch = (FLOAT32 *)(p_scratch_in);
 

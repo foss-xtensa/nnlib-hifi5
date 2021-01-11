@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -63,7 +63,7 @@ WORD32 xa_nn_conv1d_std_getsize(
       break;
   }
 
-  // Computing circular buffer size 
+  // Computing circular buffer size
   WORD32 input_channelsXwidth_pad = PADDED_SIZE(input_channels*input_width, align_size);
   WORD32 cir_buf_size_bytes = kernel_height * input_channelsXwidth_pad * input_size;
 
@@ -125,7 +125,7 @@ VOID xa_nn_conv1d_std_init_state(
   p_state->cir_buf.p_begin = p_mem;
   p_state->cir_buf.p_curr = p_mem;
 
-  // Computing circular buffer size 
+  // Computing circular buffer size
   WORD32 input_channelsXwidth_pad = PADDED_SIZE(input_channels*input_width, align_size);
   WORD32 cir_buf_size_bytes = kernel_height * input_channelsXwidth_pad * input_size;
 
@@ -155,7 +155,7 @@ VOID conv1d_std_init_cir_buf(
   WORD8 *p_dst = (WORD8 *)p_state->cir_buf.p_curr;
   AE_ADDCIRC16X4_XC((ae_int16x4*)p_dst, y_stride * input_channelsXwidth_pad * input_bytewidth);
 
-  // Initialize circular buffer 
+  // Initialize circular buffer
   // Set y_padding rows of cir_buf with zero and remaining rows with input data
   WORD32 copy_y_pad_height = y_padding;
   WORD32 copy_inp_height = 0;
@@ -163,7 +163,7 @@ VOID conv1d_std_init_cir_buf(
   {
     copy_y_pad_height = kernel_height - y_stride;
   }
-  else 
+  else
   {
     copy_inp_height = kernel_height - y_stride - y_padding;
   }
@@ -270,7 +270,7 @@ VOID conv1d_std_init_cir_buf_asym8(
   UWORD8 pad_val_u8 = (UWORD8)pad_val;
   AE_ADDCIRC16X4_XC((ae_int16x4*)p_dst, y_stride * input_channelsXwidth_pad * input_bytewidth);
 
-  // Initialize circular buffer 
+  // Initialize circular buffer
   // Set y_padding rows of cir_buf with zero and remaining rows with input data
   WORD32 copy_y_pad_height = y_padding;
   WORD32 copy_inp_height = 0;
@@ -278,7 +278,7 @@ VOID conv1d_std_init_cir_buf_asym8(
   {
     copy_y_pad_height = kernel_height - y_stride;
   }
-  else 
+  else
   {
     copy_inp_height = kernel_height - y_stride - y_padding;
   }

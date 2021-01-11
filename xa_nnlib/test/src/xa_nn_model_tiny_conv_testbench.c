@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -439,7 +439,7 @@ int xa_nn_main_process(int argc, char *argv[])
     WORD32 scratch_size;
 
     // Get persistent size and allocate 
-    scratch_size = xa_nn_conv2d_std_getsize(CONV1_INPUT_HEIGHT,CONV1_INPUT_CHANNELS,CONV1_KERNEL_HEIGHT,CONV1_KERNEL_WIDTH,CONV1_Y_STRIDE,CONV1_Y_PADDING,CONV1_OUT_HEIGHT,cfg.precision); PRINT_VAR(scratch_size)
+    scratch_size = xa_nn_conv2d_std_getsize(CONV1_INPUT_HEIGHT,CONV1_INPUT_CHANNELS,CONV1_KERNEL_HEIGHT,CONV1_KERNEL_WIDTH,CONV1_Y_STRIDE,CONV1_Y_PADDING,CONV1_OUT_HEIGHT,CONV1_OUT_CHANNELS,cfg.precision); PRINT_VAR(scratch_size)
 
     p_scratch = (xa_nnlib_handle_t)malloc(scratch_size); PRINT_PTR(p_scratch)
 

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -26,6 +26,15 @@
     inp = AE_SLAA32(inp, left_shift); \
     inp = AE_MULFP32X2RAS(inp, AE_MOVDA32(multiplier)); \
     inp = AE_SRAA32SYMS(inp, right_shift);
+
+#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(out, inp1, inp2, multiplier, l_shift, r_shift, out_off) \
+  AE_MUL2P32X4S(inp1, inp2, inp1, inp2, l_shift, l_shift); \
+  AE_MULF2P32X4RAS(inp1, inp2, inp1, inp2, AE_MOVDA32(multiplier), AE_MOVDA32(multiplier)); \
+  inp1 = AE_SRAA32SYMS(inp1, r_shift); \
+  inp2 = AE_SRAA32SYMS(inp2, r_shift); \
+  out = AE_SAT16X4(inp1, inp2); \
+  out = AE_ADD16S(AE_MOVDA16(out_off), out); \
+  AE_MINMAX16(out, AE_ZERO16(), AE_MOVDA16(255)); 
 
 extern const long long post_loop_sel_pattern[16];
 
@@ -645,6 +654,7 @@ WORD32 xa_nn_matXvec_asym8xasym8_asym8(
     ((((unsigned)p_vec1) & 15) == 0) && ((((unsigned)p_bias) & 3) == 0) &&
     ((row_stride1 & 15) == 0))
   {
+    ae_int32x2 l_mult = AE_MOVDA32(1 << left_shift);
     AE_MOVZBVCDR(biasvc1);
     for(m_itr = 0; m_itr < (rows & ~(8 - 1)); m_itr += 8)
     {
@@ -675,32 +685,14 @@ WORD32 xa_nn_matXvec_asym8xasym8_asym8(
          ,-vec1_zero_bias
         );
 
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc_row0_vec0, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc_row1_vec0, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc_row2_vec0, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc_row3_vec0, out_multiplier, left_shift, right_shift);
-      acc_row0_vec0 = AE_ADD32S(acc_row0_vec0, out_zero_bias);
-      acc_row1_vec0 = AE_ADD32S(acc_row1_vec0, out_zero_bias);
-      acc_row2_vec0 = AE_ADD32S(acc_row2_vec0, out_zero_bias);
-      acc_row3_vec0 = AE_ADD32S(acc_row3_vec0, out_zero_bias);
-      
-      AE_MINMAX32(acc_row0_vec0, min_uint8, max_uint8);
-      AE_MINMAX32(acc_row1_vec0, min_uint8, max_uint8);
-      AE_MINMAX32(acc_row2_vec0, min_uint8, max_uint8);
-      AE_MINMAX32(acc_row3_vec0, min_uint8, max_uint8);
+      ae_int16x4 out_0, out_1;
+      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(out_0, acc_row0_vec0, acc_row1_vec0, out_multiplier, l_mult, right_shift, out_zero_bias);
+      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(out_1, acc_row2_vec0, acc_row3_vec0, out_multiplier, l_mult, right_shift, out_zero_bias);
 
-      out8_0 = AE_MOVINT8X8_FROMINT32X2(acc_row0_vec0);
-      out8_1 = AE_MOVINT8X8_FROMINT32X2(acc_row1_vec0);
-      out8_2 = AE_MOVINT8X8_FROMINT32X2(acc_row2_vec0);
-      out8_3 = AE_MOVINT8X8_FROMINT32X2(acc_row3_vec0);
-      AE_SW_S8_4_IP(out8_0, (ae_int8 *) p_out, 1);
-      AE_S8_0_IP(out8_0, (ae_int8 *) p_out, 1);
-      AE_SW_S8_4_IP(out8_1, (ae_int8 *) p_out, 1);
-      AE_S8_0_IP(out8_1, (ae_int8 *) p_out, 1);
-      AE_SW_S8_4_IP(out8_2, (ae_int8 *) p_out, 1);
-      AE_S8_0_IP(out8_2, (ae_int8 *) p_out, 1);
-      AE_SW_S8_4_IP(out8_3, (ae_int8 *) p_out, 1);
-      AE_S8_0_IP(out8_3, (ae_int8 *) p_out, 1);
+      ae_int8x8 temp_vec0;
+      temp_vec0 = AE_SATU8X8X16(out_0, out_1);
+
+      AE_S8X8_IP(temp_vec0, (ae_int8x8 *) p_out, 8);
     }
 
     /* Compute last (rows % 8) output element */

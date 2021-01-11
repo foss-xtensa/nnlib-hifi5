@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+# Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -29,7 +29,6 @@ CFLAGS += \
         -ffunction-sections \
         -DMODEL_INT16 \
         -Dhifi5 \
-        
 
 ifeq ($(DISABLE_ARG_CHK), 1)
 CFLAGS += -DDISABLE_ARG_CHK
@@ -177,14 +176,17 @@ BASICOBJS = \
     xa_nn_elm_mul_16x16.o \
     xa_nn_elm_mul_f32.o\
     xa_nn_elm_add_quant8.o\
+    xa_nn_elm_sub_quant8.o\
     xa_nn_elm_mul_quant8.o\
+    xa_nn_elm_minmax_8.o\
     xa_nn_elm_quantize.o\
     xa_nn_elm_add_f32.o \
     xa_nn_elm_sub_f32.o \
     xa_nn_elm_div_f32.o \
     xa_nn_elm_mul_acc_f32.o \
     xa_nn_floor_f32.o \
-    xa_nn_dot_prod_16x16.o
+    xa_nn_dot_prod_16x16.o \
+    xa_nn_elm_compare_quant8.o
 
 NORMO2OBJS = \
   xa_nn_l2_norm_f32.o

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2020 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,42 +19,11 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-/* ------------------------------------------------------------------------ */
-/* Copyright (c) 2017 by Cadence Design Systems, Inc. ALL RIGHTS RESERVED.  */
-/* These coded instructions, statements, and computer programs ("Cadence    */
-/* Libraries") are the copyrighted works of Cadence Design Systems Inc.	    */
-/* Cadence IP is licensed for use with Cadence processor cores only and     */
-/* must not be used for any other processors and platforms. Your use of the */
-/* Cadence Libraries is subject to the terms of the license agreement you   */
-/* have entered into with Cadence Design Systems, or a sublicense granted   */
-/* to you by a direct Cadence licensee.                                     */
-/* ------------------------------------------------------------------------ */
-/*  IntegrIT, Ltd.   www.integrIT.com, info@integrIT.com                    */
-/*                                                                          */
-/* DSP Library                                                              */
-/*                                                                          */
-/* This library contains copyrighted materials, trade secrets and other     */
-/* proprietary information of IntegrIT, Ltd. This software is licensed for  */
-/* use with Cadence processor cores only and must not be used for any other */
-/* processors and platforms. The license to use these sources was given to  */
-/* Cadence, Inc. under Terms and Condition of a Software License Agreement  */
-/* between Cadence, Inc. and IntegrIT, Ltd.                                 */
-/* ------------------------------------------------------------------------ */
-/*          Copyright (C) 2015-2017 IntegrIT, Limited.                      */
-/*                      All Rights Reserved.                                */
-/* ------------------------------------------------------------------------ */
-/*
-  NatureDSP Signal Processing Library. Math functions
-    Sigmoid
-    C code optimized for HiFi3
-  IntegrIT, 2006-2017
-*/
-#include "xtensa/tie/xt_hifi2.h"
+#include "xa_nnlib_common.h"
 #include "NatureDSP_Signal_math.h"
-#include "xa_type_def.h"
 /*-------------------------------------------------------------------------
   Sigmoid
-  The functions compute the sigmoid of input argument. 32-bit fixed-point 
+  The functions compute the sigmoid of input argument. 32-bit fixed-point
   functions accept inputs in Q6.25 and form outputs in Q0.15 format.
 
   Precision:
@@ -73,7 +42,7 @@
   ----------------
   return result, Q0.15
 -------------------------------------------------------------------------*/
-WORD32 xa_nn_vec_sigmoid_32_16(               
+WORD32 xa_nn_vec_sigmoid_32_16(
     WORD16       * __restrict__ y,             /* result, Q0.15 */
     const WORD32 * __restrict__ x,             /* input data, Q6.25 */
     WORD32       N)                            /* length of vectors */
@@ -124,7 +93,7 @@ WORD32 xa_nn_vec_sigmoid_32_16(
     ae_valignx2 aX;
     ae_valign   aY;
     ae_f32x2 t1,t2;
-    
+
     ae_int32 * __restrict p_polypow2 = (ae_int32 *)polypow2;
     pX1 = (ae_int32x2 *)((ae_int32 *)pX1 + (N >> 2)*4);
 
@@ -135,11 +104,11 @@ WORD32 xa_nn_vec_sigmoid_32_16(
     ae_int32x2 U,V;
     U = AE_MOVDA32X2(774541002, 774541002); // ln computation redundant in the loop
     V =AE_MOVDA32X2(0x007fffff, 0x007fffff);
-    
+
     t1 = 2061584302;// 0.96 in the accumulator loaded outside from
     t2 = 2061584302;// 0.96 in the accumulator loaded outside from
                     //  0.96-x/2
-                    
+
     if(N >= 4)
     {
         aY = AE_ZALIGN64();
@@ -195,7 +164,7 @@ WORD32 xa_nn_vec_sigmoid_32_16(
             Yb = AE_SUB32(32768, Zb);
             AE_MOVT32X2(Zb, Yb, sign_b);
 
-            AE_LA32X2X2_IP(Xa, Xb, aX, (ae_int32x4 *)pX);      
+            AE_LA32X2X2_IP(Xa, Xb, aX, (ae_int32x4 *)pX);
 
             Y_16  = AE_SAT16X4(Za, Zb);
 
@@ -208,7 +177,7 @@ WORD32 xa_nn_vec_sigmoid_32_16(
     {
         AE_L32_IP(Xa, (const ae_int32 *)pX1, 4);
         sign_a = AE_LT32(Xa, 0);
-		
+
         Za = AE_MULFP32X2RAS(Xa, U);
         Xa = AE_ABS32S(Za);
         Ea = AE_SRAI32(Xa, 23);
@@ -226,13 +195,13 @@ WORD32 xa_nn_vec_sigmoid_32_16(
 		AE_MULAFP32X2RAS(Za, Za, Da);
         ta = AE_SUB32(2147483647, Za);AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
 		AE_MULAFP32X2RAS(Za, Za, Da);
-		
+
         Za = AE_SRAA32RS(Za, 16);
-        
+
         //For negative X, sigmoid(X) = 1 - sigmoid(|X|)
         Ya = AE_SUB32(32768, Za);
         AE_MOVT32X2(Za, Ya, sign_a);
-	
+
         Y_16 = AE_SAT16X4(Za, Za);
 
         *pY++ = Y_16;
@@ -250,19 +219,19 @@ WORD32 xa_nn_vec_sigmoid_32_16(
   32x16  32-bit inputs, 16-bit output. Accuracy: 2 LSB.
 
   Input:
-  x[N]   input data, Q6.25  
+  x[N]   input data, Q6.25
   N      length of vectors
   Output:
-  y[N]   result, Q0.15 
+  y[N]   result, Q0.15
 
   Restriction:
   x,y should not overlap
 
   Scalar versions:
   ----------------
-  return result, Q0.15 
+  return result, Q0.15
 -------------------------------------------------------------------------*/
-WORD32 xa_nn_vec_tanh_32_16(               
+WORD32 xa_nn_vec_tanh_32_16(
     WORD16       * __restrict__ y,             /* result, Q0.15 */
     const WORD32 * __restrict__ x,             /* input data, Q6.25 */
     WORD32       N)                            /* length of vectors */
@@ -322,8 +291,8 @@ WORD32 xa_nn_vec_tanh_32_16(
         aX = AE_LA128_PP(pX);
         aX1 = AE_LA128_PP(pX1);
 
-        AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX); 
-        AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX); 
+        AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);
+        AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);
 
         for (n = 0; n < (N >> 3); n++)
         {
@@ -417,8 +386,8 @@ WORD32 xa_nn_vec_tanh_32_16(
             Zc = AE_MOVNEG32S_T(Zc, Xc);
             Zd = AE_MOVNEG32S_T(Zd, Xd);
 
-            AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);      
-            AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);      
+            AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);
+            AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);
 
             Y_16  = AE_ROUND16X4F32SASYM(Za, Zb);
             Y1_16 = AE_ROUND16X4F32SASYM(Zc, Zd);
@@ -432,7 +401,7 @@ WORD32 xa_nn_vec_tanh_32_16(
     {
         AE_L32_IP(Xa, (const ae_int32 *)pX1, 4);
         sign = AE_LT32(Xa, 0);
-        
+
         Za = AE_MULFP32X2RAS(Xa, AE_MOVDA32X2(1549082005, 1549082005));
         Xa = AE_ABS32S(Za);
 
@@ -450,23 +419,23 @@ WORD32 xa_nn_vec_tanh_32_16(
         // 1/(1+x) implementation part
         Za = AE_MULADDF32RAS(2061584302,Xa, -1073741824);
         ta = AE_SUB32(2147483647, Za);
-		
+
         AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
         AE_MULAFP32X2RAS(Za, Za, Da);
-        
+
         ta = AE_SUB32(2147483647, Za);
         AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
-        
+
 		AE_MULAFP32X2RAS(Za, Za, Da);
-        
+
         Ya = AE_SUB32(2147483647, Xa);
         Za = AE_MULFP32X2RAS(Za, Ya);
-        
+
         Xa = AE_NEG32S(Za);
         AE_MOVT32X2(Za, Xa, sign);
 
         Y_16 = AE_ROUND16X4F32SASYM(Za, Za);
-        
+
         *pY++ = Y_16;
     }
     return 0;
