@@ -264,14 +264,8 @@ static void special_function_for_cols_mul_32
       MULTIPLYBYQUANTIZEDMULTIPLIER_per_chan_X2_X2(out_3, acc_row0_vec3, acc_row1_vec3, out_multiplier_23, out_multiplier_01, l_mult_23, l_mult_01, r_mult_23, r_mult_01, out_z_b);
 
       /* Store output */
-      ae_int8x8 out32_0, out32_1; 
-      PACK_32X2(out32_0, out_0, out_1);
-      PACK_32X2(out32_1, out_2, out_3);
-
-      AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
-      AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
-      AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_1), (ae_int32 *)p_dst_0, out_offset);
-      AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_1), (ae_int32 *)p_dst_0, out_offset);
+      STORE_16x4x2_8x4x2(out_0, out_1, p_dst_0, out_offset);
+	  STORE_16x4x2_8x4x2(out_2, out_3, p_dst_0, out_offset);
     }
     
     for (; vec_itr < n_vecs; vec_itr++)
@@ -328,10 +322,7 @@ static void special_function_for_cols_mul_32
       MULTIPLYBYQUANTIZEDMULTIPLIER_per_chan_X2_X2(out_0, acc_row0_vec0, acc_row1_vec0, out_multiplier_23, out_multiplier_01, l_mult_23, l_mult_01, r_mult_23, r_mult_01, out_z_b);
 
       /* Store output */
-      ae_int8x8 out32_0; 
-      PACK_32X2(out32_0, out_0, out_0);
-
-      AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
+      STORE_16x4_8x4(out_0, p_dst_0, out_offset);	
     }
   }
 }
@@ -1231,14 +1222,8 @@ WORD32 xa_nn_matmul_per_chan_sym8sxasym8s_asym8s(
         MULTIPLYBYQUANTIZEDMULTIPLIER_per_chan_X2_X2(out_3, acc_row0_vec3, acc_row1_vec3, out_multiplier_23, out_multiplier_01, l_mult_23, l_mult_01, r_mult_23, r_mult_01, out_zero_bias);
 
         /* Store output */
-        ae_int8x8 out32_0, out32_1; 
-        PACK_32X2(out32_0, out_0, out_1);
-        PACK_32X2(out32_1, out_2, out_3);
-
-        AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_1), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_1), (ae_int32 *)p_dst_0, out_offset);
+        STORE_16x4x2_8x4x2(out_0, out_1, p_dst_0, out_offset);
+        STORE_16x4x2_8x4x2(out_2, out_3, p_dst_0, out_offset);
       }
       /*
          for (; vec_itr < vec_count; vec_itr++)
@@ -1370,14 +1355,8 @@ WORD32 xa_nn_matmul_per_chan_sym8sxasym8s_asym8s(
         MULTIPLYBYQUANTIZEDMULTIPLIER_per_chan_X2_X2(out_3, acc_row0_vec3, acc_row1_vec3, out_multiplier_23, out_multiplier_01, l_mult_23, l_mult_01, r_mult_23, r_mult_01, out_zero_bias);
 
         /* Store output */
-        ae_int8x8 out32_0, out32_1; 
-        PACK_32X2(out32_0, out_0, out_1);
-        PACK_32X2(out32_1, out_2, out_3);
-
-        AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_1), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_1), (ae_int32 *)p_dst_0, out_offset);
+        STORE_16x4x2_8x4x2(out_0, out_1, p_dst_0, out_offset);
+        STORE_16x4x2_8x4x2(out_2, out_3, p_dst_0, out_offset);		
       }
       /*
       for (; vec_itr < vec_count; vec_itr++)
@@ -1515,14 +1494,8 @@ WORD32 xa_nn_matmul_per_chan_sym8sxasym8s_asym8s(
         MULTIPLYBYQUANTIZEDMULTIPLIER_per_chan_X2_X2(out_3, acc_row0_vec3, acc_row1_vec3, out_multiplier_23, out_multiplier_01, l_mult_23, l_mult_01, r_mult_23, r_mult_01, out_zero_bias);
 
         /* Store output */
-        ae_int8x8 out32_0, out32_1; 
-        PACK_32X2(out32_0, out_0, out_1);
-        PACK_32X2(out32_1, out_2, out_3);
-
-        AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_1), (ae_int32 *)p_dst_0, out_offset);
-        AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_1), (ae_int32 *)p_dst_0, out_offset);
+        STORE_16x4x2_8x4x2(out_0, out_1, p_dst_0, out_offset);
+        STORE_16x4x2_8x4x2(out_2, out_3, p_dst_0, out_offset);	
       }
       /*
       for (; vec_itr < vec_count; vec_itr++)

@@ -39,7 +39,8 @@ WORD32 xa_nn_conv1d_std_getsize(
   WORD32 input_size;
   WORD32 align_size;
 
-  mem_req += ALIGNED_SIZE(sizeof(xa_nn_conv_state_t), ALIGNMENT);
+  mem_req += ALIGNMENT_16;
+  mem_req += ALIGNED_SIZE(sizeof(xa_nn_conv_state_t), ALIGNMENT_16);
   switch(input_precision)
   {
     case 8:
@@ -83,7 +84,7 @@ VOID xa_nn_conv1d_std_init_state(
     WORD32 y_stride,
     WORD32 input_precision)
 {
-  WORD8 *p_mem = (WORD8 *)p_handle;
+  WORD8 *p_mem = (WORD8 *)ALIGNED_ADDR(p_handle, ALIGNMENT_16);
   xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_mem;
   size_t input_size;
   UWORD32 align_size;
@@ -114,7 +115,7 @@ VOID xa_nn_conv1d_std_init_state(
   }
 
   p_mem += sizeof(xa_nn_conv_state_t);
-  p_mem = ALIGNED_ADDR(p_mem, ALIGNMENT);
+  p_mem = ALIGNED_ADDR(p_mem, ALIGNMENT_16);
 
 
   if(((UWORD32)p_kernel & BUS_WIDTH_MASK) == ((UWORD32)p_mem & BUS_WIDTH_MASK))

@@ -31,6 +31,23 @@
             continue;\
           }
 
+#define ARGTYPE_STRING_TO_ARRAY(_switch, STRING, MAX_STRING_LENGTH, ARRAY)      \
+    if(strcmp((argv[argidx]), _switch) == 0) {             \
+            /* printf("PARSE %s: %s %s\n", _switch, argv[argidx], argv[argidx+1]); */ \
+            strncpy(STRING, argv[argidx+1], MAX_STRING_LENGTH);  \
+            char *token = strtok(STRING, " ");\
+            int count = 0; \
+            while ((token != NULL) && count < MAX_DIMS) \
+            { \
+              ARRAY[count] = atoi(token); \
+              count++; \
+              token = strtok(NULL, " "); \
+            } \
+            argidx++;\
+            strncpy(STRING, argv[argidx], MAX_STRING_LENGTH);  \
+            continue;\
+          }
+
 #define ARGTYPE_INDICATE(_switch, _param)         \
    if(strcmp((argv[argidx]), _switch) == 0) {      \
          _param = 1;  \

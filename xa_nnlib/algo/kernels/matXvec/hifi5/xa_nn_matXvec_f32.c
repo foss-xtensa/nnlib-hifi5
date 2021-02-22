@@ -146,7 +146,6 @@ WORD32 static dual_mtx_vecmpyf_bias_add( FLOAT32 * z,
 #if defined(ENABLE_PRAGMA)
       __Pragma("loop_count min=1")
 #endif /* ENABLE_PRAGMA */
-#pragma no_unroll
       for (n = 0; n < (cols1>>2); n++)
       {
         AE_LSX2X2_IP(x00,x01, px0,sizeof(xtfloatx4));
@@ -308,9 +307,6 @@ WORD32 static dual_mtx_vecmpyf_bias_add( FLOAT32 * z,
   else if (cols1 > 0)
   {
     /* Compute by 4 values */
-#if defined(ENABLE_PRAGMA)
-    __Pragma("loop_count min=1")
-#endif /* ENABLE_PRAGMA */
     for (m = 0; m < (rows>>3); m++)
     {
       px0 = (const xtfloatx4 *)(x+(8*m*row_stride1));
@@ -334,10 +330,10 @@ WORD32 static dual_mtx_vecmpyf_bias_add( FLOAT32 * z,
       AE_LSX2X2_IP(b0,b1, pb,sizeof(xtfloatx4));
       AE_LSX2X2_IP(b2,b3, pb,sizeof(xtfloatx4));
 
-#if defined(ENABLE_PRAGMA)
-      __Pragma("loop_count min=1")
-#endif /* ENABLE_PRAGMA */
-#pragma no_unroll
+#pragma ymemory(px0)
+#pragma ymemory(px2)
+#pragma ymemory(px3)
+#pragma ymemory(px6)
       for (n = 0; n < (cols1>>2); n++)
       {
         AE_LSX2X2_IP(x00,x01, px0,sizeof(xtfloatx4));

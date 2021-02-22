@@ -26,10 +26,11 @@
 
 //#define ALIGNMENT (16)
 #define ALIGNMENT (8)
+#define ALIGNMENT_16 (16)
 
 
 #define ALIGNED_ADDR( addr, align ) \
-  (void*)( ( (UWORD32)(addr) + ( (16) - 1 ) ) & ~( (16) - 1 ) )
+  (void*)( ( (UWORD32)(addr) + ( (align) - 1 ) ) & ~( (align) - 1 ) )
 
 
 #define ALIGNED_SIZE( size, align ) \
@@ -52,12 +53,19 @@ typedef struct _circular_buf_t{
   VOID *p_begin;
   VOID *p_end;
   VOID *p_curr;
+  VOID *p_base;
 } circular_buf_t;
 
 
 typedef struct _xa_nn_conv_state_t{
   circular_buf_t cir_buf;
+  VOID* p_inp_base;
 } xa_nn_conv_state_t;
+
+VOID xa_nn_conv2d_dilation_init_state(
+    VOID *p_scratch,
+    VOID *p_kernel,
+    VOID *p_input);
 
 VOID xa_nn_conv2d_std_init_state(
     VOID *p_handle,
@@ -71,6 +79,21 @@ VOID xa_nn_conv2d_std_init_state(
     WORD32 y_padding,
     WORD32 out_height,
     WORD32 input_precision);
+
+VOID xa_nn_dilated_conv2d_std_init_circ_buf(
+    VOID *p_handle,
+    VOID *p_kernel,
+    WORD32 input_height,
+    WORD32 input_channels,
+    WORD32 kernel_height_dilation,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    WORD32 y_stride,
+    WORD32 y_padding,
+    WORD32 out_height,
+    WORD32 input_precision,
+    WORD32 dilation_height,
+    WORD32 dilation_h_offset);
 
 WORD32 xa_nn_matXvec_8x16_16_circ(
     WORD16 * __restrict__ p_out,
@@ -208,6 +231,31 @@ VOID conv2d_std_init_cir_buf_asym8(
     VOID **pp_inp,
     xa_nn_conv_state_t *p_state,
     WORD32 pad_val);
+
+VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    VOID **pp_inp,
+    xa_nn_conv_state_t *p_state,
+    WORD32 pad_val,
+    WORD32 dilation_height,
+    WORD32 dilation_h_offset,
+    WORD32 dilation_width,
+    WORD32 dilation_w_offset,
+    WORD32 x_padding_full,
+    WORD32 *input_padding_consumed,
+    WORD32 *input_width_consumed,
+    WORD32 planes_to_add,
+    WORD32 firstCall,
+    WORD32 *circMatrixHeight);
 
 VOID conv2d_std_update_cir_buf_asym8(
     WORD32 input_channels,
