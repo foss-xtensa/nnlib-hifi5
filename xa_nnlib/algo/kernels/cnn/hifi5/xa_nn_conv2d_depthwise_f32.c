@@ -521,6 +521,8 @@ static inline void conv2d_nhwc_f32(
                 ptt_inp1 = pt_inp1;
                 AE_ADDCIRC16X4_XC((ae_int16x4 *)ptt_inp0, itr_kh*kernel_width*inp_channels_pad*sizeof(FLOAT32));
                 AE_ADDCIRC16X4_XC((ae_int16x4 *)ptt_inp1, itr_kh*kernel_width*inp_channels_pad*sizeof(FLOAT32));
+#pragma ymemory(ptt_inp1)
+#pragma ymemory(pt_ker)
                 for(itr_kw = 0; itr_kw < kernel_width; itr_kw++)
                 {
                     XT_LSX2XC(d_inp0, ptt_inp0, 8);

@@ -65,8 +65,15 @@ typedef float coefff32_t;
 
 typedef struct xa_nnlib_opaque { Int32 _; } *xa_nnlib_handle_t;
 
+//For reduce ops
+typedef enum _reduce_ops_t{
+  REDUCE_MAX = 0,
+  REDUCE_MEAN = 1
+}reduce_ops_t;
+
 typedef enum _xa_nnlib_prec_t
 {
+  PREC_BOOL   =  1,
   PREC_8      =  8,
   PREC_16     = 16,
   PREC_32     = 32,

@@ -278,6 +278,9 @@ void show_usage(void)
       err = 0;\
     }
 
+// As relu_asym8 implementation is not available for hifi4, 
+// currently calling activation_min_max_asym8
+#if hifi5
 #define RELU_ASYM8U_FN(IPREC, OPREC, ACTIVATION) \
     if((IPREC == p_inp->precision) && (OPREC == p_out->precision) && !strcmp(cfg.activation,#ACTIVATION)) {\
       XTPWR_PROFILER_START(0);\
@@ -290,6 +293,18 @@ void show_usage(void)
       XTPWR_PROFILER_STOP(0);\
       err = 0;\
     }
+#else
+#define RELU_ASYM8U_FN(IPREC, OPREC, ACTIVATION) \
+    if((IPREC == p_inp->precision) && (OPREC == p_out->precision) && !strcmp(cfg.activation,#ACTIVATION)) {\
+      XTPWR_PROFILER_START(0);\
+      xa_nn_vec_activation_min_max_asym8_asym8 ( \
+          (UWORD8 *)p_out->p, (UWORD8 *)p_inp->p, \
+          cfg.activation_min, cfg.activation_max, \
+          cfg.num_elements);\
+      XTPWR_PROFILER_STOP(0);\
+      err = 0;\
+    }
+#endif
 
 #define RELU_ASYM8S_FN(IPREC, OPREC, ACTIVATION) \
     if((IPREC == p_inp->precision) && (OPREC == p_out->precision) && !strcmp(cfg.activation,#ACTIVATION)) {\
