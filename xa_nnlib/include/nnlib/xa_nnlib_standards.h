@@ -29,7 +29,9 @@ extern "C"
 {
 #endif
 
-#if ( (XCHAL_HAVE_HIFI4_VFPU) )
+#if ( (XCHAL_HAVE_HIFI5_VFPU) )
+#define HIFI_VFPU 1
+#elif ( (XCHAL_HAVE_HIFI4_VFPU) )
 #define HIFI_VFPU 1
 #elif ( (XCHAL_HAVE_HIFI3Z_VFPU) )
 #define HIFI_VFPU 1
@@ -85,6 +87,9 @@ typedef enum _xa_nnlib_prec_t
   PREC_ASYM16U = -6,
   PREC_ASYM16S = -7,
   PREC_SYM16S  = -8,
+  PREC_ASYM32U = -9,
+  PREC_ASYM32S = -10,
+  PREC_SYM32S  = -11,
 } xa_nnlib_prec_t;
 
 #define PREC_ASYM8 PREC_ASYM8U

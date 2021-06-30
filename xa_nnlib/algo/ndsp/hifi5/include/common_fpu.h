@@ -40,14 +40,20 @@
 #include "common.h"
 
 /* all vector single precision floating point instructions */
-#if ( (XCHAL_HAVE_HIFI4_VFPU) )
+#if ( (XCHAL_HAVE_HIFI5_VFPU) )
 #define HAVE_VFPU 1
+#elif ( (XCHAL_HAVE_HIFI4_VFPU) )
+#define HAVE_VFPU 1
+#elif ( (XCHAL_HAVE_HIFI3Z_VFPU) )
+#define HIFI_VFPU 1
+#elif ( (XCHAL_HAVE_HIFI3_VFPU) )
+#define HIFI_VFPU 1
 #else
 #define HAVE_VFPU 0
 #endif
 
 /* all scalar single precision floating point instructions */
-#if ( (XCHAL_HAVE_HIFI4_VFPU) || (XCHAL_HAVE_FP))
+#if ( XCHAL_HAVE_HIFI5_VFPU || XCHAL_HAVE_HIFI4_VFPU || XCHAL_HAVE_HIFI3Z_VFPU || XCHAL_HAVE_HIFI3_VFPU || XCHAL_HAVE_FP )
 #define HAVE_FPU 1
 #else
 #define HAVE_FPU 0

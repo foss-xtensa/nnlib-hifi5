@@ -28,8 +28,8 @@
 
 #define ALIGNMENT   16   /* 16 bytes alignment */
 #define LIMIT_SX2(out, inp, min, max){\
-        out = MIN_SX2(inp, max); \
-        out = MAX_SX2(out, min); \
+        out = MAX_SX2(min, inp); \
+        out = MIN_SX2(max, out); \
 }
 
 #if !HAVE_VFPU
@@ -83,7 +83,7 @@ WORD32 xa_nn_vec_activation_min_max_f32_f32(FLOAT32 * __restrict__ p_out,
             for (i=0; i<vec_length; i++)
             {
                 AE_LSIP(z, (xtfloat *)pi, sizeof(xtfloat));
-                z = MAX_S(z, min);
+                z = MAX_S(min, z);
                 AE_SSIP(z, (xtfloat *)po, sizeof(xtfloat));
             }
             return 0;
@@ -91,10 +91,10 @@ WORD32 xa_nn_vec_activation_min_max_f32_f32(FLOAT32 * __restrict__ p_out,
 
         AE_LASX2X2_IP(x, y, align_inp, pi);
         AE_LASX2X2_IP(l, m, align_inp, pi);
-        x = MAX_SX2(x, min);
-        y = MAX_SX2(y, min);
-        l = MAX_SX2(l, min);
-        m = MAX_SX2(m, min);
+        x = MAX_SX2(min, x);
+        y = MAX_SX2(min, y);
+        l = MAX_SX2(min, l);
+        m = MAX_SX2(min, m);
         AE_SASX2X2_IP(x, y, align_out, po);
         AE_SASX2X2_IP(l, m, align_out, po);
         AE_SA128POS_FP(align_out, po);
@@ -108,10 +108,10 @@ WORD32 xa_nn_vec_activation_min_max_f32_f32(FLOAT32 * __restrict__ p_out,
         {
             AE_LASX2X2_IP(x, y, align_inp, pi);
             AE_LASX2X2_IP(l, m, align_inp, pi);
-            x = MAX_SX2(x, min);
-            y = MAX_SX2(y, min);
-            l = MAX_SX2(l, min);
-            m = MAX_SX2(m, min);
+            x = MAX_SX2(min, x);
+            y = MAX_SX2(min, y);
+            l = MAX_SX2(min, l);
+            m = MAX_SX2(min, m);
             AE_SASX2X2_IP(x, y, align_out, po);
             AE_SASX2X2_IP(l, m, align_out, po);
         }
@@ -126,8 +126,8 @@ WORD32 xa_nn_vec_activation_min_max_f32_f32(FLOAT32 * __restrict__ p_out,
             for (i=0; i<vec_length; i++)
             {
                 AE_LSIP(z, (xtfloat *)pi, sizeof(xtfloat));
-                z = MIN_S(z, max);
-                z = MAX_S(z, min);
+                z = MAX_S(min, z);
+                z = MIN_S(max, z);
                 AE_SSIP(z, (xtfloat *)po, sizeof(xtfloat));
             }
             return 0;

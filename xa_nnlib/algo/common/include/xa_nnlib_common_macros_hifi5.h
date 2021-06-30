@@ -26,6 +26,145 @@
 #define NULL (void *)0
 #endif /* NULL */
 
+/* Macros for memcpy */
+#define MEMCPY_8b(out, inp, N) \
+{ \
+  int itr; \
+  ae_int8x8 di0, di1; \
+  ae_int8x16 *pae_i, *pae_o; \
+  ae_valignx2 i_a, o_a; \
+  pae_i = (ae_int8x16 *)(inp); \
+  pae_o = (ae_int8x16 *)(out); \
+  i_a = AE_LA128_PP(pae_i); \
+  o_a = AE_ZALIGN128(); \
+  for(itr = 0; itr < ((N)>>4); itr++) \
+  { \
+    AE_LA8X8X2_IP(di0, di1, i_a, pae_i); \
+    AE_SA8X8X2_IP(di0, di1, o_a, pae_o); \
+  } \
+  AE_LAV8X8X2_XP(di0, di1, i_a, pae_i, ((N)&15)); \
+  AE_SAV8X8X2_XP(di0, di1, o_a, pae_o, ((N)&15)); \
+  AE_SA128POS_FP(o_a, pae_o); \
+}
+
+#define DUAL_MEMCPY_2D_8b_CONT_OUT(out0, out1, inp0, inp1, rows, cols, inp_row_offset) \
+{ \
+  int itr_r, itr_c; \
+  ae_int8x8 di0_0, di0_1; \
+  ae_int8x8 di1_0, di1_1; \
+  ae_int8x16 *pae_in0, *pae_out0; \
+  ae_valignx2 in0_a, out0_a; \
+  ae_int8x16 *pae_in1, *pae_out1; \
+  ae_valignx2 in1_a, out1_a; \
+  pae_out0 = (ae_int8x16 *)(out0); \
+  out0_a = AE_ZALIGN128(); \
+  pae_out1 = (ae_int8x16 *)(out1); \
+  out1_a = AE_ZALIGN128(); \
+  for(itr_r = 0; itr_r < rows; itr_r++) \
+  { \
+    pae_in0 = (ae_int8x16 *)(&(inp0)[itr_r * inp_row_offset]); \
+    in0_a = AE_LA128_PP(pae_in0); \
+    pae_in1 = (ae_int8x16 *)(&(inp1)[itr_r * inp_row_offset]); \
+    in1_a = AE_LA128_PP(pae_in1); \
+__Pragma("no_unroll") \
+    for(itr_c = 0; itr_c < ((cols)>>4); itr_c++) \
+    { \
+      AE_LA8X8X2_IP(di0_0, di0_1, in0_a, pae_in0); \
+      AE_SA8X8X2_IP(di0_0, di0_1, out0_a, pae_out0); \
+      AE_LA8X8X2_IP(di1_0, di1_1, in1_a, pae_in1); \
+      AE_SA8X8X2_IP(di1_0, di1_1, out1_a, pae_out1); \
+    } \
+    AE_LAV8X8X2_XP(di0_0, di0_1, in0_a, pae_in0, ((cols)&15)); \
+    AE_SAV8X8X2_XP(di0_0, di0_1, out0_a, pae_out0, ((cols)&15)); \
+    AE_LAV8X8X2_XP(di1_0, di1_1, in1_a, pae_in1, ((cols)&15)); \
+    AE_SAV8X8X2_XP(di1_0, di1_1, out1_a, pae_out1, ((cols)&15)); \
+  } \
+  AE_SA128POS_FP(out0_a, pae_out0); \
+  AE_SA128POS_FP(out1_a, pae_out1); \
+}
+
+#define MEMCPY_2D_8b_CONT_OUT(out0, inp0, rows, cols, inp_row_offset) \
+{ \
+  int itr_r, itr_c; \
+  ae_int8x8 di0_0, di0_1; \
+  ae_int8x16 *pae_in0, *pae_out0; \
+  ae_valignx2 in0_a, out0_a; \
+  pae_out0 = (ae_int8x16 *)(out0); \
+  out0_a = AE_ZALIGN128(); \
+  for(itr_r = 0; itr_r < rows; itr_r++) \
+  { \
+    pae_in0 = (ae_int8x16 *)(&(inp0)[itr_r * inp_row_offset]); \
+    in0_a = AE_LA128_PP(pae_in0); \
+    for(itr_c = 0; itr_c < ((cols)>>4); itr_c++) \
+    { \
+      AE_LA8X8X2_IP(di0_0, di0_1, in0_a, pae_in0); \
+      AE_SA8X8X2_IP(di0_0, di0_1, out0_a, pae_out0); \
+    } \
+    AE_LAV8X8X2_XP(di0_0, di0_1, in0_a, pae_in0, ((cols)&15)); \
+    AE_SAV8X8X2_XP(di0_0, di0_1, out0_a, pae_out0, ((cols)&15)); \
+  } \
+  AE_SA128POS_FP(out0_a, pae_out0); \
+}
+
+#define DUAL_MEMCPY_2D_8b_CONT_INP(out0, out1, inp0, inp1, rows, cols, out_row_offset) \
+{ \
+  int itr_r, itr_c; \
+  ae_int8x8 di0_0, di0_1; \
+  ae_int8x8 di1_0, di1_1; \
+  ae_int8x16 *pae_in0, *pae_out0; \
+  ae_valignx2 in0_a, out0_a; \
+  ae_int8x16 *pae_in1, *pae_out1; \
+  ae_valignx2 in1_a, out1_a; \
+  pae_in0 = (ae_int8x16 *)(inp0); \
+  in0_a = AE_LA128_PP(pae_in0); \
+  pae_in1 = (ae_int8x16 *)(inp1); \
+  in1_a = AE_LA128_PP(pae_in1); \
+  for(itr_r = 0; itr_r < rows; itr_r++) \
+  { \
+    pae_out0 = (ae_int8x16 *)(&(out0)[itr_r * out_row_offset]); \
+    out0_a = AE_ZALIGN128(); \
+    pae_out1 = (ae_int8x16 *)(&(out1)[itr_r * out_row_offset]); \
+    out1_a = AE_ZALIGN128(); \
+__Pragma("no_unroll") \
+    for(itr_c = 0; itr_c < ((cols)>>4); itr_c++) \
+    { \
+      AE_LA8X8X2_IP(di0_0, di0_1, in0_a, pae_in0); \
+      AE_SA8X8X2_IP(di0_0, di0_1, out0_a, pae_out0); \
+      AE_LA8X8X2_IP(di1_0, di1_1, in1_a, pae_in1); \
+      AE_SA8X8X2_IP(di1_0, di1_1, out1_a, pae_out1); \
+    } \
+    AE_LAV8X8X2_XP(di0_0, di0_1, in0_a, pae_in0, ((cols)&15)); \
+    AE_SAV8X8X2_XP(di0_0, di0_1, out0_a, pae_out0, ((cols)&15)); \
+    AE_SA128POS_FP(out0_a, pae_out0); \
+    AE_LAV8X8X2_XP(di1_0, di1_1, in1_a, pae_in1, ((cols)&15)); \
+    AE_SAV8X8X2_XP(di1_0, di1_1, out1_a, pae_out1, ((cols)&15)); \
+    AE_SA128POS_FP(out1_a, pae_out1); \
+  } \
+}
+
+#define MEMCPY_2D_8b_CONT_INP(out0, inp0, rows, cols, out_row_offset) \
+{ \
+  int itr_r, itr_c; \
+  ae_int8x8 di0_0, di0_1; \
+  ae_int8x16 *pae_in0, *pae_out0; \
+  ae_valignx2 in0_a, out0_a; \
+  pae_in0 = (ae_int8x16 *)(inp0); \
+  in0_a = AE_LA128_PP(pae_in0); \
+  for(itr_r = 0; itr_r < rows; itr_r++) \
+  { \
+    pae_out0 = (ae_int8x16 *)(&(out0)[itr_r * out_row_offset]); \
+    out0_a = AE_ZALIGN128(); \
+    for(itr_c = 0; itr_c < ((cols)>>4); itr_c++) \
+    { \
+      AE_LA8X8X2_IP(di0_0, di0_1, in0_a, pae_in0); \
+      AE_SA8X8X2_IP(di0_0, di0_1, out0_a, pae_out0); \
+    } \
+    AE_LAV8X8X2_XP(di0_0, di0_1, in0_a, pae_in0, ((cols)&15)); \
+    AE_SAV8X8X2_XP(di0_0, di0_1, out0_a, pae_out0, ((cols)&15)); \
+    AE_SA128POS_FP(out0_a, pae_out0); \
+  } \
+}
+
 /* Macro for zero value */
 #define ZERO64   AE_ZERO64()
 #define ZERO16X4 AE_MOVDA16(0)
@@ -1984,6 +2123,12 @@ ae_int16 _ae_int16_bias = ZERO16; \
      AE_S8_0_IP(d_tmp , (ae_int8 *) p_char, offset);\
      }
  
+#define AE_SW_S8_6_IP(d, p_char, offset) { \
+     ae_int8x8 d_tmp;\
+     d_tmp = AE_SEL8X8(d, d, STORE8X8_6); \
+     AE_S8_0_IP(d_tmp , (ae_int8 *) p_char, offset);\
+     }
+
 /* Alignment checking */
 #define ALIGNED_PTR(ptr, alignment) ((((unsigned int)ptr & (alignment - 1))) == 0)
 

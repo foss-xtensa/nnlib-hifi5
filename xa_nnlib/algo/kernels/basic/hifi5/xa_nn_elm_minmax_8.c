@@ -19,27 +19,6 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-/*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
-*
-* Permission is hereby granted, free of charge, to any person obtaining
-* a copy of this software and associated documentation files (the
-* "Software"), to use this Software with Cadence processor cores only and
-* not with any other processors and platforms, subject to
-* the following conditions:
-*
-* The above copyright notice and this permission notice shall be included
-* in all copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-******************************************************************************/
 /*
  * xa_nn_elm_minmax_8.c
  */
@@ -250,8 +229,7 @@ WORD32 xa_nn_elm_min_8x8_8( WORD8* __restrict__ p_out,
  * P1. Add negative check for extents and strides. DONE.
  *
  * 1. If the dimensions are large enough and the cost of promotion is _negligibly_ low, kill the 4D and use 8D.
- * 2. The 4D kernels accept a 'num_Dims' paramenter as argument, but, this is not needed for the algorithm and only serves as a check. In
- *    case the 8D kernel supersedes everything (i.e. all inputs are promoted to 8D before invoking this) remove this arg. 
+ *
  */
 
 WORD32 xa_nn_elm_min_4D_Bcast_8x8_8(
@@ -287,74 +265,53 @@ WORD32 xa_nn_elm_min_4D_Bcast_8x8_8(
     
     int linear_index = 0;
     int dim[NUMDIMS_4D] = {0};
-    size_t index[2][NUMDIMS_4D];
+    size_t index[NUMDIMS_4D][2];
 
-    int num_scalars_loaded = 0;
-    const int num_scalar_per_simd = 16;
+    ae_int8x8 a, b, c;
 
-    WORD8 ALIGN(16) a[16];
-    WORD8 ALIGN(16) b[16];
-
-    ae_int8x16 *out = (ae_int8x16 *)p_out;
-
-    ae_int8x8 a0_7, a8_15, b0_7, b8_15, c0_7, c8_15;
-    
-    ae_valignx2 out_align = AE_ZALIGN128();
-
+    index[0][in1] = 0;
+    index[0][in2] = 0;
     for(dim[0]=0; dim[0]<out_extents[0]; dim[0]++){
-        index[in1][0] = dim[0]*in1_strides[0];
-        index[in2][0] = dim[0]*in2_strides[0];
+        index[1][in1] = index[0][in1];
+        index[1][in2] = index[0][in2];
         for(dim[1]=0; dim[1]<out_extents[1]; dim[1]++){
-            index[in1][1] = index[in1][0] + dim[1]*in1_strides[1];
-            index[in2][1] = index[in2][0] + dim[1]*in2_strides[1];
+            index[2][in1] = index[1][in1];
+            index[2][in2] = index[1][in2];
             for(dim[2]=0; dim[2]<out_extents[2]; dim[2]++){
-                index[in1][2] = index[in1][1] + dim[2]*in1_strides[2];
-                index[in2][2] = index[in2][1] + dim[2]*in2_strides[2];
+                index[3][in1] = index[2][in1];
+                index[3][in2] = index[2][in2];
                 for(dim[3]=0; dim[3]<out_extents[3]; dim[3]++){
-                    index[in1][3] = index[in1][2] + dim[3]*in1_strides[3];
-                    index[in2][3] = index[in2][2] + dim[3]*in2_strides[3];
-
+                
                     /*
                     if(__some_condition__){
                         printf("[%d][%d][%d][%d] %10d %5d %5d val = %5d %5d\n", dim[0], dim[1], dim[2], dim[3],
                             linear_index,
-                            index[in1][3], index[in2][3],
-                            p_in1[index[in1][3]], p_in2[index[in2][3]]);
+                            index[3][in1], index[3][in2],
+                            p_in1[index[3][in1]], p_in2[index[3][in2]]);
                     }
                     */
 
-                    a[num_scalars_loaded] = p_in1[index[in1][3]];
-                    b[num_scalars_loaded] = p_in2[index[in2][3]];
+                    a = AE_L8_X((ae_int8 *)p_in1, index[3][in1]);
+                    b = AE_L8_X((ae_int8 *)p_in2, index[3][in2]);
 
-                    num_scalars_loaded++;
+                    c = AE_MIN8(a, b);
+
+                    AE_S8_0_X(c, (ae_int8 *)p_out, linear_index);
+
                     linear_index++;
 
-                    if(num_scalars_loaded == num_scalar_per_simd){
-                        AE_L8X8X2_I(a0_7, a8_15, (ae_int8x16 *)a, 0);
-                        AE_L8X8X2_I(b0_7, b8_15, (ae_int8x16 *)b, 0);
-
-                        c0_7  = AE_MIN8(a0_7,  b0_7);   c8_15 = AE_MIN8(a8_15, b8_15);
-
-                        AE_SA8X8X2_IP(c0_7, c8_15, out_align, (ae_int8x16 *)out);
-                        num_scalars_loaded = 0;
-                    }
-
+                    index[3][in1] += in1_strides[3];
+                    index[3][in2] += in2_strides[3];
                 }
+                index[2][in1] += in1_strides[2];
+                index[2][in2] += in2_strides[2];
             }
+            index[1][in1] += in1_strides[1];
+            index[1][in2] += in2_strides[1];
         }
+        index[0][in1] += in1_strides[0];
+        index[0][in2] += in2_strides[0];
     }
-
-    /* There are some remaining elements */
-    if(num_scalars_loaded != 0 ){
-        AE_L8X8X2_I(a0_7, a8_15, (ae_int8x16 *)a, 0);
-        AE_L8X8X2_I(b0_7, b8_15, (ae_int8x16 *)b, 0);
-
-        c0_7  = AE_MIN8(a0_7,  b0_7);   c8_15 = AE_MIN8(a8_15, b8_15);
-        
-        AE_SAV8X8X2_XP(c0_7, c8_15, out_align, (ae_int8x16 *)out, num_scalars_loaded);
-    }
-
-    AE_SA128POS_FP(out_align, out);
 
     return 0;
 
@@ -393,70 +350,53 @@ WORD32 xa_nn_elm_max_4D_Bcast_8x8_8(
     
     int linear_index = 0;
     int dim[NUMDIMS_4D] = {0};
-    size_t index[2][NUMDIMS_4D];
+    size_t index[NUMDIMS_4D][2];
 
-    int num_scalars_loaded = 0;
-    const int num_scalar_per_simd = 16;
+    ae_int8x8 a, b, c;
 
-    WORD8 ALIGN(16) a[16];
-    WORD8 ALIGN(16) b[16];
-
-    ae_int8x16 *out = (ae_int8x16 *)p_out;
-
-    ae_int8x8 a0_7, a8_15, b0_7, b8_15, c0_7, c8_15;
-    
-    ae_valignx2 out_align = AE_ZALIGN128();
-
+    index[0][in1] = 0;
+    index[0][in2] = 0;
     for(dim[0]=0; dim[0]<out_extents[0]; dim[0]++){
-        index[in1][0] = dim[0]*in1_strides[0];
-        index[in2][0] = dim[0]*in2_strides[0];
+        index[1][in1] = index[0][in1];
+        index[1][in2] = index[0][in2];
         for(dim[1]=0; dim[1]<out_extents[1]; dim[1]++){
-            index[in1][1] = index[in1][0] + dim[1]*in1_strides[1];
-            index[in2][1] = index[in2][0] + dim[1]*in2_strides[1];
+            index[2][in1] = index[1][in1];
+            index[2][in2] = index[1][in2];
             for(dim[2]=0; dim[2]<out_extents[2]; dim[2]++){
-                index[in1][2] = index[in1][1] + dim[2]*in1_strides[2];
-                index[in2][2] = index[in2][1] + dim[2]*in2_strides[2];
+                index[3][in1] = index[2][in1];
+                index[3][in2] = index[2][in2];
                 for(dim[3]=0; dim[3]<out_extents[3]; dim[3]++){
-                    index[in1][3] = index[in1][2] + dim[3]*in1_strides[3];
-                    index[in2][3] = index[in2][2] + dim[3]*in2_strides[3];
 
                     /*
-                    printf("%4d.%4d.%4d.%4d %5d=%5d.%5d\n", dim[0], dim[1], dim[2], dim[3],
+                    if(__some_condition__){
+                        printf("[%d][%d][%d][%d] %10d %5d %5d val = %5d %5d\n", dim[0], dim[1], dim[2], dim[3],
                             linear_index,
-                            index[in1][3], index[in2][3]);
+                            index[3][in1], index[3][in2],
+                            p_in1[index[3][in1]], p_in2[index[3][in2]]);
+                    }
                     */
 
-                    a[num_scalars_loaded] = p_in1[index[in1][3]];
-                    b[num_scalars_loaded] = p_in2[index[in2][3]];
+                    a = AE_L8_X((ae_int8 *)p_in1, index[3][in1]);
+                    b = AE_L8_X((ae_int8 *)p_in2, index[3][in2]);
 
-                    num_scalars_loaded++;
+                    c = AE_MAX8(a, b);
+
+                    AE_S8_0_X(c, (ae_int8 *)p_out, linear_index);
+
                     linear_index++;
 
-                    if(num_scalars_loaded == num_scalar_per_simd){
-                        AE_L8X8X2_I(a0_7, a8_15, (ae_int8x16 *)a, 0);
-                        AE_L8X8X2_I(b0_7, b8_15, (ae_int8x16 *)b, 0);
-
-                        c0_7  = AE_MAX8(a0_7,  b0_7);   c8_15 = AE_MAX8(a8_15, b8_15);
-
-                        AE_SA8X8X2_IP(c0_7, c8_15, out_align, (ae_int8x16 *)out);
-                        num_scalars_loaded = 0;
-                    }
+                    index[3][in1] += in1_strides[3];
+                    index[3][in2] += in2_strides[3];
                 }
+                index[2][in1] += in1_strides[2];
+                index[2][in2] += in2_strides[2];
             }
+            index[1][in1] += in1_strides[1];
+            index[1][in2] += in2_strides[1];
         }
+        index[0][in1] += in1_strides[0];
+        index[0][in2] += in2_strides[0];
     }
-
-    /* There are some remaining elements */
-    if(num_scalars_loaded != 0 ){
-        AE_L8X8X2_I(a0_7, a8_15, (ae_int8x16 *)a, 0);
-        AE_L8X8X2_I(b0_7, b8_15, (ae_int8x16 *)b, 0);
-
-        c0_7  = AE_MAX8(a0_7,  b0_7);   c8_15 = AE_MAX8(a8_15, b8_15);
-        
-        AE_SAV8X8X2_XP(c0_7, c8_15, out_align, (ae_int8x16 *)out, num_scalars_loaded);
-    }
-
-    AE_SA128POS_FP(out_align, out);
 
     return 0;
 

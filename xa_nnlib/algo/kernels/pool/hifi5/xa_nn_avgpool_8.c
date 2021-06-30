@@ -24,7 +24,6 @@
 #include "xa_nnlib_kernels_api.h"
 #include "xa_nn_avgpool_state.h"
 #include "xa_nnlib_err_chk.h"
-#include <stdio.h>
 
 static void avgpool_8(
       WORD8 *__restrict__ p_out,

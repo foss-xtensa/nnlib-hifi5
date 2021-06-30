@@ -46,6 +46,7 @@ vpath %.c $(ROOTDIR)/algo/layers/lstm/src
 vpath %.c $(ROOTDIR)/algo/layers/cnn/src
 vpath %.c $(ROOTDIR)/algo/common/src
 vpath %.c $(ROOTDIR)/algo/kernels/norm/hifi5
+vpath %.c $(ROOTDIR)/algo/kernels/reorg/hifi5
 
 MATXVECO2OBJS = \
   xa_nn_matXvec_8x8.o \
@@ -91,7 +92,14 @@ NDSPO2OBJS = \
   vec_softmax32x32_hifi5.o \
   vec_softmaxf_hifi5.o \
   vec_tanh32x32_hifi5.o \
-  vec_tanhf_hifi5.o
+  vec_tanhf_hifi5.o \
+  vec_sinef_hifi5.o \
+  vec_cosinef_hifi5.o \
+  vec_lognf_hifi5.o \
+	inv2pif_tbl.o \
+	sinf_tbl.o \
+	lognf_tbl.o \
+	sqrt2f_tbl.o
 
 CONVO2OBJS = \
   xa_nn_conv1d_std_8x16.o \
@@ -187,14 +195,35 @@ BASICOBJS = \
     xa_nn_dot_prod_16x16.o \
     xa_nn_elm_compare_quant8.o \
     xa_nn_reduce_asym8s_asym8s.o \
-    xa_nn_elm_logical_bool.o
+    xa_nn_elm_logical_bool.o \
+    xa_nn_elm_sine_f32.o \
+    xa_nn_elm_cosine_f32.o \
+    xa_nn_elm_logn_f32.o \
+    xa_nn_elm_abs_f32.o \
+    xa_nn_elm_ceil_f32.o \
+    xa_nn_elm_round_f32.o \
+    xa_nn_elm_neg_f32.o \
+    xa_nn_elm_square_f32.o \
+    xa_nn_elm_rsqrt_f32.o \
+    xa_nn_elm_sqrt_f32.o \
+    xa_nn_memmove.o \
+    xa_nn_broadcast_8_8.o \
+    xa_nn_memset_f32.o 
+
 
 NORMO2OBJS = \
   xa_nn_l2_norm_f32.o \
   xa_nn_l2_norm_asym8s.o
 
+REORGO2OBJS = \
+  xa_nn_depth_to_space_8.o \
+  xa_nn_space_to_depth_8.o \
+  xa_nn_batch_to_space_nd_8.o \
+  xa_nn_space_to_batch_nd_8.o \
+  xa_nn_pad_8.o
 
-LIBO2OBJS = $(MATXVECO2OBJS) $(ACTIVATIONSO2OBJS) $(NDSPO2OBJS) $(CONVO2OBJS) $(FCO2OBJS) $(POOLO2OBJS) $(GRUO2OBJS) $(LSTMO2OBJS) $(CNNO2OBJS) $(BASICOBJS) $(NORMO2OBJS)
+
+LIBO2OBJS = $(MATXVECO2OBJS) $(ACTIVATIONSO2OBJS) $(NDSPO2OBJS) $(CONVO2OBJS) $(FCO2OBJS) $(POOLO2OBJS) $(GRUO2OBJS) $(LSTMO2OBJS) $(CNNO2OBJS) $(BASICOBJS) $(NORMO2OBJS) $(REORGO2OBJS)
 LIBOSOBJS = $(COMMONOSOBJS)
 
 INCLUDES = \

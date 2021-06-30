@@ -356,7 +356,11 @@ int xa_nn_circ_buf_nhwc_getsize(
   }
   else
   {
+#ifndef AE_MULZB3X3O8X8
     circ_buf_channels = ALIGNED_SIZE(input_channels*channels_multiplier, 8);
+#else
+    circ_buf_channels = ALIGNED_SIZE(input_channels*channels_multiplier, 16);
+#endif
   }
 
   size_in_bytes = bytewidth*circ_buf_height*circ_buf_channels*kernel_width;
@@ -400,7 +404,11 @@ VOID xa_nn_circ_buf_nhwc_init(
   }
   else
   {
+#ifndef AE_MULZB3X3O8X8
     p_circ_buf->row_offset = ALIGNED_SIZE(input_channels*channels_multiplier, 8);
+#else
+    p_circ_buf->row_offset = ALIGNED_SIZE(input_channels*channels_multiplier, 16);
+#endif
   }
   p_circ_buf->bytewidth  = bytewidth;
   /* Initialize circular buffer pointers */
@@ -564,6 +572,7 @@ void xa_nn_circ_buf_nhwc_add_cols(
 }
 
 /* Currently only 8-bit data types are supported */
+#ifndef AE_MULZB3X3O8X8 
 void xa_nn_circ_buf_nhwc_add_cols_with_pad_val(
     xa_nn_circ_buf_t *__restrict__ p_circ_buf,
     const VOID *__restrict__ p_inp,
@@ -716,3 +725,237 @@ void xa_nn_circ_buf_nhwc_add_cols_with_pad_val(
     /* Update current pointer for circular buffer */
     AE_ADDCIRC16X4_XC((ae_int16x4 *)p_circ_buf->p_curr, (n_cols-circ_buf_width)*p_circ_buf->row_offset);
 }
+#else/*RI6 core*/
+void xa_nn_circ_buf_nhwc_add_cols_with_pad_val(
+    xa_nn_circ_buf_t *__restrict__ p_circ_buf,
+    const VOID *__restrict__ p_inp,
+    WORD32 top_padding,
+    WORD32 input_height,
+    WORD32 input_width,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 circ_buf_width,
+    WORD32 channels_multiplier,
+    WORD32 y_stride,
+    WORD32 y_padding,
+    WORD32 output_height,
+    WORD32 n_cols,
+    WORD32 left_pad,
+    WORD32 right_pad,
+    pVOID  p_pad_val)
+{
+    int i, j, k;
+    int circ_buf_height;
+    WORD8 pad_val = *(pWORD8)p_pad_val;
+
+    circ_buf_height = kernel_height + ((output_height - 1) * y_stride);
+    circ_buf_height = XT_MAX(circ_buf_height, y_padding + input_height);
+    int rem_channels = input_channels & 15;
+
+    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_circ_buf->p_curr, circ_buf_width*p_circ_buf->row_offset);
+    const WORD8 *p_src = (const WORD8 *)p_inp;
+    pWORD8 p_dst = (pWORD8)p_circ_buf->p_curr;
+    ae_int8x8 d_pad = AE_MOVDA8(pad_val);
+
+    /* Add left padding */
+    for(i = 0; i < left_pad; i++)
+    {
+        p_dst = (pWORD8)p_circ_buf->p_curr;
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, i*p_circ_buf->row_offset);
+#pragma loop_count min=1
+        for(j = 0; j < circ_buf_height; j++)
+        {
+            int k = 0, loop_count = p_circ_buf->row_offset >> 4;
+            ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+            for(k = 0; k < loop_count; k++)
+                AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+        }
+    }
+    /* Add input strips */
+    /* Padding in depth dimension doesn't need to be initialized as output doesn't depend on it */
+    if(channels_multiplier == 1)
+    {
+        if(input_channels <= 16)
+        {
+            for(i = 0; i < n_cols - (left_pad + right_pad); i++)
+            {
+                p_dst = (pWORD8)p_circ_buf->p_curr;
+                AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, (i+left_pad)*p_circ_buf->row_offset);
+                for(j = 0; j < top_padding; j++)
+                {
+                    ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+                    AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+                pWORD8 p_src1 = (pWORD8)(&p_src[i*input_channels]);
+#pragma loop_count min=1
+                for(j = 0; j < input_height; j++)
+                {
+                    ae_int8x16 *p_ae_dst, *p_ae_src1;
+                    ae_int8x8 d_src, d_src1;
+                    ae_valignx2 src1_a;
+                    p_ae_dst = (ae_int8x16 *)p_dst;
+                    p_ae_src1 = (ae_int8x16 *)p_src1;
+                    src1_a = AE_LA128_PP(p_ae_src1);
+                    AE_LAV8X8X2_XP(d_src, d_src1, src1_a, p_ae_src1, input_channels);
+                    AE_S8X8X2_IP(d_src, d_src1, p_ae_dst, 16);
+                    p_src1 += input_width*input_channels;
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+                for(j = 0; j < (circ_buf_height-input_height-top_padding); j++)
+                {
+                    ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+                    AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+            }
+        }
+        else if(input_channels <= 32)
+        {
+            for(i = 0; i < n_cols - (left_pad + right_pad); i++)
+            {
+                p_dst = (pWORD8)p_circ_buf->p_curr;
+                AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, (i+left_pad)*p_circ_buf->row_offset);
+                for(j = 0; j < top_padding; j++)
+                {
+                    ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+                    AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                    AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+                pWORD8 p_src1 = (pWORD8)(&p_src[i*input_channels]);
+#pragma loop_count min=1
+                for(j = 0; j < input_height; j++)
+                {
+                    ae_int8x16 *p_ae_dst, *p_ae_src1;
+                    ae_int8x8 d_src, d_src1;
+                    ae_valignx2 src1_a;
+                    p_ae_dst = (ae_int8x16 *)p_dst;
+                    p_ae_src1 = (ae_int8x16 *)p_src1;
+                    src1_a = AE_LA128_PP(p_ae_src1);
+                    AE_LAV8X8X2_XP(d_src, d_src1, src1_a, p_ae_src1, input_channels);
+                    AE_S8X8X2_IP(d_src, d_src1, p_ae_dst, 16);
+                    AE_LAV8X8X2_XP(d_src, d_src1, src1_a, p_ae_src1, input_channels - 16);
+                    AE_S8X8X2_IP(d_src, d_src1, p_ae_dst, 16);
+                    p_src1 += input_width*input_channels;
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+                for(j = 0; j < (circ_buf_height-input_height-top_padding); j++)
+                {
+                    ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+                    AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                    AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+            }
+        }
+        else
+        {
+            for(i = 0; i < n_cols - (left_pad + right_pad); i++)
+            {
+                p_dst = (pWORD8)p_circ_buf->p_curr;
+                AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, (i+left_pad)*p_circ_buf->row_offset);
+                for(j = 0; j < top_padding; j++)
+                {
+                    int k = 0, loop_count = p_circ_buf->row_offset >> 4;
+                    ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+                    for(k = 0; k < loop_count; k++)
+                        AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+                pWORD8 p_src1 = (pWORD8)(&p_src[i*input_channels]);
+#pragma loop_count min=1
+                for(j = 0; j < input_height; j++)
+                {
+                    ae_int8x16 *p_ae_dst, *p_ae_src1;
+                    ae_int8x8 d_src, d_src1;
+                    ae_valignx2 src1_a;
+                    p_ae_dst = (ae_int8x16 *)p_dst;
+                    p_ae_src1 = (ae_int8x16 *)p_src1;
+                    src1_a = AE_LA128_PP(p_ae_src1);
+                    int k = 0, loop_count = input_channels >> 4;
+#pragma loop_count min=2
+                    for(k = 0; k < loop_count; k++)
+                    {
+                        AE_LA8X8X2_IP(d_src, d_src1, src1_a, p_ae_src1);
+                        AE_S8X8X2_IP(d_src, d_src1, p_ae_dst, 16);
+                    }
+                    if(rem_channels)
+                    {
+                        AE_LAV8X8X2_XP(d_src, d_src1, src1_a, p_ae_src1, rem_channels);
+                        AE_S8X8X2_IP(d_src, d_src1, p_ae_dst, 16);
+                    }
+                    p_src1 += input_width*input_channels;
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+
+                for(j = 0; j < (circ_buf_height-input_height-top_padding); j++)
+                {
+                    int k = 0, loop_count = p_circ_buf->row_offset >> 4;
+                    ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+                    for(k = 0; k < loop_count; k++)
+                        AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+                }
+            }
+        }
+    }
+    else
+    {
+        for(i = 0; i < n_cols - (left_pad + right_pad); i++)
+        {
+            p_dst = (pWORD8)p_circ_buf->p_curr;
+            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, (i+left_pad)*p_circ_buf->row_offset);
+            for(j = 0; j < top_padding; j++)
+            {
+                int k = 0, loop_count = p_circ_buf->row_offset >> 4;
+                ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+                for(k = 0; k < loop_count; k++)
+                    AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+            }
+            for(j = 0; j < input_height; j++)
+            {
+                const WORD8 *p_src1 = p_src;
+                pWORD8 p_dst1 = p_dst;
+                for(k = 0; k < input_channels; k++)
+                {
+                    WORD8 val = p_src1[(j*input_width + i)*input_channels + k];
+                    WORD32 cm;
+                    for(cm = 0; cm < channels_multiplier; cm++)
+                    {
+                        p_dst1[k*channels_multiplier + cm] = val;
+                    }
+                }
+                AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+            }
+            for(j = 0; j < (circ_buf_height-input_height-top_padding); j++)
+            {
+                int k = 0, loop_count = p_circ_buf->row_offset >> 4;
+                ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+                for(k = 0; k < loop_count; k++)
+                    AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+                AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+            }
+        }
+    }
+    /* Add right padding */
+    for(i = 0; i < right_pad; i++)
+    {
+        p_dst = (pWORD8)p_circ_buf->p_curr;
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, (i + (n_cols - right_pad))*p_circ_buf->row_offset);
+#pragma loop_count min=1
+        for(j = 0; j < circ_buf_height; j++)
+        {
+            int k = 0, loop_count = p_circ_buf->row_offset >> 4;
+            ae_int8x16 *p_ae_dst = (ae_int8x16 *)p_dst;
+            for(k = 0; k < loop_count; k++)
+              AE_S8X8X2_IP(d_pad, d_pad, p_ae_dst, 16);
+            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, p_circ_buf->row_offset*circ_buf_width);
+        }
+    }
+    /* Update current pointer for circular buffer */
+    AE_ADDCIRC16X4_XC((ae_int16x4 *)p_circ_buf->p_curr, (n_cols-circ_buf_width)*p_circ_buf->row_offset);
+}
+#endif

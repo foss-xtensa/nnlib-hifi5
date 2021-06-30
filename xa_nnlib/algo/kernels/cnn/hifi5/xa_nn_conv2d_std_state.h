@@ -255,7 +255,11 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
     WORD32 *input_width_consumed,
     WORD32 planes_to_add,
     WORD32 firstCall,
-    WORD32 *circMatrixHeight);
+    WORD32 *circMatrixHeight,
+    WORD32 widthIndexIteration,
+    WORD32 x_stride_dilated,
+    WORD32 heightIndexIteration,
+    WORD32 y_stride_dilated);
 
 VOID conv2d_std_update_cir_buf_asym8(
     WORD32 input_channels,

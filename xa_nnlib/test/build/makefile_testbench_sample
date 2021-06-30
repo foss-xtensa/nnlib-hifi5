@@ -23,7 +23,6 @@
 .PHONY: all run
 
 ROOTDIR = ../..
-TFDIR = test/tf_micro_lite
 
 QUIET =
 WARNING_AS_ERROR ?= 1
@@ -42,8 +41,10 @@ ifeq ($(CPU), x86)
 
 else
 
-  CC = xt-xcc $(XTCORE)
-  CXX = xt-xc++ $(XTCORE)
+  # CC = xt-xcc $(XTCORE)
+  # CXX = xt-xc++ $(XTCORE)
+  CC = xt-clang $(XTCORE)
+  CXX = xt-clang++ $(XTCORE)
   ISS = xt-run $(XTCORE)
   CONFIGDIR := $(shell $(ISS) --show-config=config)
   include $(CONFIGDIR)/misc/hostenv.mk
@@ -83,49 +84,6 @@ INCLUDES = \
     -I$(ROOTDIR)/include \
     -I$(ROOTDIR)/include/nnlib \
 
-# For TF Micro Lite
-INCLUDES_TF_MICRO = \
-    -I$(ROOTDIR)/test/tf_micro_lite/test/src \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/tools/make/downloads/flatbuffers/include \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/tools/make/downloads/gemmlowp \
-    -I$(ROOTDIR)/$(TFDIR) \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite/c \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite/kernels \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/kernels/xtensa_hifi \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite/experimental/microfrontend/lib \
-    -I$(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/tools/make/downloads/kissfft \
-
-TFULITE_SRCDIRS = \
-    $(ROOTDIR)/test/tf_micro_lite/fft \
-    $(ROOTDIR)/test/tf_micro_lite/kernels/xtensa \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/examples/micro_speech \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/examples/micro_speech/micro_features \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/xtensa_hifi \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/kernels/xtensa_hifi \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/benchmarks \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/testing \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/memory_planner \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite \
-
-TFULITE_SRCDIRS += \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/experimental/microfrontend/lib \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/tools/make/downloads/kissfft/tools \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/micro/tools/make/downloads/kissfft \
-
-TFULITE_SRCDIRS += \
-    $(ROOTDIR)/test/tf_micro_lite/test/src \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/core/api \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/c \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/kernels \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/schema \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/kernels/internal \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/compiler/mlir/lite \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/compiler/mlir/tfr/ir \
-    $(ROOTDIR)/$(TFDIR)/tensorflow/lite/core/api \
-
 ifeq ($(DEBUG),1)
   OPT_O2 = -O0 -g
   OPT_O0 = -O0 -g
@@ -135,13 +93,8 @@ else
 endif
 
 vpath %.c $(ROOTDIR)/test/src
-vpath %.cpp $(TFULITE_SRCDIRS)
-vpath %.c   $(TFULITE_SRCDIRS)
-vpath %.cc  $(TFULITE_SRCDIRS)
 
 NNLIB     = $(ROOTDIR)/lib/$(CPU_PREFIX)_nnlib$(DETECTED_CORE).a
-TFLMLIB   = $(ROOTDIR)/lib/$(CPU_PREFIX)_tf_lite_micro_lib$(DETECTED_CORE).a
-TFMFLIB   = $(ROOTDIR)/lib/$(CPU_PREFIX)_tf_micro_frontend_lib$(DETECTED_CORE).a
 
 MATMULBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_matXvec_test
 CONVBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_conv_test
@@ -152,7 +105,7 @@ LSTMBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_lstm_test
 CNNBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_cnn_test
 BASICBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_basic_test
 NORMBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_norm_test
-TFULITEBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_tfulite_test
+REORGBIN = $(CPU_PREFIX)$(DETECTED_CORE)_nn_reorg_test
 
 OBJDIR = objs/$(DETECTED_CORE)
 
@@ -174,20 +127,12 @@ BASICOBJS = \
     xa_nn_basic_testbench.o
 NORMOBJS = \
     xa_nn_norm_testbench.o
+REORGOBJS = \
+    xa_nn_reorg_testbench.o
 
 UTILOBJS = \
     xt_manage_buffers.o \
     file_io.o
-
-TFULITECCOBJS += \
-    low_latency_conv_10kws_micro_features_model_data.o \
-    xa_nnlib_micro_speech_test.o \
-
-
-TFULITECPPOBJS += \
-
-TFULITECOBJS += \
-    speech_test.o \
 
 OBJS_MATMULOBJS  = $(addprefix $(OBJDIR)/,$(MATMULOBJS))
 OBJS_CONVOBJS  = $(addprefix $(OBJDIR)/,$(CONVOBJS))
@@ -199,13 +144,11 @@ OBJS_UTILOBJS = $(addprefix $(OBJDIR)/,$(UTILOBJS))
 OBJS_CNNOBJS  = $(addprefix $(OBJDIR)/,$(CNNOBJS))
 OBJS_BASICOBJS  = $(addprefix $(OBJDIR)/,$(BASICOBJS))
 OBJS_NORMOBJS  = $(addprefix $(OBJDIR)/,$(NORMOBJS))
-OBJS_TFULITECOBJS  = $(addprefix $(OBJDIR)/,$(TFULITECOBJS))
-OBJS_TFULITECCOBJS  = $(addprefix $(OBJDIR)/,$(TFULITECCOBJS))
-OBJS_TFULITECPPOBJS  = $(addprefix $(OBJDIR)/,$(TFULITECPPOBJS))
+OBJS_REORGOBJS  = $(addprefix $(OBJDIR)/,$(REORGOBJS))
 
-all: $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(BASICBIN) $(NORMBIN) $(TFULITEBIN)
+all: $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(BASICBIN) $(NORMBIN) $(REORGBIN)
 
-run: $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(BASICBIN) $(NORMBIN) $(TFULITEBIN)
+run: $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(BASICBIN) $(NORMBIN) $(REORGBIN)
 	xt-run --mem_model --nosummary xa_nn_matXvec_test
 	xt-run --mem_model --nosummary xa_nn_activation_test
 	xt-run --mem_model --nosummary xa_nn_conv_test
@@ -215,7 +158,7 @@ run: $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN)
 	xt-run --mem_model --nosummary xa_nn_cnn_test
 	xt-run --mem_model --nosummary xa_nn_basic_test
 	xt-run --mem_model --nosummary xa_nn_norm_test
-	xt-run --mem_model --nosummary xa_nn_tfulite_test
+	xt-run --mem_model --nosummary xa_nn_reorg_test
 
 nn_activation: $(ACTBIN)
 nn_cnn: $(CNNBIN)
@@ -226,7 +169,7 @@ nn_matXvec: $(MATMULBIN)
 nn_pool: $(POOLBIN) 
 nn_basic: $(BASICBIN) 
 nn_norm: $(NORMBIN) 
-nn_tfulite: $(TFULITEBIN) 
+nn_reorg: $(REORGBIN) 
 
 $(MATMULBIN): $(OBJDIR) $(OBJS_MATMULOBJS) $(OBJS_UTILOBJS) $(NNLIB)
 	$(CC) -o $@ $(OBJS_MATMULOBJS) $(OBJS_UTILOBJS) $(NNLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
@@ -255,35 +198,17 @@ $(BASICBIN): $(OBJDIR) $(OBJS_BASICOBJS) $(OBJS_UTILOBJS) $(NNLIB)
 $(NORMBIN): $(OBJDIR) $(OBJS_NORMOBJS) $(OBJS_UTILOBJS) $(NNLIB)
 	$(CC) -o $@ $(OBJS_NORMOBJS) $(OBJS_UTILOBJS) $(NNLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
 
-ifeq ($(xclib), 1)
-$(TFULITEBIN): $(OBJDIR) $(OBJS_TFULITECPPOBJS) $(OBJS_TFULITECOBJS) $(OBJS_TFULITECCOBJS) $(TFLMLIB) $(TFMFLIB) $(NNLIB)
-	$(CXX) -o $@ $(OBJS_TFULITECPPOBJS) $(OBJS_TFULITECOBJS) $(OBJS_TFULITECCOBJS) $(TFLMLIB) $(TFMFLIB) $(NNLIB) $(LDFLAGS) $(CXX_LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
-else
-$(TFULITEBIN):
-	@echo "$@ not supported with newlib"
-endif
+$(REORGBIN): $(OBJDIR) $(OBJS_REORGOBJS) $(OBJS_UTILOBJS) $(NNLIB)
+	$(CC) -o $@ $(OBJS_REORGOBJS) $(OBJS_UTILOBJS) $(NNLIB) $(LDFLAGS) $(EXTRA_LIBS) $(EXTRA_LDFLAGS)
 
 $(OBJDIR):
 	-$(MKPATH) $(OBJDIR)
 
-$(OBJS_MATMULOBJS) $(OBJS_CONVOBJS) $(OBJS_POOLOBJS) $(OBJS_UTILOBJS) $(OBJS_ACTOBJS) $(OBJS_GRUOBJS) $(OBJS_LSTMOBJS) $(OBJS_CNNOBJS) $(OBJS_BASICOBJS) $(OBJS_NORMOBJS) : $(OBJDIR)/%.o: %.c
+$(OBJS_MATMULOBJS) $(OBJS_CONVOBJS) $(OBJS_POOLOBJS) $(OBJS_UTILOBJS) $(OBJS_ACTOBJS) $(OBJS_GRUOBJS) $(OBJS_LSTMOBJS) $(OBJS_CNNOBJS) $(OBJS_BASICOBJS) $(OBJS_NORMOBJS) $(OBJS_REORGOBJS): $(OBJDIR)/%.o: %.c
 	@echo "Compiling $<"
 	$(QUIET) $(CC) $(OPT_O2) $(CFLAGS) $(INCLUDES) -o $@ -c $<
 
-$(OBJS_TFULITECOBJS): $(OBJDIR)/%.o: %.c
-	@echo "Compiling $<"
-	$(QUIET) $(CC) $(OPT_O2) $(CFLAGS) $(INCLUDES) $(INCLUDES_TF_MICRO) -o $@ -c $<
-
-$(OBJS_TFULITECCOBJS): $(OBJDIR)/%.o: %.cc
-	@echo "Compiling $<"
-	$(QUIET) $(CXX) $(OPT_O0) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) $(INCLUDES_TF_MICRO) -o $@ -c $<
-
-$(OBJS_TFULITECPPOBJS): $(OBJDIR)/%.o: %.cpp
-	@echo "Compiling $<"
-	$(QUIET) $(CXX) $(OPT_O0) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) $(INCLUDES_TF_MICRO) -o $@ -c $<
-
-
 clean:
-	-$(RM) $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(BASICBIN) $(NORMBIN) $(TFULITEBIN)
+	-$(RM) $(MATMULBIN) $(CONVBIN) $(POOLBIN) $(ACTBIN) $(GRUBIN) $(LSTMBIN) $(CNNBIN) $(BASICBIN) $(NORMBIN) $(REORGBIN)
 	-$(RM) $(OBJDIR)$(S)*.o
 

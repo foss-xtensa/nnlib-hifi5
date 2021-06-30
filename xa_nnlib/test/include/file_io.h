@@ -39,5 +39,6 @@ int load_activation_input_data(int write_file, FILE *fptr_inp, buf1D_t *p_inp);
 int load_pool_input_data(int write_file, FILE *fptr_inp, buf1D_t *p_inp);
 int load_norm_input_data(int write_file, FILE *fptr_inp, buf1D_t *p_inp);
 int load_basic_func_data(int write_file, FILE *fptr_inp1, FILE *fptr_inp2, buf1D_t *p_inp1, buf1D_t *p_inp2);
+int load_reorg_input_data(int write_file, FILE *fptr_inp, buf1D_t *p_inp);
 int write_output_data(FILE *fptr_out, buf1D_t *p_out); 
 FILE* file_open(char *file_path, char *file_name, char *mode, int max_file_name_length);

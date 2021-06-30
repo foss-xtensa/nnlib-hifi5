@@ -196,6 +196,6 @@ static inline ae_int16x4 AE_L8X4F_I(const WORD8 *p, int inc)
 { \
   AE_S8X4U_XP(outbuf, (ae_int32 *)pOut, out_offset); \
 }
-#endif
+#endif // #ifndef AE_S8X4U_XP
 
 #endif /* __XA_NNLIB_COMMON_H__ */

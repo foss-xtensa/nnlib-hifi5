@@ -44,8 +44,10 @@ ifeq ($(CPU), x86)
 else
     AR = xt-ar $(XTCORE)
     OBJCOPY = xt-objcopy $(XTCORE)
-    CC = xt-xcc $(XTCORE)
-    CXX = xt-xc++ $(XTCORE)
+    #CC = xt-xcc $(XTCORE)
+    #CXX = xt-xc++ $(XTCORE)
+    CC = xt-clang $(XTCORE)
+    CXX = xt-clang++ $(XTCORE)
     ISS = xt-run $(XTCORE)
     CONFIGDIR := $(shell $(ISS) --show-config=config)
     include $(CONFIGDIR)/misc/hostenv.mk

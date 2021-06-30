@@ -49,7 +49,7 @@
   #include <xtensa/tie/xt_core.h>
   #include <xtensa/tie/xt_misc.h>
   #include <xtensa/tie/xt_hifi3.h>
-#if XCHAL_HAVE_HIFI4_VFPU
+#if (XCHAL_HAVE_HIFI5_VFPU || XCHAL_HAVE_HIFI4_VFPU || XCHAL_HAVE_HIFI3Z_VFPU || XCHAL_HAVE_HIFI3_VFPU)
   #include <xtensa/tie/xt_FP.h>
 #endif
 #else

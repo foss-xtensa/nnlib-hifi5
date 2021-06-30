@@ -531,7 +531,11 @@ static inline void conv2d_nhwc_8x8
   ae_int8x8 d_acc8x8;
 
   ker_channels_pad = out_channels;
-  inp_channels_pad = (out_channels + 7) & (~7);
+#ifndef AE_MULZB3X3O8X8
+  inp_channels_pad = (out_channels + 7)&(~7);
+#else
+  inp_channels_pad = (out_channels + 15)&(~15);
+#endif
 
   /* For acc_shift on accumulator */
   WUR_AE_SAR(acc_shift + 32);
@@ -845,17 +849,12 @@ WORD32 xa_nn_conv2d_depthwise_8x8
   XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((input_channels <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((kernel_height <= 0 || kernel_width <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND((kernel_height > input_height), -1);
-  XA_NNLIB_ARG_CHK_COND((kernel_width > input_width), -1);
   XA_NNLIB_ARG_CHK_COND((channels_multiplier <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((y_stride <= 0 || x_stride <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((y_padding < 0 || x_padding < 0), -1);
   XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((inp_data_format != 0 && inp_data_format != 1), -1);
   XA_NNLIB_ARG_CHK_COND((out_data_format != 0), -1);
-  /* Implementation dependent checks */
-  XA_NNLIB_ARG_CHK_COND((y_stride > kernel_height), -1);
-  XA_NNLIB_ARG_CHK_COND((x_stride > kernel_width), -1);
 
   if(inp_data_format == 0)
   {

@@ -23,6 +23,10 @@
 #include "xa_nn_conv2d_depthwise_state.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
+#ifdef AE_MULZB3X3O8X8
+#define DISABLE_DEPTHWISE_CONV2D_K3X3_SPECIAL_CASE
+#endif
+
 static WORD32 xa_nn_conv2d_depthwise_nchw_getsize
   (WORD32 input_width
    ,WORD32 kernel_height
@@ -160,7 +164,11 @@ static WORD32 xa_nn_conv2d_depthwise_nhwc_getsize
  )
 {
     int total_size, state_size, circ_buf_size;
+#ifndef AE_MULZB3X3O8X8
     state_size = ALIGNED_SIZE(sizeof(xa_nn_circ_buf_t), ALIGNMENT);
+#else
+    state_size = ALIGNED_SIZE(sizeof(xa_nn_circ_buf_t), ALIGNMENT_16);
+#endif
     circ_buf_size =
         xa_nn_circ_buf_nhwc_getsize
         (circ_buf_bytewidth
@@ -173,6 +181,8 @@ static WORD32 xa_nn_conv2d_depthwise_nhwc_getsize
          ,y_padding
          ,output_height
         );
+
+#ifndef AE_MULZB3X3O8X8
     if (0 > circ_buf_size)
     {
         return -1;
@@ -182,6 +192,36 @@ static WORD32 xa_nn_conv2d_depthwise_nhwc_getsize
         total_size = state_size + circ_buf_size;
         return total_size;
     }
+#else
+    if(circ_buf_bytewidth == 1)
+    {
+      int kernel_size, out_channels_pad;
+      out_channels_pad = (input_channels * channels_multiplier + 15) & (~15);
+      kernel_size = kernel_height * kernel_width * out_channels_pad;
+
+      if (0 > circ_buf_size || 0 > kernel_size)
+      {
+          return -1;
+      }
+      else
+      {
+          total_size = state_size + circ_buf_size + kernel_size;
+          return total_size;
+      }
+    }
+    else
+    {
+      if (0 > circ_buf_size)
+      {
+          return -1;
+      }
+      else
+      {
+          total_size = state_size + circ_buf_size;
+          return total_size;
+      }
+    }
+#endif
 }
 
 #ifndef DISABLE_DEPTHWISE_CONV2D_K3X3_SPECIAL_CASE
@@ -236,7 +276,11 @@ static VOID xa_nn_conv2d_depthwise_nhwc_init
     pWORD8 p_mem = p_scratch;
     xa_nn_circ_buf_t *p_state = (xa_nn_circ_buf_t *)p_mem;
     int state_size;
+#ifndef AE_MULAZB3X3O8X8
     state_size = ALIGNED_SIZE(sizeof(xa_nn_circ_buf_t), ALIGNMENT);
+#else
+    state_size = ALIGNED_SIZE(sizeof(xa_nn_circ_buf_t), ALIGNMENT_16);
+#endif
     p_mem = (p_mem + state_size);
     xa_nn_circ_buf_nhwc_init(p_state
             ,p_mem
@@ -348,8 +392,8 @@ WORD32 xa_nn_conv2d_depthwise_getsize
   XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
   XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
   XA_NNLIB_CHK_COND((channels_multiplier <= 0), -1);
-  XA_NNLIB_CHK_COND((x_stride <= 0 || x_stride > kernel_width), -1); //TODO: x_stride > kernel_width is supported ?
-  XA_NNLIB_CHK_COND((y_stride <= 0 || y_stride > kernel_height), -1);
+  XA_NNLIB_CHK_COND((x_stride <= 0), -1); //TODO: x_stride > kernel_width is supported ?
+  XA_NNLIB_CHK_COND((y_stride <= 0), -1);
   XA_NNLIB_CHK_COND((x_padding < 0), -1);
   XA_NNLIB_CHK_COND((y_padding < 0), -1);
   XA_NNLIB_CHK_COND((output_height <= 0), -1);

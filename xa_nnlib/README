@@ -27,6 +27,55 @@ Cadence HiFi 5 Neural Network (NN) Library
 Revision History
 ===============================================================================
 
+Version 1.6.0 API 1.0: June 30, 2021
+
++ Intermediate Release of HiFi5 NN Library
++ Tested using RI.6 tools, xt-clang compiler.
++ Improves performance on new HiFi5 (LX7.1.6 and onwards) using new ISA for
+  following kernels:
+  xa_nn_conv2d_std_per_chan_sym8sxasym8s
+  xa_nn_matXvec_sym8sxasym8s_asym8s
+  xa_nn_matXvec_out_stride_sym8sxasym8s_16
+  xa_nn_dilated_conv2d_std_per_chan_sym8sxasym8s
+  xa_nn_conv2d_depthwise_per_chan_sym8sxasym8s
+  xa_nn_conv2d_depthwise_asym8uxasym8u
+  xa_nn_fully_connected_sym8sxasym8s_asym8s
+  xa_nn_conv2d_pointwise_per_chan_sym8sxasym8s
++ Adds support for strides in Dilated Standard 2D Convolution.
++ Adds support for asymmetric quantized 8 bit (int8) variants of following
+  TFLM operators:
+  LEAKY_RELU
+  DEPTH_TO_SPACE
+  PAD
+  PAD_V2
+  BATCH_TO_SPACE_ND
+  SPACE_TO_BATCH_ND
++ Adds support for single precision float (float32) variants of following
+  TFLM operators:
+  ADD
+  ABS
+  SIN
+  COS
+  LOG
+  SQRT
+  RSQRT
+  SQUARE
+  FILL
+  CEIL
+  ROUND
+  NEG
++ Adds 16-bit input/output variants for sigmoid and tanh kernels based on 
+  Tensorflow.
++ Adds matXvec batch kernel with accumulation (8-bit input, sym8s kernel and
+  asym16s output).
++ Adds support for TFLM Dequantize (int8 to float32) operators.
++ Adds support for additional data types (int8 to int32, int16 to int32) for 
+  TFLM Quantize operator.
++ Adds space_to_depth kernel for 8-bit datatype.
++ Adds broadcast kernel for int8 data type.
+
+-------------------------------------------------------------------------------
+
 Version 1.5.0 API 1.0: February 22, 2021
 
 + Intermediate Release of HiFi 5 NN Library
@@ -140,3 +189,4 @@ Version 1.0.0 API 1.0: July 23, 2019
     CNN layer
 
 -------------------------------------------------------------------------------
+2021-06-30:11:39:RI-2021.6:682134:680695:682134::

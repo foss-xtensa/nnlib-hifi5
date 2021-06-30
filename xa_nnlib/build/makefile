@@ -22,11 +22,11 @@
 .PHONY: all install clean
 include detect_core.mk
 
-all: nnlib tf_lite_micro_lib tf_micro_frontend_lib
+all: nnlib
 
-install: install_nnlib install_tf_lite_micro_lib install_tf_micro_frontend_lib
+install: install_nnlib
 
-clean: clean_nnlib clean_tf_lite_micro_lib clean_tf_micro_frontend_lib
+clean: clean_nnlib
 
 nnlib:
 	$(MAKE) -f makefile_nn_lib_hifi5 all
@@ -37,30 +37,4 @@ install_nnlib: nnlib
 clean_nnlib:
 	$(MAKE) -f makefile_nn_lib_hifi5 clean
 
-ifeq ($(xclib), 1)
-tf_lite_micro_lib:
-	$(MAKE) -f makefile_tf_lite_micro_lib_hifi4 all 
-
-install_tf_lite_micro_lib: tf_lite_micro_lib
-	$(MAKE) -f makefile_tf_lite_micro_lib_hifi4 install
-
-clean_tf_lite_micro_lib:
-	$(MAKE) -f makefile_tf_lite_micro_lib_hifi4 clean 
-
-tf_micro_frontend_lib:
-	$(MAKE) -f makefile_tf_micro_frontend_lib_hifi4 all 
-
-install_tf_micro_frontend_lib: tf_micro_frontend_lib
-	$(MAKE) -f makefile_tf_micro_frontend_lib_hifi4 install
-
-clean_tf_micro_frontend_lib:
-	$(MAKE) -f makefile_tf_micro_frontend_lib_hifi4 clean 
-
-else
-tf_lite_micro_lib install_tf_lite_micro_lib clean_tf_lite_micro_lib:
-	@echo "tf_lite_micro_lib is not supported with newlib"
-
-tf_micro_frontend_lib install_tf_micro_frontend_lib clean_tf_micro_frontend_lib:
-	@echo "tf_micro_frontend_lib is not supported with newlib"
-endif
 
