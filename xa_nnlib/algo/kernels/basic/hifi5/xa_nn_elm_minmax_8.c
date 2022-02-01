@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -53,16 +53,16 @@ WORD32 xa_nn_elm_max_8x8_8( WORD8* __restrict__ p_out,
     XA_NNLIB_ARG_CHK_ALIGN(p_in1, sizeof(WORD8), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_in2, sizeof(WORD8), -1);
 
-    const  UWORD8 num_elm_per_simd  = 8;
-    const  UWORD8 num_simd_per_iter = 2;
+    const  WORD8 num_elm_per_simd  = 8;
+    const  WORD8 num_simd_per_iter = 2;
 
-    const UWORD16 num_elm_per_iter = num_elm_per_simd * num_simd_per_iter ;
+    const WORD16 num_elm_per_iter = num_elm_per_simd * num_simd_per_iter ;
 
     xtbool io_pointers_aligned =    ((uintptr_t)p_in1 % num_elm_per_iter == 0) &&
                                     ((uintptr_t)p_in2 % num_elm_per_iter == 0) &&
                                     ((uintptr_t)p_out % num_elm_per_iter == 0);
 
-    UWORD32 num_simd_iter   = num_element / num_elm_per_iter ;
+    WORD32 num_simd_iter   = num_element / num_elm_per_iter ;
 
     WORD8 *p_a = (WORD8 *)p_in1;
     WORD8 *p_b = (WORD8 *)p_in2;
@@ -70,7 +70,7 @@ WORD32 xa_nn_elm_max_8x8_8( WORD8* __restrict__ p_out,
 
     ae_int8x8 a0_7, a8_15, b0_7, b8_15, c0_7, c8_15;
 
-    UWORD32 i = 0;
+    WORD32 i = 0;
 
     // iterate over the simd elements
     if(io_pointers_aligned){
@@ -142,16 +142,16 @@ WORD32 xa_nn_elm_min_8x8_8( WORD8* __restrict__ p_out,
     XA_NNLIB_ARG_CHK_ALIGN(p_in1, sizeof(WORD8), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_in2, sizeof(WORD8), -1);
 
-    const  UWORD8 num_elm_per_simd  = 8;
-    const  UWORD8 num_simd_per_iter = 2;
+    const  WORD8 num_elm_per_simd  = 8;
+    const  WORD8 num_simd_per_iter = 2;
 
-    const UWORD16 num_elm_per_iter = num_elm_per_simd * num_simd_per_iter ;
+    const WORD16 num_elm_per_iter = num_elm_per_simd * num_simd_per_iter ;
 
     xtbool io_pointers_aligned =    ((uintptr_t)p_in1 % num_elm_per_iter == 0) &&
                                     ((uintptr_t)p_in2 % num_elm_per_iter == 0) &&
                                     ((uintptr_t)p_out % num_elm_per_iter == 0);
 
-    UWORD32 num_simd_iter   = num_element / num_elm_per_iter ;
+    WORD32 num_simd_iter   = num_element / num_elm_per_iter ;
 
     WORD8 *p_a = (WORD8 *)p_in1;
     WORD8 *p_b = (WORD8 *)p_in2;
@@ -159,7 +159,7 @@ WORD32 xa_nn_elm_min_8x8_8( WORD8* __restrict__ p_out,
 
     ae_int8x8 a0_7, a8_15, b0_7, b8_15, c0_7, c8_15;
 
-    UWORD32 i = 0;
+    WORD32 i = 0;
 
     // iterate over the simd elements
     if(io_pointers_aligned){

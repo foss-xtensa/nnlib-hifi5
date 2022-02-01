@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -30,6 +30,7 @@
 #include "cmdline_parser.h"
 #include "file_io.h"
 #include "xa_nnlib_standards.h"
+#include "stdbool.h"
 
 #define PROF_ALLOCATE
 #include "xt_profiler.h"
@@ -51,24 +52,6 @@
 char pb_input_file_path[XA_MAX_CMD_LINE_LENGTH] = "";
 char pb_output_file_path[XA_MAX_CMD_LINE_LENGTH] = "";
 char pb_ref_file_path[XA_MAX_CMD_LINE_LENGTH] = "";
-
-/* Move this utility function to a common location later */
-int argtype_string_to_array(char** argv, int *argidx, char *_switch, int *dest_array, int num_elments) {
-    int idx = *argidx;
-    if(strcmp(argv[idx], _switch) == 0) {
-        /* printf("PARSE %s: %s %s\n", _switch, argv[argidx], argv[argidx+1]); */
-        int count = 0;
-        while (count < num_elments) {
-            idx++;
-            dest_array[count] = atoi(argv[idx]);
-            count++;
-        }
-        *argidx = idx;
-        return 1;
-    } else {
-        return 0;
-    }
-}
 
 typedef struct _test_config_t
 {
@@ -188,83 +171,6 @@ int default_config(test_config_t *p_cfg)
   }
 }
 
-
-void parse_arguments(int argc, char** argv, test_config_t *p_cfg)
-{
-  int argidx;
-  for (argidx=1; argidx<argc; argidx++)
-  {
-    if(strncmp((argv[argidx]), "-", 1) != 0)
-    {
-      //err_code = 0;
-      printf("Invalid argument: %s\n",argv[argidx]);
-      exit(1);
-    }
-    ARGTYPE_INDICATE("--help", p_cfg->help);
-    ARGTYPE_INDICATE("-help", p_cfg->help);
-    ARGTYPE_INDICATE("-h", p_cfg->help);
-    ARGTYPE_ONETIME_CONFIG("-output_zero_bias", p_cfg->output_zero_bias);                       
-    ARGTYPE_ONETIME_CONFIG("-output_left_shift", p_cfg->output_left_shift);                        
-    ARGTYPE_ONETIME_CONFIG("-output_multiplier", p_cfg->output_multiplier);                
-    ARGTYPE_ONETIME_CONFIG("-output_activation_min", p_cfg->output_activation_min);            
-    ARGTYPE_ONETIME_CONFIG("-output_activation_max", p_cfg->output_activation_max);            
-    ARGTYPE_ONETIME_CONFIG("-input1_zero_bias", p_cfg->input1_zero_bias);                    
-    ARGTYPE_ONETIME_CONFIG("-input1_left_shift", p_cfg->input1_left_shift);                     
-    ARGTYPE_ONETIME_CONFIG("-input1_multiplier", p_cfg->input1_multiplier);                
-    ARGTYPE_ONETIME_CONFIG("-input2_zero_bias", p_cfg->input2_zero_bias);                    
-    ARGTYPE_ONETIME_CONFIG("-input2_left_shift", p_cfg->input2_left_shift);                     
-    ARGTYPE_ONETIME_CONFIG("-input2_multiplier", p_cfg->input2_multiplier);                
-    ARGTYPE_ONETIME_CONFIG("-left_shift", p_cfg->left_shift);                           
-    ARGTYPE_ONETIME_CONFIG_F32("-input1_scale", p_cfg->input1_scale);                           
-    ARGTYPE_ONETIME_CONFIG("-io_length", p_cfg->io_length);                           
-    ARGTYPE_ONETIME_CONFIG("-num_inp_dims", p_cfg->num_inp_dims);                           
-    ARGTYPE_ONETIME_CONFIG("-num_axis_dims", p_cfg->num_axis_dims);                           
-    ARGTYPE_ONETIME_CONFIG("-num_out_dims", p_cfg->num_out_dims);                           
-    ARGTYPE_ONETIME_CONFIG("-inp_precision", p_cfg->inp_precision);                        
-    ARGTYPE_ONETIME_CONFIG("-out_precision", p_cfg->out_precision);                        
-    ARGTYPE_ONETIME_CONFIG("-vec_count", p_cfg->vec_count);                           
-    ARGTYPE_ONETIME_CONFIG("-frames", p_cfg->frames);
-    ARGTYPE_STRING("-kernel_name", p_cfg->kernel_name, MAX_KERNEL_NAME_LENGTH);
-    ARGTYPE_ONETIME_CONFIG("-write_file", p_cfg->write_file);
-    ARGTYPE_STRING("-read_inp1_file_name", p_cfg->read_inp1_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-read_inp2_file_name", p_cfg->read_inp2_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-read_ref_file_name", p_cfg->read_ref_file_name, XA_MAX_CMD_LINE_LENGTH);
-    
-    if(argtype_string_to_array(argv, &argidx, "-read_inp_shape_str", p_cfg->input_shape, p_cfg->num_inp_dims)) {
-        continue;
-    }
-    ARGTYPE_ONETIME_CONFIG("-num_bytes_memmove", p_cfg->numBytesForMemmove);
-    ARGTYPE_ONETIME_CONFIG("-src_memmove_offset", p_cfg->srcMemmoveOffset);
-    ARGTYPE_ONETIME_CONFIG("-dst_memmove_offset", p_cfg->dstMemmoveOffset);
-    ARGTYPE_ONETIME_CONFIG_F32("-val_memset", p_cfg->value);
-
-    if(argtype_string_to_array(argv, &argidx, "-read_out_shape_str", p_cfg->output_shape, p_cfg->num_out_dims)) {
-        continue;
-    }
-    
-    ARGTYPE_STRING_TO_ARRAY("-read_axis_data_str", p_cfg->read_axis_data_str, SHAPE_ARGS_LENGTH, p_cfg->axis_data);
-    
-    // parsing extra parameters for broadcast
-    ARGTYPE_ONETIME_CONFIG("-input1_numElements", p_cfg->input1_numElements);
-    ARGTYPE_ONETIME_CONFIG("-input2_numElements", p_cfg->input2_numElements);
-    if(argtype_string_to_array(argv, &argidx, "-input1_strides", p_cfg->input1_strides, p_cfg->num_inp_dims)) { 
-        continue;
-    }
-    if(argtype_string_to_array(argv, &argidx, "-input2_strides", p_cfg->input2_strides, p_cfg->num_inp_dims)) {
-        continue;
-    }
-    
-    ARGTYPE_STRING("-write_inp1_file_name", p_cfg->write_inp1_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-write_inp2_file_name", p_cfg->write_inp2_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_STRING("-write_out_file_name", p_cfg->write_out_file_name, XA_MAX_CMD_LINE_LENGTH);
-    ARGTYPE_ONETIME_CONFIG("-verify", p_cfg->verify);
-    
-    // If arg doesnt match with any of the above supported options, report option as invalid
-    printf("Invalid argument: %s\n", argv[argidx]);
-    exit(1);
-  }
-}
-
 void show_usage(void)
 {
     printf ("Usage xt-run <binary> [Options]\n");
@@ -313,6 +219,80 @@ void show_usage(void)
     printf ("\t-input1_scale: input_scale(Float value. Only needed in dequantize operation); Default=0.5\n");
     printf ("\t-val_memset: input_memset(Float value. Needed in memset operation); Default=0.0\n");
 }
+
+void parse_arguments(int argc, char** argv, test_config_t *p_cfg)
+{
+  int argidx;
+  for (argidx=1; argidx<argc; argidx++)
+  {
+    if(strncmp((argv[argidx]), "-", 1) != 0)
+    {
+      //err_code = 0;
+      printf("Invalid argument: %s\n",argv[argidx]);
+      show_usage();
+      exit(1);
+    }
+    ARGTYPE_INDICATE("--help", p_cfg->help);
+    ARGTYPE_INDICATE("-help", p_cfg->help);
+    ARGTYPE_INDICATE("-h", p_cfg->help);
+    ARGTYPE_ONETIME_CONFIG("-output_zero_bias", p_cfg->output_zero_bias);                       
+    ARGTYPE_ONETIME_CONFIG("-output_left_shift", p_cfg->output_left_shift);                        
+    ARGTYPE_ONETIME_CONFIG("-output_multiplier", p_cfg->output_multiplier);                
+    ARGTYPE_ONETIME_CONFIG("-output_activation_min", p_cfg->output_activation_min);            
+    ARGTYPE_ONETIME_CONFIG("-output_activation_max", p_cfg->output_activation_max);            
+    ARGTYPE_ONETIME_CONFIG("-input1_zero_bias", p_cfg->input1_zero_bias);                    
+    ARGTYPE_ONETIME_CONFIG("-input1_left_shift", p_cfg->input1_left_shift);                     
+    ARGTYPE_ONETIME_CONFIG("-input1_multiplier", p_cfg->input1_multiplier);                
+    ARGTYPE_ONETIME_CONFIG("-input2_zero_bias", p_cfg->input2_zero_bias);                    
+    ARGTYPE_ONETIME_CONFIG("-input2_left_shift", p_cfg->input2_left_shift);                     
+    ARGTYPE_ONETIME_CONFIG("-input2_multiplier", p_cfg->input2_multiplier);                
+    ARGTYPE_ONETIME_CONFIG("-left_shift", p_cfg->left_shift);                           
+    ARGTYPE_ONETIME_CONFIG_F32("-input1_scale", p_cfg->input1_scale);                           
+    ARGTYPE_ONETIME_CONFIG("-io_length", p_cfg->io_length);                           
+    ARGTYPE_ONETIME_CONFIG("-num_inp_dims", p_cfg->num_inp_dims);                           
+    ARGTYPE_ONETIME_CONFIG("-num_axis_dims", p_cfg->num_axis_dims);                           
+    ARGTYPE_ONETIME_CONFIG("-num_out_dims", p_cfg->num_out_dims);                           
+    ARGTYPE_ONETIME_CONFIG("-inp_precision", p_cfg->inp_precision);                        
+    ARGTYPE_ONETIME_CONFIG("-out_precision", p_cfg->out_precision);                        
+    ARGTYPE_ONETIME_CONFIG("-vec_count", p_cfg->vec_count);                           
+    ARGTYPE_ONETIME_CONFIG("-frames", p_cfg->frames);
+    ARGTYPE_STRING("-kernel_name", p_cfg->kernel_name, MAX_KERNEL_NAME_LENGTH);
+    ARGTYPE_ONETIME_CONFIG("-write_file", p_cfg->write_file);
+    ARGTYPE_STRING("-read_inp1_file_name", p_cfg->read_inp1_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-read_inp2_file_name", p_cfg->read_inp2_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-read_ref_file_name", p_cfg->read_ref_file_name, XA_MAX_CMD_LINE_LENGTH);
+
+    ARGTYPE_ONETIME_CONFIG_ARRAY("-read_inp_shape_str", p_cfg->input_shape, p_cfg->num_inp_dims, p_cfg->read_inp_shape_str);
+    
+    ARGTYPE_ONETIME_CONFIG("-num_bytes_memmove", p_cfg->numBytesForMemmove);
+    ARGTYPE_ONETIME_CONFIG("-src_memmove_offset", p_cfg->srcMemmoveOffset);
+    ARGTYPE_ONETIME_CONFIG("-dst_memmove_offset", p_cfg->dstMemmoveOffset);
+    ARGTYPE_ONETIME_CONFIG_F32("-val_memset", p_cfg->value);
+
+    ARGTYPE_ONETIME_CONFIG_ARRAY("-read_out_shape_str", p_cfg->output_shape, p_cfg->num_out_dims, p_cfg->read_out_shape_str);
+
+    ARGTYPE_STRING_TO_ARRAY("-read_axis_data_str", p_cfg->read_axis_data_str, SHAPE_ARGS_LENGTH, p_cfg->axis_data);
+    
+    // parsing extra parameters for broadcast
+    ARGTYPE_ONETIME_CONFIG("-input1_numElements", p_cfg->input1_numElements);
+    ARGTYPE_ONETIME_CONFIG("-input2_numElements", p_cfg->input2_numElements);
+
+    ARGTYPE_ONETIME_CONFIG_ARRAY("-input1_strides", p_cfg->input1_strides, p_cfg->num_inp_dims, NULL);
+    ARGTYPE_ONETIME_CONFIG_ARRAY("-input2_strides", p_cfg->input2_strides, p_cfg->num_inp_dims, NULL);
+    
+    ARGTYPE_STRING("-write_inp1_file_name", p_cfg->write_inp1_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-write_inp2_file_name", p_cfg->write_inp2_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_STRING("-write_out_file_name", p_cfg->write_out_file_name, XA_MAX_CMD_LINE_LENGTH);
+    ARGTYPE_ONETIME_CONFIG("-verify", p_cfg->verify);
+    
+    // If arg doesnt match with any of the above supported options, report option as invalid
+    printf("Invalid argument: %s\n", argv[argidx]);
+    show_usage();
+    exit(1);
+  }
+}
+
+
 
 #define REDUCE_MAX_ASYM8S(KERNEL, IPREC, OPREC) \
   if(!strcmp(cfg.kernel_name, #KERNEL) && (IPREC == cfg.inp_precision) \
@@ -1061,12 +1041,12 @@ int xa_nn_main_process(int argc, char *argv[])
   buf1D_t *p_inp1 = NULL;
   buf1D_t *p_inp2 = NULL;
   buf1D_t *p_out;
-  buf1D_t *ptr_ref;
+  buf1D_t *ptr_ref = NULL;
 
   FILE *fptr_inp1 = NULL;
   FILE *fptr_inp2 = NULL;
   FILE *fptr_out;
-  FILE *fptr_ref;
+  FILE *fptr_ref = NULL;
 
   // Axis and shape pointers for reduce max kernel
   WORD32 *p_inp_shape, *p_out_shape, *p_axis;
@@ -1076,7 +1056,12 @@ int xa_nn_main_process(int argc, char *argv[])
   {
     return -1;
   }
-  
+
+  fprintf(stderr, "\n--------------------------------------------------------\n");
+  fprintf(stderr, "%s library version %s\n", xa_nnlib_get_lib_name_string() , xa_nnlib_get_lib_version_string());
+  fprintf(stderr, "API version: %s\n", xa_nnlib_get_lib_api_version_string());
+  fprintf(stderr, "Cadence Design Systems, Inc. http://www.cadence.com\n");
+
   if(argc > 1)
   {
     printf("Parsing CMDLINE\n");
@@ -1173,31 +1158,53 @@ int xa_nn_main_process(int argc, char *argv[])
     sprintf(profiler_params, "N=%d\n", cfg.io_length);
   }
 
-  // Open input file
-  if(cfg.write_file)
+  bool single_input_kernel = 0;
+  if( !strcmp(cfg.kernel_name, "elm_floor")       ||
+      !strcmp(cfg.kernel_name, "elm_sine")        ||
+      !strcmp(cfg.kernel_name, "elm_cosine")      ||
+      !strcmp(cfg.kernel_name, "elm_logn")        ||
+      !strcmp(cfg.kernel_name, "elm_abs")         ||
+      !strcmp(cfg.kernel_name, "elm_ceil")        ||
+      !strcmp(cfg.kernel_name, "elm_round")       ||
+      !strcmp(cfg.kernel_name, "elm_neg")         ||
+      !strcmp(cfg.kernel_name, "elm_square")      ||
+      !strcmp(cfg.kernel_name, "elm_sqrt")        ||
+      !strcmp(cfg.kernel_name, "elm_rsqrt")       ||
+      !strcmp(cfg.kernel_name, "broadcast")       ||
+      !strcmp(cfg.kernel_name, "memmove")         ||
+      !strcmp(cfg.kernel_name, "elm_dequantize")  ||
+      !strcmp(cfg.kernel_name, "elm_requantize")  ||
+      !strcmp(cfg.kernel_name, "reduce_max_4D")      ||
+      !strcmp(cfg.kernel_name, "reduce_mean_4D"))
   {
-    /* If write_file (generate test vectors) is enabled, random data would be generated and
-       used; the input data and output data generated would be written into files. 
-     */
-	if(cfg.write_inp1_file_name[0] != '\0')
-		fptr_inp1 = file_open(pb_input_file_path, cfg.write_inp1_file_name, "wb", XA_MAX_CMD_LINE_LENGTH);
-	if(cfg.write_inp2_file_name[0] != '\0')
-	  fptr_inp2 = file_open(pb_input_file_path, cfg.write_inp2_file_name, "wb", XA_MAX_CMD_LINE_LENGTH);
+    single_input_kernel = 1;
   }
-  else
+
+  if(strcmp(cfg.kernel_name, "memset")) /* memset does not require array of input */
   {
-    /* Else, if input file is specified on command line, input data would be read from it, else
-       input data would be read from the default file set in default_config().
-     */
-	  if(cfg.read_inp1_file_name[0] != '\0')
-		  fptr_inp1 = file_open(pb_input_file_path, cfg.read_inp1_file_name, "rb", XA_MAX_CMD_LINE_LENGTH);
-	  if(cfg.read_inp2_file_name[0] != '\0')
-		  fptr_inp2 = file_open(pb_input_file_path, cfg.read_inp2_file_name, "rb", XA_MAX_CMD_LINE_LENGTH);
+    // Open input file
+    if(cfg.write_file)
+    {
+      /* If write_file (generate test vectors) is enabled, random data would be generated and
+        used; the input data and output data generated would be written into files. 
+      */
+	    fptr_inp1 = file_open(pb_input_file_path, cfg.write_inp1_file_name, "wb", XA_MAX_CMD_LINE_LENGTH);
+      if(!single_input_kernel)
+        fptr_inp2 = file_open(pb_input_file_path, cfg.write_inp2_file_name, "wb", XA_MAX_CMD_LINE_LENGTH);
+    }
+    else
+    {
+      /* Else, if input file is specified on command line, input data would be read from it, else
+        input data would be read from the default file set in default_config().
+      */
+	    fptr_inp1 = file_open(pb_input_file_path, cfg.read_inp1_file_name, "rb", XA_MAX_CMD_LINE_LENGTH);
+      if(!single_input_kernel)
+	      fptr_inp2 = file_open(pb_input_file_path, cfg.read_inp2_file_name, "rb", XA_MAX_CMD_LINE_LENGTH);
+    }
   }
 
   // Open output file
-          if(cfg.write_out_file_name[0] != '\0')
-		fptr_out = file_open(pb_output_file_path, cfg.write_out_file_name, "wb", XA_MAX_CMD_LINE_LENGTH);
+	fptr_out = file_open(pb_output_file_path, cfg.write_out_file_name, "wb", XA_MAX_CMD_LINE_LENGTH);
 
   // Open reference file if verify flag is enabled
   if(cfg.verify)
@@ -1296,6 +1303,14 @@ int xa_nn_main_process(int argc, char *argv[])
 	{
 	  p_out = create_buf1D(cfg.numBytesForMemmove, cfg.out_precision); VALIDATE_PTR(p_out);
 	}
+  else if ( !strcmp(cfg.kernel_name, "elm_mul_acc")  )
+	{
+    p_out = create_buf1D(cfg.io_length * cfg.vec_count, cfg.out_precision); VALIDATE_PTR(p_out);
+    if(cfg.out_precision == -1)
+    {
+      memset(p_out->p, 0, cfg.io_length * cfg.vec_count * sizeof(FLOAT32));
+    }
+  }
   else
   {
     p_out = create_buf1D(cfg.io_length * cfg.vec_count, cfg.out_precision); VALIDATE_PTR(p_out);
@@ -1392,8 +1407,8 @@ int xa_nn_main_process(int argc, char *argv[])
     // If verify flag enabled, compare output against reference
     if(cfg.verify)
     {
-      read_buf1D_from_file(fptr_ref, ptr_ref);
-      pass_count += compare_buf1D(ptr_ref, p_out, cfg.verify, cfg.out_precision, 1);
+      if(-1 != read_buf1D_from_file(fptr_ref, ptr_ref))
+        pass_count += compare_buf1D(ptr_ref, p_out, cfg.verify, cfg.out_precision, 1);
     }
     else
     {
@@ -1401,7 +1416,7 @@ int xa_nn_main_process(int argc, char *argv[])
     }
   }
 
-  XTPWR_PROFILER_CLOSE(0, (pass_count == cfg.frames));
+  XTPWR_PROFILER_CLOSE(0, (pass_count == cfg.frames), cfg.verify);
 
   if(fptr_inp1)
   	  fclose(fptr_inp1);

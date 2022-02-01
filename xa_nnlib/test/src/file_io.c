@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -30,6 +30,7 @@
     case ASYM8S_TYPE: size = sizeof(char);        break;  \
     case SYM8S_TYPE: size = sizeof(char);         break;  \
     case ASYM16S_TYPE: size = sizeof(short int);  break;  \
+    case ASYM32S_TYPE: size = sizeof(int);        break;  \
     case 1: size = sizeof(char);                  break;  \
     case 8: size = sizeof(char);                  break;  \
     case 16: size = sizeof(short int);            break;  \
@@ -65,11 +66,13 @@ int read_buf2D_from_file(FILE *fptr_read_data, buf2D_t *ptr_buf2D, int pad_val)
     if(ptr_buf2D->precision == ASYM8_TYPE)
     {
       int pad_size = ptr_buf2D->row_offset - ptr_buf2D->cols;
+      pad_size = (pad_size < 0) ? 0: pad_size;
       memset((ptr_mat + (row * ptr_buf2D->row_offset * size) + ptr_buf2D->cols * size), (UWORD8)pad_val, pad_size);
     }
     else
     {
       int pad_size = ptr_buf2D->row_offset - ptr_buf2D->cols;
+      pad_size = (pad_size < 0) ? 0: pad_size;
       memset((ptr_mat + (row * ptr_buf2D->row_offset * size) + ptr_buf2D->cols * size), 0, size * pad_size);
     }
   }
@@ -135,7 +138,7 @@ int load_matXvec_input_data(int write_file, FILE *fptr_inp, buf2D_t *p_mat1, buf
   return 0;
 }
 
-int load_activation_input_data(int write_file, FILE *fptr_inp, buf1D_t *p_inp) 
+int load_activation_input_data(int write_file, FILE *fptr_inp, buf1D_t *p_inp, buf1D_t *p_inp_alpha, char *kernel_name) 
 {  
   if(write_file)                                                                     
   {                                                                                  
@@ -144,11 +147,26 @@ int load_activation_input_data(int write_file, FILE *fptr_inp, buf1D_t *p_inp)
                                                                                      
     /* Write input data into file */                                                 
     write_buf1D_to_file(fptr_inp, p_inp);                  
+
+    if(!strcmp(kernel_name,"prelu"))
+    {
+      /* Set random input_alpha data */                                                      
+      set_rand_inp_buf1D(p_inp_alpha);                                                      
+                                                                                     
+      /* Write input_alpha data into file */                                                 
+      write_buf1D_to_file(fptr_inp, p_inp_alpha);
+    }
   }                                                           
   else                                                        
   {                                                           
     /* Read input data from file */                           
     read_buf1D_from_file(fptr_inp, p_inp);                  
+
+    if(!strcmp(kernel_name,"prelu"))
+    {
+      /* Read input_alpha data from file */                           
+      read_buf1D_from_file(fptr_inp, p_inp_alpha);
+    }
   }                                                                                  
   return 0;
 }

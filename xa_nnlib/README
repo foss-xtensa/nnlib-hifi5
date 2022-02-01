@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+# Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -26,6 +26,20 @@ Cadence HiFi 5 Neural Network (NN) Library
 ===============================================================================
 Revision History
 ===============================================================================
+
+Version 1.7.0 API 1.1: February 1, 2022
+
++ GA Release of HiFi 5 NN Library.
++ NN Library for HiFi 5 DSPs with the NN Extension and optional SP-VFP Unit
++ Tested using RI.6 tools, xt-clang compiler.
++ Fixes following issues:
+  Fixes hang in matXvec sample testbench.(TENA-3062)
+  Adds -Wsign-compare flag in build set up. (TENA-2953)
+  Fixes crash in Fully Connected float32 kernel. (TENA-3054)
+  Allows null bias for matmul (8x8, asym8xasym8 and sym8sxasym8s) kernels (TENA-3090)
+  Allows null bias for fully connected (sym8sxasym8s) kernel. (TENA-3091)
+
+-------------------------------------------------------------------------------
 
 Version 1.6.0 API 1.0: June 30, 2021
 
@@ -189,4 +203,3 @@ Version 1.0.0 API 1.0: July 23, 2019
     CNN layer
 
 -------------------------------------------------------------------------------
-2021-06-30:11:39:RI-2021.6:682134:680695:682134::

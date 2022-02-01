@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -836,6 +836,7 @@ WORD32 xa_nn_dilated_conv2d_std_getsize(
     WORD32 y_stride,
     WORD32 y_padding,
     WORD32 out_height,
+    WORD32 out_channels,
     WORD32 input_precision,
     WORD32 dilation_height
     );

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -36,6 +36,8 @@ extern "C"
 #elif ( (XCHAL_HAVE_HIFI3Z_VFPU) )
 #define HIFI_VFPU 1
 #elif ( (XCHAL_HAVE_HIFI3_VFPU) )
+#define HIFI_VFPU 1
+#elif ( (XCHAL_HAVE_HIFI1_VFPU) )
 #define HIFI_VFPU 1
 #else
 #define HIFI_VFPU 0

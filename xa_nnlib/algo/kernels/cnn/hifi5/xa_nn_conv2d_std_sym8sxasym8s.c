@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -312,7 +312,8 @@ WORD32 xa_nn_dilated_conv2d_std_per_chan_sym8sxasym8s(
   WORD32 out_width_over_x_r_pad = 0;
   // Determine x-right padding
   WORD32 x_r_pad = kernel_width_dilation + (out_width - 1) * x_stride - (x_padding + input_width);//dilation
-  x_r_pad = x_r_pad < 0 ? 0 : x_r_pad;
+  //x_r_pad = x_r_pad < 0 ? 0 : x_r_pad;
+  XA_NNLIB_ARG_CHK_COND((x_r_pad<0), -1);
   if(x_r_pad >= kernel_width_dilation)//dilation
   {
     out_width_over_x_r_pad = conv_x_right_pad(x_padding, input_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias);
@@ -321,7 +322,9 @@ WORD32 xa_nn_dilated_conv2d_std_per_chan_sym8sxasym8s(
 
   // Determine y-bottom padding
   WORD32 y_b_pad = kernel_height_dilation + (out_height - 1) * y_stride - (y_padding + input_height);
-  y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
+  //y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
+  XA_NNLIB_ARG_CHK_COND((y_b_pad<0), -1);
+
 
   XA_NNLIB_ARG_CHK_COND((kernel_height_dilation > ( y_padding + input_height + y_b_pad)), -1);//dilation
   XA_NNLIB_ARG_CHK_COND((kernel_width_dilation  > ( x_padding + input_width  + x_r_pad)), -1);//dilation

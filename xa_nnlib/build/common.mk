@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+# Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -42,6 +42,7 @@ ifeq ($(CPU), x86)
     INCLUDES += \
     -I$(ROOTDIR)/test/include
 else
+    #switch to xt-clang default RI.7
     AR = xt-ar $(XTCORE)
     OBJCOPY = xt-objcopy $(XTCORE)
     #CC = xt-xcc $(XTCORE)
@@ -54,9 +55,13 @@ else
     CFLAGS += -Wall 
     ifeq ($(WARNING_AS_ERROR),1)
       CFLAGS += -Werror
+      ifneq ($(CC), xt-xcc)
+       CFLAGS += -Wno-parentheses-equality
+      endif
     endif
     CFLAGS += -mno-mul16 -mno-mul32 -mno-div32 -fsigned-char -fno-exceptions -mlongcalls -INLINE:requested -mcoproc -fno-zero-initialized-in-bss
     CFLAGS += -mtext-section-literals 
+    CFLAGS += -Wsign-compare
 endif
 
 OBJDIR = objs$(S)$(CODEC_NAME)$(DETECTED_CORE)

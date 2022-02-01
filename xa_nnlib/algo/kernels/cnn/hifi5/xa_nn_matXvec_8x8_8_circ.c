@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -248,9 +248,11 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_offset_aligned
   p_vec_0 -= align_offset;
 
   pre_loop_count += 8; // 16 values loaded in preloop step 
-  loop_count = cols - pre_loop_count;
-  post_loop_count = loop_count & 0xf;
+  loop_count = (cols < pre_loop_count)?0:(cols - pre_loop_count);
+  post_loop_count = loop_count?(loop_count & 15):((cols + align_offset) & 15);
   loop_count >>= 4;
+
+  int mask_start_end = ((cols + align_offset) < 16)?0:1;
 
   int rem_cols_shift_0 = (post_loop_count <= 8) ? (8 - post_loop_count) * 8 : 0;
   int rem_cols_shift_1 = (post_loop_count > 8) ? (16 - post_loop_count) * 8 : 64;
@@ -305,20 +307,27 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_offset_aligned
   AE_L8X8_IP(vec3_batch_0, (ae_int8x8 *)p_vec_3, 8);
   AE_L8X8_IP(vec3_batch_1, (ae_int8x8 *)p_vec_3, 8);
 
-  mat1_row0_0 = AE_MOVINT8X8_FROMINT64(AE_SRLA64(AE_SLAA64(AE_MOVINT64_FROMINT8X8(mat1_row0_0), pre_loop_shift), pre_loop_shift));
-  mat1_row1_0 = AE_MOVINT8X8_FROMINT64(AE_SRLA64(AE_SLAA64(AE_MOVINT64_FROMINT8X8(mat1_row1_0), pre_loop_shift), pre_loop_shift));
-  mat1_row2_0 = AE_MOVINT8X8_FROMINT64(AE_SRLA64(AE_SLAA64(AE_MOVINT64_FROMINT8X8(mat1_row2_0), pre_loop_shift), pre_loop_shift));
-  mat1_row3_0 = AE_MOVINT8X8_FROMINT64(AE_SRLA64(AE_SLAA64(AE_MOVINT64_FROMINT8X8(mat1_row3_0), pre_loop_shift), pre_loop_shift));
 
-  AE_MULA8Q8X8(acc_row0_vec0 , acc_row1_vec0 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec0_batch_0);
-  AE_MULA8Q8X8(acc_row0_vec1 , acc_row1_vec1 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec1_batch_0);
-  AE_MULA8Q8X8(acc_row0_vec2 , acc_row1_vec2 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec2_batch_0);
-  AE_MULA8Q8X8(acc_row0_vec3 , acc_row1_vec3 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec3_batch_0);
+  if(align_offset)
+  {
+    mat1_row0_0 = AE_MOVINT8X8_FROMINT64(AE_SRLA64(AE_SLAA64(AE_MOVINT64_FROMINT8X8(mat1_row0_0), pre_loop_shift), pre_loop_shift));
+    mat1_row1_0 = AE_MOVINT8X8_FROMINT64(AE_SRLA64(AE_SLAA64(AE_MOVINT64_FROMINT8X8(mat1_row1_0), pre_loop_shift), pre_loop_shift));
+    mat1_row2_0 = AE_MOVINT8X8_FROMINT64(AE_SRLA64(AE_SLAA64(AE_MOVINT64_FROMINT8X8(mat1_row2_0), pre_loop_shift), pre_loop_shift));
+    mat1_row3_0 = AE_MOVINT8X8_FROMINT64(AE_SRLA64(AE_SLAA64(AE_MOVINT64_FROMINT8X8(mat1_row3_0), pre_loop_shift), pre_loop_shift));
+  }
 
-  AE_MULA8Q8X8(acc_row0_vec0 , acc_row1_vec0 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec0_batch_1);
-  AE_MULA8Q8X8(acc_row0_vec1 , acc_row1_vec1 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec1_batch_1);
-  AE_MULA8Q8X8(acc_row0_vec2 , acc_row1_vec2 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec2_batch_1);
-  AE_MULA8Q8X8(acc_row0_vec3 , acc_row1_vec3 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec3_batch_1);
+  if(mask_start_end)
+  {
+    AE_MULA8Q8X8(acc_row0_vec0 , acc_row1_vec0 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec0_batch_0);
+    AE_MULA8Q8X8(acc_row0_vec1 , acc_row1_vec1 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec1_batch_0);
+    AE_MULA8Q8X8(acc_row0_vec2 , acc_row1_vec2 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec2_batch_0);
+    AE_MULA8Q8X8(acc_row0_vec3 , acc_row1_vec3 , mat1_row0_0 , mat1_row1_0 , mat1_row2_0 , mat1_row3_0 ,vec3_batch_0);
+
+    AE_MULA8Q8X8(acc_row0_vec0 , acc_row1_vec0 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec0_batch_1);
+    AE_MULA8Q8X8(acc_row0_vec1 , acc_row1_vec1 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec1_batch_1);
+    AE_MULA8Q8X8(acc_row0_vec2 , acc_row1_vec2 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec2_batch_1);
+    AE_MULA8Q8X8(acc_row0_vec3 , acc_row1_vec3 , mat1_row0_1 , mat1_row1_1 , mat1_row2_1 , mat1_row3_1 ,vec3_batch_1);
+  }
 
 #pragma no_unroll
   for(c_itr = 0; c_itr < loop_count; c_itr++)
@@ -357,15 +366,18 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_offset_aligned
   int rem_shift = rem_cols_shift_0;;
   while(c_itr < post_loop_count)
   {
-    AE_LA8X8_IC(mat1_row0_0, align_p_mat1_0, p_mat1_0);
-    AE_LA8X8_IC(mat1_row1_0, align_p_mat1_1, p_mat1_1);
-    AE_LA8X8_IC(mat1_row2_0, align_p_mat1_2, p_mat1_2);
-    AE_LA8X8_IC(mat1_row3_0, align_p_mat1_3, p_mat1_3);
+    if(mask_start_end) 
+    {
+      AE_LA8X8_IC(mat1_row0_0, align_p_mat1_0, p_mat1_0);
+      AE_LA8X8_IC(mat1_row1_0, align_p_mat1_1, p_mat1_1);
+      AE_LA8X8_IC(mat1_row2_0, align_p_mat1_2, p_mat1_2);
+      AE_LA8X8_IC(mat1_row3_0, align_p_mat1_3, p_mat1_3);
 
-    AE_L8X8_IP(vec0_batch_0, (ae_int8x8*)p_vec_0, 8);
-    AE_L8X8_IP(vec1_batch_0, (ae_int8x8*)p_vec_1, 8);
-    AE_L8X8_IP(vec2_batch_0, (ae_int8x8*)p_vec_2, 8);
-    AE_L8X8_IP(vec3_batch_0, (ae_int8x8*)p_vec_3, 8);
+      AE_L8X8_IP(vec0_batch_0, (ae_int8x8*)p_vec_0, 8);
+      AE_L8X8_IP(vec1_batch_0, (ae_int8x8*)p_vec_1, 8);
+      AE_L8X8_IP(vec2_batch_0, (ae_int8x8*)p_vec_2, 8);
+      AE_L8X8_IP(vec3_batch_0, (ae_int8x8*)p_vec_3, 8);
+    }
 
     mat1_row0_0 = AE_MOVINT8X8_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMINT8X8(mat1_row0_0), rem_shift), rem_shift));
     mat1_row1_0 = AE_MOVINT8X8_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMINT8X8(mat1_row1_0), rem_shift), rem_shift));
@@ -379,6 +391,17 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_offset_aligned
 
     c_itr += 8;
     rem_shift = rem_cols_shift_1;
+    if(!mask_start_end && (c_itr < post_loop_count))
+    {
+      mat1_row0_0 = mat1_row0_1;
+      mat1_row1_0 = mat1_row1_1;
+      mat1_row2_0 = mat1_row2_1;
+      mat1_row3_0 = mat1_row3_1;
+      vec0_batch_0 = vec0_batch_1;
+      vec1_batch_0 = vec1_batch_1;
+      vec2_batch_0 = vec2_batch_1;
+      vec3_batch_0 = vec3_batch_1;
+    }
   }
 
   *out_0_0 = acc_row0_vec0;

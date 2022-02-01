@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -218,7 +218,7 @@ const UWORD8* __restrict__ p_inp,
 
                         AE_L16_IP(i1,  (ae_int16 *)p_src1_scratch, 2);
                         i2 = AE_MOVDA16(((UWORD8 *)p_src2_temp)[i] );
-                        i3 = AE_MOVDA16(((UWORD8 *)p_src2_temp)[i] );
+                        i3 = AE_MOVDA16(((UWORD8 *)p_src3_temp)[i] );
 
                         MAX_16X4(out, i3, i2, i1)
                         AE_S16_0_IP(out, (ae_int16 *)p_dst_temp, 2);

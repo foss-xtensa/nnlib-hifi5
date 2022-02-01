@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -331,8 +331,8 @@ WORD32 xa_nn_elm_sub_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
     ae_int32x2 out0_1, out2_3, out4_5, out6_7;
 
 
-    const unsigned int num_simd8_ops = num_elm/8;
-    const unsigned int num_scalar_ops = num_elm%8;
+    const int num_simd8_ops = num_elm/8;
+    const int num_scalar_ops = num_elm%8;
 
     if(io_pointers_aligned){
         for(i=0; i<num_simd8_ops; i++){

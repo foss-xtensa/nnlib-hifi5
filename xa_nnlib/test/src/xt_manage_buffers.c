@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -331,6 +331,15 @@ int set_rand_inp_buf1D(buf1D_t *ptr_buf1D)
         for (i = 0; i < ptr_buf1D->length; i++)
         {
           p[i] = RAND();
+        }
+      }
+      break;
+    case 1: 
+      {
+        char *p = (char *) ptr_buf1D->p;
+        for (i = 0; i < ptr_buf1D->length; i++)
+        {
+          p[i] = (RAND() & 1);
         }
       }
       break;

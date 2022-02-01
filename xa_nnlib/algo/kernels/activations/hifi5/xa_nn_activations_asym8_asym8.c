@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -641,6 +641,142 @@ WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
   XA_NNLIB_ARG_CHK_COND((input_multiplier < 0), -1);
   XA_NNLIB_ARG_CHK_COND(((input_range_radius < 0) || (input_range_radius > 255)), -1);
 
+#if defined(USE_HIFI_ACT_TIE) && defined(AE_SIGMOID16X4X2)
+  int i;
+  int rem_length = (vec_length & 7);
+  ae_int32x2 x01, x23, x45, x67;
+  ae_int32x2 z, mul, zero;
+  ae_int16x4 CONST_255_16x4 = AE_MOVDA16(255);
+  ae_int32x2 radius, minus_radius;
+  ae_int16x4 radius_16, minus_radius_16;
+  xtbool4 a0123, a4567, b0123, b4567;
+  ae_valign align_src_hf5, align_dst_hf5;
+  ae_int8x8 m0, z_8x8;
+  ae_int16x4 z0123, z4567, zero_16x4;
+  
+  int left_shift  = input_left_shift<0?0: input_left_shift;
+  int right_shift = input_left_shift>0?0:-input_left_shift;
+  
+  /* Second operand for XOR instruction used in SUB_128 and ADD_128*/
+  ae_int64 offset_xor = AE_MOVINT64_FROMINT8X8(AE_MOVDA8(128));
+  
+  WORD8 *p_in  = (WORD8 *)p_vec;
+  WORD8 *p_o = (WORD8 *)p_out;
+
+  align_src_hf5 = AE_LA64_PP((ae_int8x8 *)p_in);
+  align_dst_hf5 = AE_ZALIGN64();
+
+  radius = AE_MOVDA32(input_range_radius);
+  minus_radius = AE_NEG32(radius);
+
+  radius_16 = AE_MOVDA16(input_range_radius);
+  minus_radius_16 = AE_NEG16S(radius_16);
+
+  z = AE_MOVDA32(zero_point);
+  z_8x8 = AE_MOVDA8(zero_point);
+  mul = AE_MOVDA32(input_multiplier);
+  zero = AE_ZERO32();
+  zero_16x4 = AE_ZERO16();
+  WUR_AE_SAR(4);
+
+#pragma concurrent
+  for(i=0; i<(vec_length >> 3); i++)
+  {
+    AE_LA8X8_IP(m0, align_src_hf5, (ae_int8x8 *)p_in);
+    AE_SUBW8(z0123, z4567, m0, z_8x8);
+
+    // set flag if z <= minus_radius
+    a0123 = AE_LE16(z0123, minus_radius_16);
+    a4567 = AE_LE16(z4567, minus_radius_16);
+
+    // set flag if z < radius
+    b0123 = AE_LT16(z0123, radius_16);
+    b4567 = AE_LT16(z4567, radius_16);
+
+    AE_CVTI32X4F16(x01, x23, z0123, 0);
+    AE_CVTI32X4F16(x45, x67, z4567, 0);
+
+    MultiplyByQuantizedMultiplierX2(x01, x23, x01, x23, mul, left_shift, right_shift)
+    MultiplyByQuantizedMultiplierX2(x45, x67, x45, x67, mul, left_shift, right_shift)
+
+    x01 = AE_SRAA32SYMS(x01, 15);
+    x23 = AE_SRAA32SYMS(x23, 15);
+    x45 = AE_SRAA32SYMS(x45, 15);
+    x67 = AE_SRAA32SYMS(x67, 15);
+    z0123 = AE_SAT16X4(x01, x23);
+    z4567 = AE_SAT16X4(x45, x67);
+
+    AE_SIGMOID16X4X2(z0123, z4567, z0123, z4567);
+    
+    z0123 = AE_SRLI16(z0123, 8);
+    z4567 = AE_SRLI16(z4567, 8);
+
+    // if(inp_centered >= radius) output = 255
+    AE_MOVF16X4(z0123, CONST_255_16x4, b0123); 
+    AE_MOVF16X4(z4567, CONST_255_16x4, b4567); 
+
+    // if(inp_centered <= -radius) output = 0
+    AE_MOVT16X4(z0123, AE_ZERO16(), a0123); 
+    AE_MOVT16X4(z4567, AE_ZERO16(), a4567); 
+
+    m0 = AE_SATU8X8X16(z0123, z4567);
+
+    SUB_128(m0) 
+    AE_SA8X8_IP(m0, align_dst_hf5, (ae_int8x8 *)p_o);
+  }
+  AE_SA64POS_FP(align_dst_hf5, p_o);
+
+  ae_int8x8 m1;
+  ae_valignx2 alignx2_src_hf5, alignx2_dst_hf5;
+  alignx2_src_hf5 = AE_LA128_PP((ae_int8x8 *)p_in);
+  alignx2_dst_hf5 = AE_ZALIGN128();
+  // remainder loop
+  if(rem_length)
+  {
+    AE_LAV8X8X2_XP(m0, m1, alignx2_src_hf5, (ae_int8x16 *)p_in, rem_length);
+    AE_SUBW8(z0123, z4567, m0, z_8x8);
+
+    // set flag if z <= minus_radius
+    a0123 = AE_LE16(z0123, minus_radius_16);
+    a4567 = AE_LE16(z4567, minus_radius_16);
+
+    // set flag if z < radius
+    b0123 = AE_LT16(z0123, radius_16);
+    b4567 = AE_LT16(z4567, radius_16);
+
+    AE_CVTI32X4F16(x01, x23, z0123, 0);
+    AE_CVTI32X4F16(x45, x67, z4567, 0);
+
+    MultiplyByQuantizedMultiplierX2(x01, x23, x01, x23, mul, left_shift, right_shift)
+    MultiplyByQuantizedMultiplierX2(x45, x67, x45, x67, mul, left_shift, right_shift)
+    
+    x01 = AE_SRAA32SYMS(x01, 15);
+    x23 = AE_SRAA32SYMS(x23, 15);
+    x45 = AE_SRAA32SYMS(x45, 15);
+    x67 = AE_SRAA32SYMS(x67, 15);
+    z0123 = AE_SAT16X4(x01, x23);
+    z4567 = AE_SAT16X4(x45, x67);
+
+    AE_SIGMOID16X4X2(z0123, z4567, z0123, z4567);
+
+    z0123 = AE_SRLI16(z0123, 8);
+    z4567 = AE_SRLI16(z4567, 8);
+
+    // if(inp_centered >= radius) output = 255
+    AE_MOVF16X4(z0123, CONST_255_16x4, b0123);
+    AE_MOVF16X4(z4567, CONST_255_16x4, b4567);
+
+    // if(inp_centered <= -radius) output = 0
+    AE_MOVT16X4(z0123, AE_ZERO16(), a0123);
+    AE_MOVT16X4(z4567, AE_ZERO16(), a4567);
+
+    m0 = AE_SATU8X8X16(z0123, z4567);
+
+    SUB_128(m0)
+    AE_SAV8X8X2_XP(m0, m1, alignx2_dst_hf5, (ae_int8x16 *)p_o, rem_length);
+  }
+  AE_SA128POS_FP(alignx2_dst_hf5, (ae_int8x16 *)p_o);
+#else /* #if defined(USE_HIFI_ACT_TIE) && defined(AE_SIGMOID16X4X2) */
   int i;
   int rem_length = (vec_length & 15);
   ae_int32x2 x76, x54, x32, x10, y76, y54, y32, y10, l76, l54, l32, l10, m76, m54, m32, m10;
@@ -774,17 +910,17 @@ WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
     AE_MOVT16X4(z32, AE_SUB16S(CONST_256_16x4, z32), f7654); 
     AE_MOVT16X4(z10, AE_SUB16S(CONST_256_16x4, z10), f3210); 
 
-    // if(inp_centered <= -radius) output = 0
-    AE_MOVT16X4(z76, AE_ZERO16(), a7654); 
-    AE_MOVT16X4(z54, AE_ZERO16(), a3210); 
-    AE_MOVT16X4(z32, AE_ZERO16(), b7654); 
-    AE_MOVT16X4(z10, AE_ZERO16(), b3210); 
-
     // if(inp_centered >= radius) output = 255
     AE_MOVF16X4(z76, CONST_255_16x4, c7654); 
     AE_MOVF16X4(z54, CONST_255_16x4, c3210); 
     AE_MOVF16X4(z32, CONST_255_16x4, d7654); 
     AE_MOVF16X4(z10, CONST_255_16x4, d3210); 
+
+    // if(inp_centered <= -radius) output = 0
+    AE_MOVT16X4(z76, AE_ZERO16(), a7654); 
+    AE_MOVT16X4(z54, AE_ZERO16(), a3210); 
+    AE_MOVT16X4(z32, AE_ZERO16(), b7654); 
+    AE_MOVT16X4(z10, AE_ZERO16(), b3210); 
 
     m0 = AE_SATU8X8X16(z76, z54);
     m1 = AE_SATU8X8X16(z32, z10);
@@ -884,17 +1020,17 @@ WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
     AE_MOVT16X4(z32, AE_SUB16S(CONST_256_16x4, z32), f7654); 
     AE_MOVT16X4(z10, AE_SUB16S(CONST_256_16x4, z10), f3210); 
 
-    // if(inp_centered <= -radius) output = 0
-    AE_MOVT16X4(z76, AE_ZERO16(), a7654); 
-    AE_MOVT16X4(z54, AE_ZERO16(), a3210); 
-    AE_MOVT16X4(z32, AE_ZERO16(), b7654); 
-    AE_MOVT16X4(z10, AE_ZERO16(), b3210); 
-
     // if(inp_centered >= radius) output = 255
     AE_MOVF16X4(z76, CONST_255_16x4, c7654); 
     AE_MOVF16X4(z54, CONST_255_16x4, c3210); 
     AE_MOVF16X4(z32, CONST_255_16x4, d7654); 
     AE_MOVF16X4(z10, CONST_255_16x4, d3210); 
+
+    // if(inp_centered <= -radius) output = 0
+    AE_MOVT16X4(z76, AE_ZERO16(), a7654); 
+    AE_MOVT16X4(z54, AE_ZERO16(), a3210); 
+    AE_MOVT16X4(z32, AE_ZERO16(), b7654); 
+    AE_MOVT16X4(z10, AE_ZERO16(), b3210); 
 
     m0 = AE_SATU8X8X16(z76, z54);
     m1 = AE_SATU8X8X16(z32, z10);
@@ -904,6 +1040,7 @@ WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
     AE_SAV8X8X2_XP(m0, m1, align_dst_hf5, (ae_int8x16 *)p_o, rem_length);
   }
   AE_SA128POS_FP(align_dst_hf5, p_o);
+#endif /* #if defined(USE_HIFI_ACT_TIE) && defined(AE_SIGMOID16X4X2) */
 
   return 0;
 }
@@ -2086,6 +2223,138 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
   XA_NNLIB_ARG_CHK_COND((input_multiplier < 0), -1);
   XA_NNLIB_ARG_CHK_COND(((input_range_radius < 0) || (input_range_radius > 255)), -1);
 
+#if defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2)
+  int i;
+  int rem_length = (vec_length & 7);
+  ae_int32x2 x01, x23, x45, x67;
+  ae_int32x2 z, mul, zero;
+  ae_int16x4 CONST_127_16x4 = AE_MOVDA16(127);
+  ae_int16x4 CONST_MINUS_128_16x4 = AE_MOVDA16(-128);
+  ae_int32x2 radius, minus_radius;
+  ae_int16x4 radius_16, minus_radius_16;
+  xtbool4 a0123, a4567, b0123, b4567;
+  ae_valign align_src_hf5, align_dst_hf5;
+  ae_int8x8 m0, z_8x8;
+  ae_int16x4 z0123, z4567, zero_16x4;
+  
+  int left_shift  = input_left_shift<0?0: input_left_shift;
+  int right_shift = input_left_shift>0?0:-input_left_shift;
+  
+  WORD8 *p_in  = (WORD8 *)p_vec;
+  WORD8 *p_o = (WORD8 *)p_out;
+
+  align_src_hf5 = AE_LA64_PP((ae_int8x8 *)p_in);
+  align_dst_hf5 = AE_ZALIGN64();
+
+  radius = AE_MOVDA32(input_range_radius);
+  minus_radius = AE_NEG32(radius);
+
+  radius_16 = AE_MOVDA16(input_range_radius);
+  minus_radius_16 = AE_NEG16S(radius_16);
+
+  z = AE_MOVDA32(zero_point);
+  z_8x8 = AE_MOVDA8(zero_point);
+  mul = AE_MOVDA32(input_multiplier);
+  zero = AE_ZERO32();
+  zero_16x4 = AE_ZERO16();
+  WUR_AE_SAR(4);
+
+#pragma concurrent
+  for(i=0; i<(vec_length >> 3); i++)
+  {
+    AE_LA8X8_IP(m0, align_src_hf5, (ae_int8x8 *)p_in);
+    AE_SUBW8(z0123, z4567, m0, z_8x8);
+
+    // set flag if z <= minus_radius
+    a0123 = AE_LE16(z0123, minus_radius_16);
+    a4567 = AE_LE16(z4567, minus_radius_16);
+
+    // set flag if z < radius
+    b0123 = AE_LT16(z0123, radius_16);
+    b4567 = AE_LT16(z4567, radius_16);
+
+    AE_CVTI32X4F16(x01, x23, z0123, 0);
+    AE_CVTI32X4F16(x45, x67, z4567, 0);
+
+    MultiplyByQuantizedMultiplierX2(x01, x23, x01, x23, mul, left_shift, right_shift)
+    MultiplyByQuantizedMultiplierX2(x45, x67, x45, x67, mul, left_shift, right_shift)
+
+    x01 = AE_SRAA32SYMS(x01, 15);
+    x23 = AE_SRAA32SYMS(x23, 15);
+    x45 = AE_SRAA32SYMS(x45, 15);
+    x67 = AE_SRAA32SYMS(x67, 15);
+    z0123 = AE_SAT16X4(x01, x23);
+    z4567 = AE_SAT16X4(x45, x67);
+
+    AE_TANH16X4X2(z0123, z4567, z0123, z4567);
+
+    z0123 = AE_SRAI16(z0123, 8);
+    z4567 = AE_SRAI16(z4567, 8);
+
+    // if(inp_centered >= radius) output = 127
+    AE_MOVF16X4(z0123, CONST_127_16x4, b0123); 
+    AE_MOVF16X4(z4567, CONST_127_16x4, b4567); 
+
+    // if(inp_centered <= -radius) output = -128
+    AE_MOVT16X4(z0123, CONST_MINUS_128_16x4, a0123); 
+    AE_MOVT16X4(z4567, CONST_MINUS_128_16x4, a4567); 
+
+    m0 = AE_SAT8X8X16(z0123, z4567);
+
+    AE_SA8X8_IP(m0, align_dst_hf5, (ae_int8x8 *)p_o);
+  }
+  AE_SA64POS_FP(align_dst_hf5, p_o);
+
+  ae_int8x8 m1;
+  ae_valignx2 alignx2_src_hf5, alignx2_dst_hf5;
+  alignx2_src_hf5 = AE_LA128_PP((ae_int8x8 *)p_in);
+  alignx2_dst_hf5 = AE_ZALIGN128();
+  // remainder loop
+  if(rem_length)
+  {
+    AE_LAV8X8X2_XP(m0, m1, alignx2_src_hf5, (ae_int8x16 *)p_in, rem_length);
+    AE_SUBW8(z0123, z4567, m0, z_8x8);
+
+    // set flag if z <= minus_radius
+    a0123 = AE_LE16(z0123, minus_radius_16);
+    a4567 = AE_LE16(z4567, minus_radius_16);
+
+    // set flag if z < radius
+    b0123 = AE_LT16(z0123, radius_16);
+    b4567 = AE_LT16(z4567, radius_16);
+
+    AE_CVTI32X4F16(x01, x23, z0123, 0);
+    AE_CVTI32X4F16(x45, x67, z4567, 0);
+
+    MultiplyByQuantizedMultiplierX2(x01, x23, x01, x23, mul, left_shift, right_shift)
+    MultiplyByQuantizedMultiplierX2(x45, x67, x45, x67, mul, left_shift, right_shift)
+    
+    x01 = AE_SRAA32SYMS(x01, 15);
+    x23 = AE_SRAA32SYMS(x23, 15);
+    x45 = AE_SRAA32SYMS(x45, 15);
+    x67 = AE_SRAA32SYMS(x67, 15);
+    z0123 = AE_SAT16X4(x01, x23);
+    z4567 = AE_SAT16X4(x45, x67);
+
+    AE_TANH16X4X2(z0123, z4567, z0123, z4567);
+
+    z0123 = AE_SRAI16(z0123, 8);
+    z4567 = AE_SRAI16(z4567, 8);
+
+    // if(inp_centered >= radius) output = 127
+    AE_MOVF16X4(z0123, CONST_127_16x4, b0123);
+    AE_MOVF16X4(z4567, CONST_127_16x4, b4567);
+
+    // if(inp_centered <= -radius) output = -128
+    AE_MOVT16X4(z0123, CONST_MINUS_128_16x4, a0123);
+    AE_MOVT16X4(z4567, CONST_MINUS_128_16x4, a4567);
+
+    m0 = AE_SAT8X8X16(z0123, z4567);
+
+    AE_SAV8X8X2_XP(m0, m1, alignx2_dst_hf5, (ae_int8x16 *)p_o, rem_length);
+  }
+  AE_SA128POS_FP(alignx2_dst_hf5, (ae_int8x16 *)p_o);
+#else /* #if defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2) */
   int i;
   int rem_length = (vec_length & 15);
   ae_int32x2 x76, x54, x32, x10, y76, y54, y32, y10, l76, l54, l32, l10, m76, m54, m32, m10;
@@ -2225,17 +2494,17 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
     AE_MOVT16X4(z32, AE_NEG16S(z32), f7654); 
     AE_MOVT16X4(z10, AE_NEG16S(z10), f3210); 
 
-    // if(inp_centered <= -radius) output = -128
-    AE_MOVT16X4(z76, CONST_MINUS_128_16x4, a7654); 
-    AE_MOVT16X4(z54, CONST_MINUS_128_16x4, a3210); 
-    AE_MOVT16X4(z32, CONST_MINUS_128_16x4, b7654); 
-    AE_MOVT16X4(z10, CONST_MINUS_128_16x4, b3210); 
-
     // if(inp_centered >= radius) output = 127
     AE_MOVF16X4(z76, CONST_127_16x4, c7654); 
     AE_MOVF16X4(z54, CONST_127_16x4, c3210); 
     AE_MOVF16X4(z32, CONST_127_16x4, d7654); 
     AE_MOVF16X4(z10, CONST_127_16x4, d3210); 
+
+    // if(inp_centered <= -radius) output = -128
+    AE_MOVT16X4(z76, CONST_MINUS_128_16x4, a7654); 
+    AE_MOVT16X4(z54, CONST_MINUS_128_16x4, a3210); 
+    AE_MOVT16X4(z32, CONST_MINUS_128_16x4, b7654); 
+    AE_MOVT16X4(z10, CONST_MINUS_128_16x4, b3210); 
 
     m0 = AE_SAT8X8X16(z76, z54);
     m1 = AE_SAT8X8X16(z32, z10);
@@ -2305,13 +2574,13 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
     AE_MOVT16X4(z76, AE_NEG16S(z76), e7654); 
     AE_MOVT16X4(z54, AE_NEG16S(z54), e3210); 
 
-    // if(inp_centered < -radius) output = -128
-    AE_MOVT16X4(z76, CONST_MINUS_128_16x4, a7654); 
-    AE_MOVT16X4(z54, CONST_MINUS_128_16x4, a3210); 
-
     // if(inp_centered > radius) output = 127
     AE_MOVF16X4(z76, CONST_127_16x4, c7654); 
     AE_MOVF16X4(z54, CONST_127_16x4, c3210); 
+
+    // if(inp_centered < -radius) output = -128
+    AE_MOVT16X4(z76, CONST_MINUS_128_16x4, a7654); 
+    AE_MOVT16X4(z54, CONST_MINUS_128_16x4, a3210); 
 
     m0 = AE_SAT8X8X16(z76, z54);
 
@@ -2375,13 +2644,13 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
       AE_MOVT16X4(z32, AE_NEG16S(z32), f7654); 
       AE_MOVT16X4(z10, AE_NEG16S(z10), f3210); 
 
-      // if(inp_centered <= -radius) output = -128
-      AE_MOVT16X4(z32, CONST_MINUS_128_16x4, b7654); 
-      AE_MOVT16X4(z10, CONST_MINUS_128_16x4, b3210); 
-
       // if(inp_centered >= radius) output = 127
       AE_MOVF16X4(z32, CONST_127_16x4, d7654); 
       AE_MOVF16X4(z10, CONST_127_16x4, d3210); 
+
+      // if(inp_centered <= -radius) output = -128
+      AE_MOVT16X4(z32, CONST_MINUS_128_16x4, b7654); 
+      AE_MOVT16X4(z10, CONST_MINUS_128_16x4, b3210); 
 
       m1 = AE_SAT8X8X16(z32, z10);
     }
@@ -2389,6 +2658,7 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
     AE_SAV8X8X2_XP(m0, m1, align_dst_hf5, (ae_int8x16 *)p_o, rem_length);
   }
   AE_SA128POS_FP(align_dst_hf5, p_o);
+#endif /* #if defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2) */
 
   return 0;
 }

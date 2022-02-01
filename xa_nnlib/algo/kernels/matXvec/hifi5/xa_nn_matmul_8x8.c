@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -409,7 +409,7 @@ WORD32 xa_nn_matmul_8x8_8(
 #define VEC_UNROLL 4
 
   acc_shift = acc_shift + 32;
-  ae_int64 bias_array[32];
+  ae_int64 bias_array[32] = {0};
 
   if (p_mat1 && p_vec1)
   {
@@ -424,23 +424,26 @@ WORD32 xa_nn_matmul_8x8_8(
     for(m_itr = 0; m_itr < (rows & ~(32 - 1)); m_itr += 32)
     {
       // TODO: Calculate shifted bias values and store on stack.
-      WORD8 *p_bias_ua = _WORD8_p_bias + m_itr;
-      ae_valign align_p_bias_ua;
-      align_p_bias_ua = AE_LA64_PP(p_bias_ua);
-      for(b_itr = 0; b_itr < 32; b_itr+=8)
+      if(p_bias)
       {
-        AE_LA8X8_IP(_ae_int8x8_bias, align_p_bias_ua, (ae_int8x8 *)p_bias_ua);
-        AE_CVTI16X4X2F8(_ae_int16x4_bias, _ae_int16x4_bias1, _ae_int8x8_bias, 0);
-        _ae_int16x4_bias = AE_SRAA16S(_ae_int16x4_bias, rshift_bias);
-        _ae_int16x4_bias1 = AE_SRAA16S(_ae_int16x4_bias1, rshift_bias);
-        bias_array[b_itr + 0] = AE_MUL32X16_L3(lshift_mul_bias, _ae_int16x4_bias);
-        bias_array[b_itr + 1] = AE_MUL32X16_L2(lshift_mul_bias, _ae_int16x4_bias);
-        bias_array[b_itr + 2] = AE_MUL32X16_L1(lshift_mul_bias, _ae_int16x4_bias);
-        bias_array[b_itr + 3] = AE_MUL32X16_L0(lshift_mul_bias, _ae_int16x4_bias);
-        bias_array[b_itr + 4] = AE_MUL32X16_L3(lshift_mul_bias, _ae_int16x4_bias1);
-        bias_array[b_itr + 5] = AE_MUL32X16_L2(lshift_mul_bias, _ae_int16x4_bias1);
-        bias_array[b_itr + 6] = AE_MUL32X16_L1(lshift_mul_bias, _ae_int16x4_bias1);
-        bias_array[b_itr + 7] = AE_MUL32X16_L0(lshift_mul_bias, _ae_int16x4_bias1);
+        WORD8 *p_bias_ua = _WORD8_p_bias + m_itr;
+        ae_valign align_p_bias_ua;
+        align_p_bias_ua = AE_LA64_PP(p_bias_ua);
+        for(b_itr = 0; b_itr < 32; b_itr+=8)
+        {
+          AE_LA8X8_IP(_ae_int8x8_bias, align_p_bias_ua, (ae_int8x8 *)p_bias_ua);
+          AE_CVTI16X4X2F8(_ae_int16x4_bias, _ae_int16x4_bias1, _ae_int8x8_bias, 0);
+          _ae_int16x4_bias = AE_SRAA16S(_ae_int16x4_bias, rshift_bias);
+          _ae_int16x4_bias1 = AE_SRAA16S(_ae_int16x4_bias1, rshift_bias);
+          bias_array[b_itr + 0] = AE_MUL32X16_L3(lshift_mul_bias, _ae_int16x4_bias);
+          bias_array[b_itr + 1] = AE_MUL32X16_L2(lshift_mul_bias, _ae_int16x4_bias);
+          bias_array[b_itr + 2] = AE_MUL32X16_L1(lshift_mul_bias, _ae_int16x4_bias);
+          bias_array[b_itr + 3] = AE_MUL32X16_L0(lshift_mul_bias, _ae_int16x4_bias);
+          bias_array[b_itr + 4] = AE_MUL32X16_L3(lshift_mul_bias, _ae_int16x4_bias1);
+          bias_array[b_itr + 5] = AE_MUL32X16_L2(lshift_mul_bias, _ae_int16x4_bias1);
+          bias_array[b_itr + 6] = AE_MUL32X16_L1(lshift_mul_bias, _ae_int16x4_bias1);
+          bias_array[b_itr + 7] = AE_MUL32X16_L0(lshift_mul_bias, _ae_int16x4_bias1);
+        }
       }
       
       for(ii = 0; ii < 8; ii++)
@@ -616,10 +619,13 @@ WORD32 xa_nn_matmul_8x8_8(
     {
       for(; m_itr < rows; m_itr++)
       {
-        WORD8 *p_bias_ua = _WORD8_p_bias + m_itr;
-        _ae_int16x4_bias = AE_MOVDA16(*p_bias_ua);
-        _ae_int16x4_bias = AE_SRAA16S(_ae_int16x4_bias, rshift_bias);
-        bias_array[0] = AE_MUL32X16_L3(lshift_mul_bias, _ae_int16x4_bias);
+        if(p_bias)
+        {
+          WORD8 *p_bias_ua = _WORD8_p_bias + m_itr;
+          _ae_int16x4_bias = AE_MOVDA16(*p_bias_ua);
+          _ae_int16x4_bias = AE_SRAA16S(_ae_int16x4_bias, rshift_bias);
+          bias_array[0] = AE_MUL32X16_L3(lshift_mul_bias, _ae_int16x4_bias);
+        }
         WORD8* p_dst = (WORD8*)p_out + (m_itr + 0) * out_stride;
         for (vec_itr = 0; vec_itr < (vec_count & ~(VEC_UNROLL-1)); vec_itr += VEC_UNROLL)
         {

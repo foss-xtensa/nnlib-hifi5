@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -27,11 +27,11 @@
 #include "xa_api_defs.h"
 
 /* Identification Strings */
-#define LIBNAME "HiFi 5 Neural Network Library"
-#define LIBVERSION "1.6.0"
+#define LIBNAME "HiFi Neural Network Library"
+#define LIBVERSION "1.7.0"
 
 #define LIB_APIVERSION_MAJOR 1
-#define LIB_APIVERSION_MINOR 0
+#define LIB_APIVERSION_MINOR 1
 
 #if LIB_APIVERSION_MAJOR != XA_APIVERSION_MAJOR || \
 LIB_APIVERSION_MINOR != XA_APIVERSION_MINOR

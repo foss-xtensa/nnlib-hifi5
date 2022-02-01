@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -303,6 +303,49 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
   /* Basic Parameter checks */
   XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
 
+#if defined(AE_SIGMOID16X4X2) && defined(USE_HIFI_ACT_TIE)
+  int i;
+  ae_int16x4 z32_op, z10_op, z32, z10;
+  ae_valignx2 align_src_hf5_0, align_dst_hf5_0;
+  ae_int16x4 r_mult = AE_MOVDA16((0x4000)); /* Multiplier value emulating arithmetic right_shift = 1 */
+  ae_int16x4 mask = AE_MOVDA16(0x7fff); /* Mask value to make the sign bit 0 */
+
+  const ae_int16x8 *p_in_0  = (const ae_int16x8 *)p_vec;
+  ae_int16x8 *__restrict p_o_0 = (ae_int16x8 *)p_out;
+
+  align_src_hf5_0 = AE_LA128_PP(p_in_0);
+  align_dst_hf5_0 = AE_ZALIGN128();
+
+  WUR_AE_SAR(4);
+
+  for(i=0; i<(vec_length >> 3); i++)
+  {
+    AE_LA16X4X2_IP(z32, z10, align_src_hf5_0, p_in_0);
+
+    AE_SIGMOID16X4X2(z32_op, z10_op, z32, z10);
+    z32_op = AE_SRLI16(z32_op, 1);
+    z10_op = AE_MULFP16X4S(z10_op, r_mult);
+    z10_op = AE_AND16(z10_op, mask);
+
+    AE_SA16X4X2_IP(z32_op, z10_op, align_dst_hf5_0, p_o_0);
+  }
+  
+  int rem_itr = vec_length & 7;
+  // remainder loop
+  if(rem_itr > 0)
+  {
+    AE_LAV16X4X2_XP(z32, z10, align_src_hf5_0, p_in_0, (rem_itr << 1));
+
+    AE_SIGMOID16X4X2(z32_op, z10_op, z32, z10);
+    z32_op = AE_SRLI16(z32_op, 1);
+    z10_op = AE_MULFP16X4S(z10_op, r_mult);
+    z10_op = AE_AND16(z10_op, mask);
+
+    AE_SAV16X4X2_XP(z32_op, z10_op, align_dst_hf5_0, p_o_0, (rem_itr << 1));
+  }
+  AE_SA128POS_FP(align_dst_hf5_0, p_o_0);
+
+#else
   int i;
   ae_int16x4 x3210, y3210;
   ae_int16x4 out0;
@@ -402,6 +445,8 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
     }
     p16_out[0] = y3210;
   }
+#endif
+
   return 0;
 }
 
@@ -491,6 +536,75 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
   /* Basic Parameter checks */
   XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((integer_bits > 6), -1);
+
+#if defined(AE_TANH16X4X2) && defined(USE_HIFI_ACT_TIE)
+  int i;
+  ae_int16x4 z32_op, z10_op, z32, z10;
+  ae_valignx2 align_src_hf5_0, align_dst_hf5_0;
+
+  const ae_int16x8 *p_in_0  = (const ae_int16x8 *)p_vec;
+  ae_int16x8 *__restrict p_o_0 = (ae_int16x8 *)p_out;
+
+  align_src_hf5_0 = AE_LA128_PP(p_in_0);
+  align_dst_hf5_0 = AE_ZALIGN128();
+
+  if(integer_bits < 4)
+  {
+    WUR_AE_SAR(1+integer_bits);
+
+    for(i=0; i<(vec_length >> 3); i++)
+    {
+      AE_LA16X4X2_IP(z32, z10, align_src_hf5_0, p_in_0);
+
+      AE_TANH16X4X2(z32_op, z10_op, z32, z10);
+
+      AE_SA16X4X2_IP(z32_op, z10_op, align_dst_hf5_0, p_o_0);
+    }
+    
+    int rem_itr = vec_length & 7;
+    // remainder loop
+    if(rem_itr > 0)
+    {
+      AE_LAV16X4X2_XP(z32, z10, align_src_hf5_0, p_in_0, (rem_itr << 1));
+
+      AE_TANH16X4X2(z32_op, z10_op, z32, z10);
+
+      AE_SAV16X4X2_XP(z32_op, z10_op, align_dst_hf5_0, p_o_0, (rem_itr << 1));
+    }
+    AE_SA128POS_FP(align_dst_hf5_0, p_o_0);
+  }
+  else
+  {
+    WUR_AE_SAR(4); /* Allowed shift value is [0, 4], Thus, max value of integer bits = 3 */
+    int lshift = integer_bits - 3; /* Left shift value before calling tanh to make integer_bits = 3 */
+    ae_int16x4 l_mult = AE_MOVDA16(1 << lshift); /* Multiplier value emulating arithmetic left_shift */
+
+    for(i=0; i<(vec_length >> 3); i++)
+    {
+      AE_LA16X4X2_IP(z32, z10, align_src_hf5_0, p_in_0);
+      
+      z32 = AE_MULP16X16X4S(z32, l_mult);
+      z10 = AE_MULP16X16X4S(z10, l_mult);
+      AE_TANH16X4X2(z32_op, z10_op, z32, z10);
+
+      AE_SA16X4X2_IP(z32_op, z10_op, align_dst_hf5_0, p_o_0);
+    }
+    
+    int rem_itr = vec_length & 7;
+    // remainder loop
+    if(rem_itr > 0)
+    {
+      AE_LAV16X4X2_XP(z32, z10, align_src_hf5_0, p_in_0, (rem_itr << 1));
+
+      z32 = AE_MULP16X16X4S(z32, l_mult);
+      z10 = AE_MULP16X16X4S(z10, l_mult);
+      AE_TANH16X4X2(z32_op, z10_op, z32, z10);
+
+      AE_SAV16X4X2_XP(z32_op, z10_op, align_dst_hf5_0, p_o_0, (rem_itr << 1));
+    }
+    AE_SA128POS_FP(align_dst_hf5_0, p_o_0);
+  }
+#else
 
   int i;
   int fract_bits = 16 - 1 - integer_bits;
@@ -587,6 +701,7 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
     }
     p16_out[0] = out1;
   }
+#endif
 
   return 0;
 }

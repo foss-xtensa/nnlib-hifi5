@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2021 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -107,12 +107,10 @@ WORD32 xa_nn_dilated_conv2d_std_getsize(
     WORD32 y_stride,
     WORD32 y_padding,
     WORD32 out_height,
+    WORD32 output_channels,
     WORD32 input_precision,
-    WORD32 dilation_height
-    )
+    WORD32 dilation_height)
 {
-
-
   XA_NNLIB_CHK_COND((input_height <= 0), -1);
   XA_NNLIB_CHK_COND((input_channels <= 0), -1);
   XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
@@ -126,6 +124,9 @@ WORD32 xa_nn_dilated_conv2d_std_getsize(
 	dilation_height = 1;
   WORD32 kernel_height_dilation = kernel_height + ( (dilation_height-1) * (kernel_height-1) );//dilation
   //XA_NNLIB_CHK_COND((kernel_height_dilation > input_height), -1);
+  
+  /* Unused. HiFi4 API compatibility */
+  (void)output_channels;
 
   //if( (dilation_height>1) ) // Dilation not supporting stride presently
 	//  XA_NNLIB_CHK_COND((y_stride > 1), -1);
