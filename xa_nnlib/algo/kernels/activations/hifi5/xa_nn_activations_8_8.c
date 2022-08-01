@@ -69,14 +69,13 @@ WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
 
             AE_SA8X8X2_IP(x, y, align_dst, (ae_int8x16 *)p_o);
         }
-        AE_SA128POS_FP(align_dst, p_o);
-
-        for(i=0; i < (vec_length & 15); i++)
+        int rem_itr = (vec_length & 15);
         {
-            AE_L8_IP(x, (ae_int8 *)p_v, sizeof(ae_int8));
+            AE_LAV8X8X2_XP(x, y, align_src, (ae_int8x16 *)p_v, rem_itr);
 
-            AE_S8_0_IP(x, (ae_int8 *)p_o, sizeof(ae_int8));
+            AE_SAV8X8X2_XP(x, y, align_dst, (ae_int8x16 *)p_o, rem_itr);
         }
+        AE_SA128POS_FP(align_dst, p_o);
     }
     else if((activation_max < (int)MAX_WORD8) && (activation_min <= MIN_WORD8))
     {
@@ -89,16 +88,16 @@ WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
 
             AE_SA8X8X2_IP(x, y, align_dst, (ae_int8x16 *)p_o);
         }
-        AE_SA128POS_FP(align_dst, p_o);
-
-        for(i=0; i < (vec_length & 15); i++)
+        int rem_itr = (vec_length & 15);
         {
-            AE_L8_IP(x, (ae_int8 *)p_v, sizeof(ae_int8));
+            AE_LAV8X8X2_XP(x, y, align_src, (ae_int8x16 *)p_v, rem_itr);
 
             x = AE_MIN8(x, max);
+            y = AE_MIN8(y, max);
 
-            AE_S8_0_IP(x, (ae_int8 *)p_o, sizeof(ae_int8));
+            AE_SAV8X8X2_XP(x, y, align_dst, (ae_int8x16 *)p_o, rem_itr);
         }
+        AE_SA128POS_FP(align_dst, p_o);
     }
     else if((activation_max >= (int)MAX_WORD8) && (activation_min > MIN_WORD8))
     {
@@ -111,16 +110,16 @@ WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
 
             AE_SA8X8X2_IP(x, y, align_dst, (ae_int8x16 *)p_o);
         }
-        AE_SA128POS_FP(align_dst, p_o);
-
-        for(i=0; i < (vec_length & 15); i++)
+        int rem_itr = (vec_length & 15);
         {
-            AE_L8_IP(x, (ae_int8 *)p_v, sizeof(ae_int8));
+            AE_LAV8X8X2_XP(x, y, align_src, (ae_int8x16 *)p_v, rem_itr);
 
             x = AE_MAX8(x, min);
+            y = AE_MAX8(y, min);
 
-            AE_S8_0_IP(x, (ae_int8 *)p_o, sizeof(ae_int8));
+            AE_SAV8X8X2_XP(x, y, align_dst, (ae_int8x16 *)p_o, rem_itr);
         }
+        AE_SA128POS_FP(align_dst, p_o);
     }
     else
     {
@@ -133,16 +132,16 @@ WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
 
             AE_SA8X8X2_IP(x, y, align_dst, (ae_int8x16 *)p_o);
         }
-        AE_SA128POS_FP(align_dst, p_o);
-
-        for(i=0; i < (vec_length & 15); i++)
+        int rem_itr = (vec_length & 15);
         {
-            AE_L8_IP(x, (ae_int8 *)p_v, sizeof(ae_int8));
+            AE_LAV8X8X2_XP(x, y, align_src, (ae_int8x16 *)p_v, rem_itr);
 
-            LIMIT(y, x, min, max)
+            LIMIT(x, x, min, max)
+            LIMIT(y, y, min, max)
 
-            AE_S8_0_IP(y, (ae_int8 *)p_o, sizeof(ae_int8));
+            AE_SAV8X8X2_XP(x, y, align_dst, (ae_int8x16 *)p_o, rem_itr);
         }
+        AE_SA128POS_FP(align_dst, p_o);
     }
 
     return 0;
@@ -178,5 +177,5 @@ WORD32 xa_nn_vec_relu_std_8_8(
                                       0,
                                       MAX_WORD8,
                                       vec_length);
-	return 0;
+  return 0;
 }

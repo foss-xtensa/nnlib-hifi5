@@ -27,6 +27,58 @@ Cadence HiFi 5 Neural Network (NN) Library
 Revision History
 ===============================================================================
 
+Version 1.8.0 API 1.2: August 1, 2022
+
++ Intermediate Release of HiFi5 NN Library
++ Tested using RI.6 tools, xt-clang compiler.
++ Adds Single Rounding support for TensorFlow Lite Micro operators' quantized
+ datatype kernels.
++ Memory model performance improvements for following kernels:
+  xa_nn_conv2d_std_per_chan_sym8sxasym8s_asym8s
+  xa_nn_conv2d_pointwise_per_chan_sym8sxasym8s_asym8s
+  xa_nn_fully_connected_sym8sxasym8s_asym8s
+  xa_nn_matXvec_acc_batch_sym8sx8_asym16s
++ Adds matXvec (asym8sxasym8s_asym8s), matmul (per_chan_sym8sxsym16s_sym16s, 
+asym8sxasym8s_asym8s), fully_connected (asym8sxasym8s_asym8s) kernels.
++ Adds conv2d_pointwise (per_chan_sym8sxsym16s_sym16s) using corresponding 
+matmul.
++ Adds support for asymmetric quantized 16 bit (int16) variants of following
+  TFLM operators:
+  TRANSPOSE_CONV
+  CONV
+  LEAKY_RELU
+  PAD
+  STRIDED_SLICE
++ Adds support for 4D broadcast for following TFLM operators:
+  ADD (asymmetric quantized int8 and int16)
+  SUB (asymmetric quantized int8 and int16)
+  MUL (asymmetric quantized int8)
+  SQUARED_DIFF (asymmetric quantized int8)
++ Adds support for new datatypes for quantize TFLM operator:
+  QUANTIZE (single precision float to asymmetric quantized int8, 
+            asymmetric quantized int8 to asymmetric quantized int8)
++ Improves single rounding performance on new HiFi5 (LX7.1.9 and onwards)
+  using new ISA for following kernels:
+  xa_nn_conv2d_std_per_chan_sym8sxasym8s
+  xa_nn_conv2d_depthwise_per_chan_sym8sxasym8s
++ Improves performance on new HiFi5 (LX7.1.9 and onwards) using new ISA for
+  following kernels:
+  xa_nn_vec_sigmoid_asym8s_asym8s
+  xa_nn_vec_sigmoid_16_16
+  xa_nn_vec_tanh_asym8s_asym8s
+  xa_nn_vec_tanh_16_16
++ Increases support for axis dimensions upto 1024 from 127 in kernel
+  xa_nn_reduce_mean_4D_asym8s_asym8s
++ Fixes mismatch w.r.t to TFLM in kernel xa_nn_vec_hard_swish_asym8s_asym8s.
++ Fixes range of input, output shifts in element wise add/sub kernels from 
+  -31 to 31 to -31 to 0.
++ Fixes input_range_radius check in xa_nn_vec_tanh_asym8s_asym8s,
+  xa_nn_vec_sigmoid_asym8u_asym8u and xa_nn_vec_sigmoid_asym8s_asym8s.
++ Fixes input_zero_bias range in xa_nn_vec_leaky_relu_asym8s_asym8s to match
+  with TFLM Ref.
+
+-------------------------------------------------------------------------------
+
 Version 1.7.0 API 1.1: February 1, 2022
 
 + GA Release of HiFi 5 NN Library.

@@ -23,26 +23,6 @@
 #include "xa_nn_conv2d_depthwise_state.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
-#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2(inp, multiplier, l_shift, r_shift) \
-  inp = AE_SLAA32(inp, l_shift); \
-  inp = AE_MULFP32X2RAS(inp, AE_MOVDA32(multiplier)); \
-  inp = AE_SRAA32SYMS(inp, r_shift);
-
-#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(inp1, inp2, multiplier, l_shift, r_shift) \
-  inp1 = AE_SLAA32(inp1, l_shift); \
-  inp2 = AE_SLAA32(inp2, l_shift); \
-  AE_MULF2P32X4RAS(inp1, inp2, inp1, inp2, AE_MOVDA32(multiplier), AE_MOVDA32(multiplier)); \
-  inp1 = AE_SRAA32SYMS(inp1, r_shift); \
-  inp2 = AE_SRAA32SYMS(inp2, r_shift);
-  
-#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out, inp1, inp2, multiplier, l_shift, r_shift, out_off) \
-  AE_MUL2P32X4S(inp1, inp2, inp1, inp2, l_shift, l_shift); \
-  AE_MULF2P32X4RAS(inp1, inp2, inp1, inp2, AE_MOVDA32(multiplier), AE_MOVDA32(multiplier)); \
-  AE_MULF2P32X4RS(inp1, inp2, inp1, inp2, r_shift, r_shift); \
-  out = AE_SAT16X4(inp1, inp2); \
-  out = AE_SUB16S(AE_MOVDA16(out_off), out); \
-  AE_MINMAX16(out, AE_ZERO16(), AE_MOVDA16(255)); 
-
 #define INTERLEAVE_6(dst0, dst1, dst2, dst3, dst4, dst5, dst6, dst7, src0, src1, src2, src3, src4, src5) \
  { \
    ae_int8x8 tmp01_0, tmp01_1, tmp23_0, tmp23_1, tmp0123_0, tmp0123_1, tmp0123_2, tmp0123_3, tmp45_0, tmp45_1; \
@@ -382,8 +362,15 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
    * height dimension, since we took care of it by efficient row
    * accesses. */
   ae_int32 *scratch_ptr1 = (ae_int32 *) p_scratch;
+#if TFLITE_SINGLE_ROUNDING
+  int left_shift = out_shift;
+  int right_shift = out_shift;
+  /* Single rounding macro doesn't need two shifts so this is not used */
+  (void)right_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
   int left_shift = XT_MAX(0, out_shift);
   int right_shift = XT_MAX(0, -out_shift);
+#endif /* #if TFLITE_SINGLE_ROUNDING */
 
   for(i = 0; i < actual_out_height; i++)
   {
@@ -397,7 +384,7 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
       accu_int32_0 = AE_SEL32_LL(scratch_ptr1[(j * x_stride)], scratch_ptr1[((j + 1) * x_stride)]);
 
       accu_int32_0 = AE_ADD32S(accu_int32_0, d_bias);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(accu_int32_0, out_multiplier, left_shift, right_shift);
+      MPY_BY_QUANT_MULT_X2_OUT32(accu_int32_0, accu_int32_0, out_multiplier, left_shift, right_shift);
       accu_int32_0 = AE_ADD32S(accu_int32_0, AE_MOVDA32X2(out_zero_bias, out_zero_bias));
       AE_MINMAX32(accu_int32_0, AE_ZERO32(), AE_MOVDA32(255));
       accu_int8x8 = AE_SATU8X4X32_L(accu_int32_0, accu_int32_0);
@@ -410,7 +397,7 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
       accu_int32_0 = scratch_ptr1[(j * x_stride)];
 
       accu_int32_0 = AE_ADD32S(accu_int32_0, d_bias);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2(accu_int32_0, out_multiplier, left_shift, right_shift);
+      MPY_BY_QUANT_MULT_X2_OUT32(accu_int32_0, accu_int32_0, out_multiplier, left_shift, right_shift);
       accu_int32_0 = AE_ADD32S(accu_int32_0, AE_MOVDA32X2(out_zero_bias, out_zero_bias));
       AE_MINMAX32(accu_int32_0, AE_ZERO32(), AE_MOVDA32(255));
       accu_int8x8 = AE_SATU8X4X32_L(accu_int32_0, accu_int32_0);
@@ -642,8 +629,16 @@ static inline void conv2d_nhwc_asym8xasym8
   ae_int32x2 d_bias0, d_bias1, d_bias2, d_bias3;
   ae_int32x2 d_acc4, d_acc5, d_acc6, d_acc7;
   ae_int8x8 d_acc8x8;
+
+#if TFLITE_SINGLE_ROUNDING
+  int left_shift = out_shift;
+  int right_shift = out_shift;
+  /* Single rounding macro doesn't need two shifts so this is not used */
+  (void)right_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
   int left_shift = XT_MAX(0, out_shift);
   int right_shift = XT_MAX(0, -out_shift);
+#endif /* #if TFLITE_SINGLE_ROUNDING */
 
   ker_channels_pad = out_channels;
   inp_channels_pad = (out_channels + 7)&(~7);
@@ -703,21 +698,14 @@ static inline void conv2d_nhwc_asym8xasym8
       d_acc1 = AE_ADD32S(d_acc1, d_bias1);
       d_acc2 = AE_ADD32S(d_acc2, d_bias2);
       d_acc3 = AE_ADD32S(d_acc3, d_bias3);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(d_acc0, d_acc1, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(d_acc2, d_acc3, out_multiplier, left_shift, right_shift);
-      d_acc0 = AE_ADD32S(d_acc0, AE_MOVDA32(out_zero_bias));
-      d_acc1 = AE_ADD32S(d_acc1, AE_MOVDA32(out_zero_bias));
-      d_acc2 = AE_ADD32S(d_acc2, AE_MOVDA32(out_zero_bias));
-      d_acc3 = AE_ADD32S(d_acc3, AE_MOVDA32(out_zero_bias));
+      ae_int16x4 d_acc16_0, d_acc16_1;
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_acc16_0, d_acc0, d_acc1, out_multiplier, left_shift, right_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_acc16_1, d_acc2, d_acc3, out_multiplier, left_shift, right_shift, out_zero_bias);
 
-      /* SATU instructions assumes number to be unsigned so clipping negative 
-      values to 0 */
-      d_acc0 = AE_MAX32(d_acc0, AE_ZERO32());
-      d_acc1 = AE_MAX32(d_acc1, AE_ZERO32());
-      d_acc2 = AE_MAX32(d_acc2, AE_ZERO32());
-      d_acc3 = AE_MAX32(d_acc3, AE_ZERO32());
+      AE_MINMAX16(d_acc16_0, AE_ZERO16(), AE_MOVDA16(255));
+      AE_MINMAX16(d_acc16_1, AE_ZERO16(), AE_MOVDA16(255));
 
-      d_acc8x8 = AE_SEL8X8I(AE_SATU8X4X32_L(d_acc0, d_acc1), AE_SATU8X4X32_L(d_acc2, d_acc3), 3);
+      d_acc8x8 = AE_SATU8X8X16(d_acc16_0, d_acc16_1);
       if(out_channels - itr_ch >= 8)
       {
 #pragma frequency_hint FREQUENT
@@ -742,21 +730,13 @@ static inline void conv2d_nhwc_asym8xasym8
       d_acc5 = AE_ADD32S(d_acc5, d_bias1);
       d_acc6 = AE_ADD32S(d_acc6, d_bias2);
       d_acc7 = AE_ADD32S(d_acc7, d_bias3);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(d_acc4, d_acc5, out_multiplier, left_shift, right_shift);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2(d_acc6, d_acc7, out_multiplier, left_shift, right_shift);
-      d_acc4 = AE_ADD32S(d_acc4, AE_MOVDA32(out_zero_bias));
-      d_acc5 = AE_ADD32S(d_acc5, AE_MOVDA32(out_zero_bias));
-      d_acc6 = AE_ADD32S(d_acc6, AE_MOVDA32(out_zero_bias));
-      d_acc7 = AE_ADD32S(d_acc7, AE_MOVDA32(out_zero_bias));
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_acc16_0, d_acc4, d_acc5, out_multiplier, left_shift, right_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_acc16_1, d_acc6, d_acc7, out_multiplier, left_shift, right_shift, out_zero_bias);
 
-      /* SATU instructions assumes number to be unsigned so clipping negative 
-      values to 0 */
-      d_acc4 = AE_MAX32(d_acc4, AE_ZERO32());
-      d_acc5 = AE_MAX32(d_acc5, AE_ZERO32());
-      d_acc6 = AE_MAX32(d_acc6, AE_ZERO32());
-      d_acc7 = AE_MAX32(d_acc7, AE_ZERO32());
+      AE_MINMAX16(d_acc16_0, AE_ZERO16(), AE_MOVDA16(255));
+      AE_MINMAX16(d_acc16_1, AE_ZERO16(), AE_MOVDA16(255));
 
-      d_acc8x8 = AE_SEL8X8I(AE_SATU8X4X32_L(d_acc4, d_acc5), AE_SATU8X4X32_L(d_acc6, d_acc7), 3);
+      d_acc8x8 = AE_SATU8X8X16(d_acc16_0, d_acc16_1);
       if(out_height-itr_oh >= 2)
       {
 #pragma frequency_hint FREQUENT
@@ -822,12 +802,17 @@ static inline void conv2d_nhwc_asym8xasym8
   
   ae_int32x2 d_bias0, d_bias1, d_bias2, d_bias3;
   ae_int32x2 d_bias4, d_bias5, d_bias6, d_bias7;
+
+#if TFLITE_SINGLE_ROUNDING
+  int left_shift = out_shift;
+  int right_shift = out_shift;
+  /* Single rounding macro doesn't need two shifts so this is not used */
+  (void)right_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
   int left_shift = XT_MAX(0, out_shift);
   int right_shift = XT_MAX(0, -out_shift);
+#endif /* #if TFLITE_SINGLE_ROUNDING */
   
-  int l_mult = (1 << left_shift);      
-  int r_mult = 0xFFFFFFFF << (31 - right_shift);
-
   inp_channels_pad = (out_channels + 15)&(~15);
   ker_channels_pad = (out_channels + 15)&(~15);
 
@@ -902,9 +887,12 @@ static inline void conv2d_nhwc_asym8xasym8
         d_acc3  = AE_ADD32S(d_acc3, d_bias3);
 
         ae_int16x4 out0, out1;
-        MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out0, d_acc0, d_acc1, out_multiplier, l_mult, r_mult, out_zero_bias);
-        MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out1, d_acc2, d_acc3, out_multiplier, l_mult, r_mult, out_zero_bias);
-        
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out0, d_acc0, d_acc1, out_multiplier, left_shift, right_shift, out_zero_bias);
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out1, d_acc2, d_acc3, out_multiplier, left_shift, right_shift, out_zero_bias);
+
+        AE_MINMAX16(out0, AE_ZERO16(), AE_MOVDA16(255));
+        AE_MINMAX16(out1, AE_ZERO16(), AE_MOVDA16(255));
+
         ae_int8x8 d_acc8x8_0 = AE_SATU8X8X16(out0, out1);
 
         AE_SAV8X8X2_XP(d_acc8x8_0, d_acc8x8_0, out0_a, ae_out_ptr0, XT_MIN(out_channels - itr_ch, 8));
@@ -1012,11 +1000,16 @@ static inline void conv2d_nhwc_asym8xasym8
       d_acc15 = AE_ADD32S(d_acc15, d_bias7);
       
       ae_int16x4 out0, out1, out2, out3;
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out0, d_acc0, d_acc1, out_multiplier, l_mult, r_mult, out_zero_bias);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out1, d_acc2, d_acc3, out_multiplier, l_mult, r_mult, out_zero_bias);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out2, d_acc4, d_acc5, out_multiplier, l_mult, r_mult, out_zero_bias);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out3, d_acc6, d_acc7, out_multiplier, l_mult, r_mult, out_zero_bias);
-      
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out0, d_acc0, d_acc1, out_multiplier, left_shift, right_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out1, d_acc2, d_acc3, out_multiplier, left_shift, right_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out2, d_acc4, d_acc5, out_multiplier, left_shift, right_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out3, d_acc6, d_acc7, out_multiplier, left_shift, right_shift, out_zero_bias);
+
+      AE_MINMAX16(out0, AE_ZERO16(), AE_MOVDA16(255));
+      AE_MINMAX16(out1, AE_ZERO16(), AE_MOVDA16(255));
+      AE_MINMAX16(out2, AE_ZERO16(), AE_MOVDA16(255));
+      AE_MINMAX16(out3, AE_ZERO16(), AE_MOVDA16(255));
+
       ae_int8x8 d_acc8x8_0 = AE_SATU8X8X16(out0, out1);
       ae_int8x8 d_acc8x8_1 = AE_SATU8X8X16(out2, out3);
       if(out_channels - itr_ch >= 16)
@@ -1029,11 +1022,16 @@ static inline void conv2d_nhwc_asym8xasym8
       }
       AE_SA128POS_FP(out0_a, ae_out_ptr0);
 
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out0, d_acc8, d_acc9, out_multiplier, l_mult, r_mult, out_zero_bias);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out1, d_acc10, d_acc11, out_multiplier, l_mult, r_mult, out_zero_bias);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out2, d_acc12, d_acc13, out_multiplier, l_mult, r_mult, out_zero_bias);
-      MULTIPLYBYQUANTIZEDMULTIPLIER_X2_X2_16(out3, d_acc14, d_acc15, out_multiplier, l_mult, r_mult, out_zero_bias);
-      
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out0, d_acc8, d_acc9, out_multiplier, left_shift, right_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out1, d_acc10, d_acc11, out_multiplier, left_shift, right_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out2, d_acc12, d_acc13, out_multiplier, left_shift, right_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out3, d_acc14, d_acc15, out_multiplier, left_shift, right_shift, out_zero_bias);
+
+      AE_MINMAX16(out0, AE_ZERO16(), AE_MOVDA16(255));
+      AE_MINMAX16(out1, AE_ZERO16(), AE_MOVDA16(255));
+      AE_MINMAX16(out2, AE_ZERO16(), AE_MOVDA16(255));
+      AE_MINMAX16(out3, AE_ZERO16(), AE_MOVDA16(255));
+
       d_acc8x8_0 = AE_SATU8X8X16(out0, out1);
       d_acc8x8_1 = AE_SATU8X8X16(out2, out3);
       if(out_height-itr_oh >= 2)

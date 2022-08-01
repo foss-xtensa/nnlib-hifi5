@@ -58,17 +58,6 @@ static const int constant_48_over_17 = 1515870810;
 static const int constant_neg_32_over_17 = -1010580540;
 static const int F2_ONE = 0x20000000;
 
-#define MultiplyByQuantizedMultiplierGreaterThanOne(y, x, multiplier, lsh) {\
-    y = AE_SLAA32(x, lsh);\
-    y = AE_MULFP32X2RAS(y, multiplier);\
-}
-
-#define MultiplyByQuantizedMultiplierGreaterThanOneX2(y, z, l, m, multiplier, lsh) {\
-    y = AE_SLAA32(l, lsh);\
-    z = AE_SLAA32(m, lsh);\
-    AE_MULF2P32X4RAS(y, z, y, z, multiplier, multiplier);\
-}
-
 #define ROUNDING_HALF_SUM(s, a){\
     ae_int64 max32;\
     ae_int64 r=-1;\
@@ -306,7 +295,7 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
     xtbool2 f76, f54, f32, f10, g76, g54, g32, g10;
     UWORD8 *p_in = (UWORD8 *)p_vec;
     WORD32 *p_exp = (WORD32 *)ALIGN_PTR(p_scratch, ALIGNMENT);
-    ae_int32x2 y76, y54, y32, y10, x76, x54, x32, x10, diff_min, multiplier;
+    ae_int32x2 y76, y54, y32, y10, x76, x54, x32, x10, diff_min;
     ae_int32x2 dequantized_y76, dequantized_y54, dequantized_y32, dequantized_y10, dequantized_x76, dequantized_x54, dequantized_x32, dequantized_x10;
     ae_int32x2 unsat_out76, unsat_out54, unsat_out32, unsat_out10, ONE;
     ae_int32x2 exp_y76, exp_y54, exp_y32, exp_y10, exp_x76, exp_x54, exp_x32, exp_x10, sum_exp, recip_sum_exp;
@@ -386,7 +375,6 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
     }
 
     diff_min = AE_MOVDA32(diffmin);
-    multiplier = AE_MOVDA32(input_beta_multiplier);
     sum_exp = z; // setting to zero
 
     p_in = (UWORD8 *)p_vec;
@@ -414,7 +402,7 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
       g32 = AE_LE32(diff_min, x32);
       g10 = AE_LE32(diff_min, x10);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_y76, dequantized_y54, y76, y54, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y76, dequantized_y54, y76, y54, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_y76, exp_y54, dequantized_y76, dequantized_y54);
       AE_MOVF32X2(exp_y76, AE_ZERO32(), f76);
 
@@ -423,7 +411,7 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
       exp_y76 = AE_SRAA32RS(exp_y76, (int)12);
       exp_y54 = AE_SRAA32RS(exp_y54, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_y32, dequantized_y10, y32, y10, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y32, dequantized_y10, y32, y10, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_y32, exp_y10, dequantized_y32, dequantized_y10);
       AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
 
@@ -432,7 +420,7 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
       exp_y32 = AE_SRAA32RS(exp_y32, (int)12);
       exp_y10 = AE_SRAA32RS(exp_y10, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_x76, dequantized_x54, x76, x54, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x76, dequantized_x54, x76, x54, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_x76, exp_x54, dequantized_x76, dequantized_x54);
       AE_MOVF32X2(exp_x76, AE_ZERO32(), g76);
 
@@ -441,7 +429,7 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
       exp_x76 = AE_SRAA32RS(exp_x76, (int)12);
       exp_x54 = AE_SRAA32RS(exp_x54, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_x32, dequantized_x10, x32, x10, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_x32, exp_x10, dequantized_x32, dequantized_x10);
       AE_MOVF32X2(exp_x32, AE_ZERO32(), g32);
 
@@ -473,7 +461,7 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
         y32 = AE_MOVDA32(rem_x);
         f32 = AE_LE32(diff_min, y32);
 
-        MultiplyByQuantizedMultiplierGreaterThanOne(dequantized_y32, y32, multiplier, input_beta_left_shift)
+        MPY_BY_QUANT_MULT_GT_ONE_X2_OUT32(dequantized_y32, y32, input_beta_multiplier, input_beta_left_shift)
         EXP_Q26(exp_y32, dequantized_y32);
         AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
         AE_S32_L_IP(exp_y32, (ae_int32 *)p_exp, sizeof(WORD32));
@@ -548,7 +536,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
     xtbool2 f76, f54, f32, f10, g76, g54, g32, g10;
     WORD8 *p_in = (WORD8 *)p_vec;
     WORD32 *p_exp = (WORD32 *)ALIGN_PTR(p_scratch, ALIGNMENT);
-    ae_int32x2 y76, y54, y32, y10, x76, x54, x32, x10, diff_min, multiplier;
+    ae_int32x2 y76, y54, y32, y10, x76, x54, x32, x10, diff_min;
     ae_int32x2 dequantized_y76, dequantized_y54, dequantized_y32, dequantized_y10, dequantized_x76, dequantized_x54, dequantized_x32, dequantized_x10;
     ae_int32x2 unsat_out76, unsat_out54, unsat_out32, unsat_out10, ONE;
     ae_int32x2 exp_y76, exp_y54, exp_y32, exp_y10, exp_x76, exp_x54, exp_x32, exp_x10, sum_exp, recip_sum_exp;
@@ -624,7 +612,6 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
     }
 
     diff_min = AE_MOVDA32(diffmin);
-    multiplier = AE_MOVDA32(input_beta_multiplier);
     sum_exp = z; // setting to zero
 
     p_in = (WORD8 *)p_vec;
@@ -652,7 +639,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
       g32 = AE_LE32(diff_min, x32);
       g10 = AE_LE32(diff_min, x10);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_y76, dequantized_y54, y76, y54, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y76, dequantized_y54, y76, y54, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_y76, exp_y54, dequantized_y76, dequantized_y54);
       AE_MOVF32X2(exp_y76, AE_ZERO32(), f76);
 
@@ -661,7 +648,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
       exp_y76 = AE_SRAA32RS(exp_y76, (int)12);
       exp_y54 = AE_SRAA32RS(exp_y54, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_y32, dequantized_y10, y32, y10, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y32, dequantized_y10, y32, y10, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_y32, exp_y10, dequantized_y32, dequantized_y10);
       AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
 
@@ -670,7 +657,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
       exp_y32 = AE_SRAA32RS(exp_y32, (int)12);
       exp_y10 = AE_SRAA32RS(exp_y10, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_x76, dequantized_x54, x76, x54, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x76, dequantized_x54, x76, x54, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_x76, exp_x54, dequantized_x76, dequantized_x54);
       AE_MOVF32X2(exp_x76, AE_ZERO32(), g76);
 
@@ -679,7 +666,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
       exp_x76 = AE_SRAA32RS(exp_x76, (int)12);
       exp_x54 = AE_SRAA32RS(exp_x54, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_x32, dequantized_x10, x32, x10, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_x32, exp_x10, dequantized_x32, dequantized_x10);
       AE_MOVF32X2(exp_x32, AE_ZERO32(), g32);
 
@@ -711,7 +698,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
         y32 = AE_MOVDA32(rem_x);
         f32 = AE_LE32(diff_min, y32);
 
-        MultiplyByQuantizedMultiplierGreaterThanOne(dequantized_y32, y32, multiplier, input_beta_left_shift)
+        MPY_BY_QUANT_MULT_GT_ONE_X2_OUT32(dequantized_y32, y32, input_beta_multiplier, input_beta_left_shift)
         EXP_Q26(exp_y32, dequantized_y32);
         AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
         AE_S32_L_IP(exp_y32, (ae_int32 *)p_exp, sizeof(WORD32));
@@ -788,7 +775,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
     xtbool2 f76, f54, f32, f10, g76, g54, g32, g10;
     WORD8 *p_in = (WORD8 *)p_vec;
     WORD32 *p_exp = (WORD32 *)ALIGN_PTR(p_scratch, ALIGNMENT);
-    ae_int32x2 y76, y54, y32, y10, x76, x54, x32, x10, diff_min, multiplier;
+    ae_int32x2 y76, y54, y32, y10, x76, x54, x32, x10, diff_min;
     ae_int32x2 dequantized_y76, dequantized_y54, dequantized_y32, dequantized_y10, dequantized_x76, dequantized_x54, dequantized_x32, dequantized_x10;
     ae_int32x2 unsat_out76, unsat_out54, unsat_out32, unsat_out10, ONE;
     ae_int32x2 exp_y76, exp_y54, exp_y32, exp_y10, exp_x76, exp_x54, exp_x32, exp_x10, sum_exp, recip_sum_exp;
@@ -865,7 +852,6 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
     }
 
     diff_min = AE_MOVDA32(diffmin);
-    multiplier = AE_MOVDA32(input_beta_multiplier);
     sum_exp = z; // setting to zero
 
     p_in = (WORD8 *)p_vec;
@@ -893,7 +879,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
       g32 = AE_LE32(diff_min, x32);
       g10 = AE_LE32(diff_min, x10);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_y76, dequantized_y54, y76, y54, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y76, dequantized_y54, y76, y54, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_y76, exp_y54, dequantized_y76, dequantized_y54);
       AE_MOVF32X2(exp_y76, AE_ZERO32(), f76);
 
@@ -902,7 +888,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
       exp_y76 = AE_SRAA32RS(exp_y76, (int)12);
       exp_y54 = AE_SRAA32RS(exp_y54, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_y32, dequantized_y10, y32, y10, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y32, dequantized_y10, y32, y10, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_y32, exp_y10, dequantized_y32, dequantized_y10);
       AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
 
@@ -911,7 +897,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
       exp_y32 = AE_SRAA32RS(exp_y32, (int)12);
       exp_y10 = AE_SRAA32RS(exp_y10, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_x76, dequantized_x54, x76, x54, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x76, dequantized_x54, x76, x54, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_x76, exp_x54, dequantized_x76, dequantized_x54);
       AE_MOVF32X2(exp_x76, AE_ZERO32(), g76);
 
@@ -920,7 +906,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
       exp_x76 = AE_SRAA32RS(exp_x76, (int)12);
       exp_x54 = AE_SRAA32RS(exp_x54, (int)12);
 
-      MultiplyByQuantizedMultiplierGreaterThanOneX2(dequantized_x32, dequantized_x10, x32, x10, multiplier, input_beta_left_shift)
+      MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift)
       EXP_Q26X2(exp_x32, exp_x10, dequantized_x32, dequantized_x10);
       AE_MOVF32X2(exp_x32, AE_ZERO32(), g32);
 
@@ -952,7 +938,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
         y32 = AE_MOVDA32(rem_x);
         f32 = AE_LE32(diff_min, y32);
 
-        MultiplyByQuantizedMultiplierGreaterThanOne(dequantized_y32, y32, multiplier, input_beta_left_shift)
+        MPY_BY_QUANT_MULT_GT_ONE_X2_OUT32(dequantized_y32, y32, input_beta_multiplier, input_beta_left_shift)
         EXP_Q26(exp_y32, dequantized_y32);
         AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
         AE_S32_L_IP(exp_y32, (ae_int32 *)p_exp, sizeof(WORD32));

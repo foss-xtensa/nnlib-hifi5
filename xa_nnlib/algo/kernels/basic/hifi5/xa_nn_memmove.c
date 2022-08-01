@@ -44,89 +44,95 @@ WORD32 xa_nn_memmove_8_8( void *pdst,
   ae_int8x16 *pOut;
   const ae_int8x16 *pInp;
   if(y == x) //no copy needed
-	return 0;
+    return 0;
 
   if (y < x)
   {
-	  pInp = (const  ae_int8x16 *)&x[0];
-	  pOut = (ae_int8x16 *)&y[0];
+      pInp = (const  ae_int8x16 *)&x[0];
+      pOut = (ae_int8x16 *)&y[0];
     ///check for aligned part
     if( ( (((unsigned)pInp)&15)==0  ) &&  ( (((unsigned)pOut)&15)==0  )   )
     {
-    	for(i=0;i<n>>4;i++)
-    	{
-    		AE_L8X8X2_IP(d0, d1, pInp, 16*sizeof(WORD8));
-    		AE_S8X8X2_IP(d0, d1, pOut, 16*sizeof(WORD8));
-    	}
+        for(i=0;i<n>>4;i++)
+        {
+            AE_L8X8X2_IP(d0, d1, pInp, 16*sizeof(WORD8));
+            AE_S8X8X2_IP(d0, d1, pOut, 16*sizeof(WORD8));
+        }
     }
     else
     {
-    	ae_valignx2 alignIn, alignOut;
-    	alignIn = AE_LA128_PP(pInp);
-    	alignOut = AE_ZALIGN128();
+        ae_valignx2 alignIn, alignOut;
+        alignIn = AE_LA128_PP(pInp);
+        alignOut = AE_ZALIGN128();
 
-    	for(i=0;i<n>>4;i++)
-    	{
-    		AE_LA8X8X2_IP(d0, d1, alignIn, pInp);
-    		AE_SA8X8X2_IP(d0, d1, alignOut, pOut);
-    	}
-    	AE_SA128POS_FP(alignOut, pOut);
+        for(i=0;i<n>>4;i++)
+        {
+            AE_LA8X8X2_IP(d0, d1, alignIn, pInp);
+            AE_SA8X8X2_IP(d0, d1, alignOut, pOut);
+        }
+        AE_SA128POS_FP(alignOut, pOut);
     }
 
-    i<<=4;//Reminder Loop
-    for(;i<n;i++)
+    // i<<=4;//Reminder Loop
+    for(i = 0 ;i< (n&15);i++)
     {
-    	AE_L8_IP(d0, (ae_int8 *)pInp, sizeof(WORD8));
-    	AE_S8_0_IP(d0, (ae_int8 *)pOut, sizeof(WORD8));
+        AE_L8_IP(d0, (ae_int8 *)pInp, sizeof(WORD8));
+        AE_S8_0_IP(d0, (ae_int8 *)pOut, sizeof(WORD8));
     }
   }
   else
   {
-	  pInp = (const  ae_int8x16 *)&x[n-16];
-	  pOut = (ae_int8x16 *)&y[n-16];
+      pInp = (const  ae_int8x16 *)&x[n-16];
+      pOut = (ae_int8x16 *)&y[n-16];
 
-	    ///check for aligned part
-	    if( ( (((unsigned)pInp)&15)==0  ) &&  ( (((unsigned)pOut)&15)==0  )   )
-	    {
-
-	    	for(i=0;i<(n>>4);i++)
-	    	{
-	    		AE_L8X8X2_IP(d0, d1, pInp, -16*sizeof(WORD8));
-	    		AE_S8X8X2_IP(d0, d1, pOut, -16*sizeof(WORD8));
-	    	}
-	        i<<=4;//Reminder Loop
-	        pInp = (ae_int8x16*)((WORD8*)pInp + 15);
-	        pOut = (ae_int8x16*)((WORD8*)pOut + 15);
-
-	    }
-	    else
-	    {
-	    	pInp = (const  ae_int8x16 *)&x[n-1];
-	  	  	pOut = (ae_int8x16 *)&y[n-1];
-	    	ae_valign alignIn, alignOut;
-	    	alignIn = AE_LA64_PP(pInp);
-	    	alignOut = AE_ZALIGN64();
-	    	for(i=0;i<n>>3;i++)
-	    	{
-	    		AE_LA8X8_RIP(d0, alignIn, (const ae_int8x8 *)pInp);
-	    		AE_SA8X8_RIP(d0, alignOut, (ae_int8x8 *)pOut);
-	    	}
-	    	AE_SA64NEG_FP(alignOut, (void*)pOut);
-
-	        i<<=3;//Reminder Loop
-	        /*for(;i<n;i++)
-	        {
-	        	*(WORD8*)pOut = *(WORD8*)pInp;
-	        	pInp = (WORD8*)pInp - 1;
-	        	pOut = (WORD8*)pOut - 1;
-	        }*/
-
-	    }
-        for(;i<n;i++)
+        ///check for aligned part
+        if( ( (((unsigned)pInp)&15)==0  ) &&  ( (((unsigned)pOut)&15)==0  )   )
         {
-        	*(WORD8*)pOut = *(WORD8*)pInp;
-        	pInp = (ae_int8x16*)((WORD8*)pInp - 1);
-        	pOut = (ae_int8x16*)((WORD8*)pOut - 1);
+
+            for(i=0;i<(n>>4);i++)
+            {
+                AE_L8X8X2_IP(d0, d1, pInp, -16*sizeof(WORD8));
+                AE_S8X8X2_IP(d0, d1, pOut, -16*sizeof(WORD8));
+            }
+            // i<<=4;//Reminder Loop
+            pInp = (ae_int8x16*)((WORD8*)pInp + 15);
+            pOut = (ae_int8x16*)((WORD8*)pOut + 15);
+            for(i = 0 ;i<(n&15);i++)
+            {
+                *(WORD8*)pOut = *(WORD8*)pInp;
+                pInp = (ae_int8x16*)((WORD8*)pInp - 1);
+                pOut = (ae_int8x16*)((WORD8*)pOut - 1);
+            }           
+
+        }
+        else
+        {
+            pInp = (const  ae_int8x16 *)&x[n-1];
+            pOut = (ae_int8x16 *)&y[n-1];
+            ae_valign alignIn, alignOut;
+            alignIn = AE_LA64_PP(pInp);
+            alignOut = AE_ZALIGN64();
+            for(i=0;i<n>>3;i++)
+            {
+                AE_LA8X8_RIP(d0, alignIn, (const ae_int8x8 *)pInp);
+                AE_SA8X8_RIP(d0, alignOut, (ae_int8x8 *)pOut);
+            }
+            AE_SA64NEG_FP(alignOut, (void*)pOut);
+
+            // i<<=3;//Reminder Loop
+            for(i = 0 ;i<(n&7);i++)
+            {
+                *(WORD8*)pOut = *(WORD8*)pInp;
+                pInp = (ae_int8x16*)((WORD8*)pInp - 1);
+                pOut = (ae_int8x16*)((WORD8*)pOut - 1);
+            }           
+            /*for(;i<n;i++)
+            {
+                *(WORD8*)pOut = *(WORD8*)pInp;
+                pInp = (WORD8*)pInp - 1;
+                pOut = (WORD8*)pOut - 1;
+            }*/
+
         }
 
   }
@@ -136,3 +142,27 @@ WORD32 xa_nn_memmove_8_8( void *pdst,
   return 0;
 #endif
 }
+
+void *xa_nn_memcpy(void * dest1,const void *src1, size_t n1)
+{
+  int itr;
+  ae_int8x8 di0, di1; \
+  ae_int8x16 *__restrict__ pae_i;
+  ae_int8x16 *__restrict__ pae_o;
+  ae_valignx2 i_a, o_a;
+  pae_i = (ae_int8x16 *)(src1);
+  pae_o = (ae_int8x16 *)(dest1);
+  i_a = AE_LA128_PP(pae_i);
+  o_a = AE_ZALIGN128();
+  for(itr = 0; itr < (((int)n1)>>4); itr++)
+  {
+    AE_LA8X8X2_IP(di0, di1, i_a, pae_i);
+    AE_SA8X8X2_IP(di0, di1, o_a, pae_o);
+  }
+  AE_LAV8X8X2_XP(di0, di1, i_a, pae_i, ((n1)&15));
+  AE_SAV8X8X2_XP(di0, di1, o_a, pae_o, ((n1)&15));
+  AE_SA128POS_FP(o_a, pae_o);
+  return (void *)pae_o;
+} /* xa_nn_memcpy */
+
+

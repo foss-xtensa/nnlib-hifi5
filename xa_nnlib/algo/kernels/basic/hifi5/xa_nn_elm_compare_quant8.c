@@ -21,12 +21,7 @@
 ******************************************************************************/
 #include "xa_nnlib_common.h"
 #include "xa_nn_basic_state.h"
-
-#define MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(prod1, prod2, val1, val2, multiplier1, multiplier2, lsh1, lsh2) {\
-    AE_MULF2P32X4RAS(prod1, prod2, val1, val2, multiplier1, multiplier2);\
-    prod1 = AE_SRAA32SYMS(prod1, lsh1);\
-    prod2 = AE_SRAA32SYMS(prod2, lsh2);\
-}
+#include "xa_nnlib_common_macros_hifi5.h"
 
 WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
                     const   WORD8 * __restrict__ p_inp1,
@@ -78,9 +73,6 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
   align_dst     = AE_ZALIGN128();
 
-  ae_int32x2 inp1_mul = AE_MOVDA32(inp1_multiplier);
-  ae_int32x2 inp2_mul = AE_MOVDA32(inp2_multiplier);
-
   ae_int32x2 out_76_H = AE_ZERO32();
   ae_int32x2 out_54_H = AE_ZERO32();
   ae_int32x2 out_32_H = AE_ZERO32();
@@ -110,14 +102,14 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(d76, d54, y32, left_shift);
     AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_EQ32(dequantized_a76, dequantized_c76);
     e54 = AE_EQ32(dequantized_a54, dequantized_c54);
@@ -179,10 +171,10 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(c76, c54, y76, left_shift);
     AE_CVTA32X4F16S(c32, c10, y54, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_EQ32(dequantized_a76, dequantized_c76);
     e54 = AE_EQ32(dequantized_a54, dequantized_c54);
@@ -214,10 +206,10 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_CVTA32X4F16S(d76, d54, y32, left_shift);
       AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
       f76 = AE_EQ32(dequantized_b76, dequantized_d76);
       f54 = AE_EQ32(dequantized_b54, dequantized_d54);
@@ -297,9 +289,6 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
   align_dst     = AE_ZALIGN128();
 
-  ae_int32x2 inp1_mul = AE_MOVDA32(inp1_multiplier);
-  ae_int32x2 inp2_mul = AE_MOVDA32(inp2_multiplier);
-
   ae_int32x2 out_76_H = AE_ZERO32();
   ae_int32x2 out_54_H = AE_ZERO32();
   ae_int32x2 out_32_H = AE_ZERO32();
@@ -329,14 +318,14 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(d76, d54, y32, left_shift);
     AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_EQ32(dequantized_a76, dequantized_c76);
     e54 = AE_EQ32(dequantized_a54, dequantized_c54);
@@ -398,10 +387,10 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(c76, c54, y76, left_shift);
     AE_CVTA32X4F16S(c32, c10, y54, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_EQ32(dequantized_a76, dequantized_c76);
     e54 = AE_EQ32(dequantized_a54, dequantized_c54);
@@ -433,10 +422,10 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_CVTA32X4F16S(d76, d54, y32, left_shift);
       AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
       f76 = AE_EQ32(dequantized_b76, dequantized_d76);
       f54 = AE_EQ32(dequantized_b54, dequantized_d54);
@@ -515,9 +504,6 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
   align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
   align_dst     = AE_ZALIGN128();
 
-  ae_int32x2 inp1_mul = AE_MOVDA32(inp1_multiplier);
-  ae_int32x2 inp2_mul = AE_MOVDA32(inp2_multiplier);
-
   ae_int32x2 out_76_H = AE_ZERO32();
   ae_int32x2 out_54_H = AE_ZERO32();
   ae_int32x2 out_32_H = AE_ZERO32();
@@ -547,14 +533,14 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(d76, d54, y32, left_shift);
     AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_LE32(dequantized_a76, dequantized_c76);
     e54 = AE_LE32(dequantized_a54, dequantized_c54);
@@ -616,10 +602,10 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(c76, c54, y76, left_shift);
     AE_CVTA32X4F16S(c32, c10, y54, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_LE32(dequantized_a76, dequantized_c76);
     e54 = AE_LE32(dequantized_a54, dequantized_c54);
@@ -651,10 +637,10 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_CVTA32X4F16S(d76, d54, y32, left_shift);
       AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
       f76 = AE_LE32(dequantized_b76, dequantized_d76);
       f54 = AE_LE32(dequantized_b54, dequantized_d54);
@@ -733,9 +719,6 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
   align_dst     = AE_ZALIGN128();
 
-  ae_int32x2 inp1_mul = AE_MOVDA32(inp1_multiplier);
-  ae_int32x2 inp2_mul = AE_MOVDA32(inp2_multiplier);
-
   ae_int32x2 out_76_H = AE_ZERO32();
   ae_int32x2 out_54_H = AE_ZERO32();
   ae_int32x2 out_32_H = AE_ZERO32();
@@ -765,14 +748,14 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(d76, d54, y32, left_shift);
     AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_LT32(dequantized_a76, dequantized_c76);
     e54 = AE_LT32(dequantized_a54, dequantized_c54);
@@ -834,10 +817,10 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(c76, c54, y76, left_shift);
     AE_CVTA32X4F16S(c32, c10, y54, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_LT32(dequantized_a76, dequantized_c76);
     e54 = AE_LT32(dequantized_a54, dequantized_c54);
@@ -869,10 +852,10 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_CVTA32X4F16S(d76, d54, y32, left_shift);
       AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
       f76 = AE_LT32(dequantized_b76, dequantized_d76);
       f54 = AE_LT32(dequantized_b54, dequantized_d54);
@@ -951,9 +934,6 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
   align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
   align_dst     = AE_ZALIGN128();
 
-  ae_int32x2 inp1_mul = AE_MOVDA32(inp1_multiplier);
-  ae_int32x2 inp2_mul = AE_MOVDA32(inp2_multiplier);
-
   ae_int32x2 out_76_H = AE_ZERO32();
   ae_int32x2 out_54_H = AE_ZERO32();
   ae_int32x2 out_32_H = AE_ZERO32();
@@ -983,14 +963,14 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(d76, d54, y32, left_shift);
     AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_LT32(dequantized_a76, dequantized_c76);
     e54 = AE_LT32(dequantized_a54, dequantized_c54);
@@ -1052,10 +1032,10 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(c76, c54, y76, left_shift);
     AE_CVTA32X4F16S(c32, c10, y54, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_LT32(dequantized_a76, dequantized_c76);
     e54 = AE_LT32(dequantized_a54, dequantized_c54);
@@ -1087,10 +1067,10 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_CVTA32X4F16S(d76, d54, y32, left_shift);
       AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
       f76 = AE_LT32(dequantized_b76, dequantized_d76);
       f54 = AE_LT32(dequantized_b54, dequantized_d54);
@@ -1169,9 +1149,6 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
   align_dst     = AE_ZALIGN128();
 
-  ae_int32x2 inp1_mul = AE_MOVDA32(inp1_multiplier);
-  ae_int32x2 inp2_mul = AE_MOVDA32(inp2_multiplier);
-
   ae_int32x2 out_76_H = AE_ZERO32();
   ae_int32x2 out_54_H = AE_ZERO32();
   ae_int32x2 out_32_H = AE_ZERO32();
@@ -1201,14 +1178,14 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(d76, d54, y32, left_shift);
     AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_LE32(dequantized_a76, dequantized_c76);
     e54 = AE_LE32(dequantized_a54, dequantized_c54);
@@ -1270,10 +1247,10 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     AE_CVTA32X4F16S(c76, c54, y76, left_shift);
     AE_CVTA32X4F16S(c32, c10, y54, left_shift);
 
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-    MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+    MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
     e76 = AE_LE32(dequantized_a76, dequantized_c76);
     e54 = AE_LE32(dequantized_a54, dequantized_c54);
@@ -1305,10 +1282,10 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_CVTA32X4F16S(d76, d54, y32, left_shift);
       AE_CVTA32X4F16S(d32, d10, y10, left_shift);
 
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
-      MultiplyByQuantizedMultiplierSmallerThanOneExp_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_mul, inp2_mul, -inp1_shift, -inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
+      MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
       f76 = AE_LE32(dequantized_b76, dequantized_d76);
       f54 = AE_LE32(dequantized_b54, dequantized_d54);

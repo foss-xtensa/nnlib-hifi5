@@ -254,19 +254,23 @@ const WORD16* __restrict__ p_inp,
             }
 
             /* reminder loop for scratch_width */
-            for(i = 0; i < (scratch_width & 7); i++)
-            {
-                ae_int16x4 src1, src2, src3, temp;
+            int rem_itr = (scratch_width & 7);
+            ae_int16x4 src1, src2, src3, temp;
+            ae_int16x4 j1, j2, j3;
+            ae_valignx2 align_dst;
+            align_dst = AE_ZALIGN128();
 
-                AE_L16_IP(src1, (ae_int16 *)p_src1_temp, 2);
-                AE_L16_IP(src2, (ae_int16 *)p_src2_temp, 2);
-                AE_L16_IP(src3, (ae_int16 *)p_src3_temp, 2);
+            AE_LAV16X4X2_XP(src1, j1, align_s1, (ae_int16x8 *)p_src1_temp, (rem_itr<<1));
+            AE_LAV16X4X2_XP(src2, j2, align_s2, (ae_int16x8 *)p_src2_temp, (rem_itr<<1));
+            AE_LAV16X4X2_XP(src3, j3, align_s3, (ae_int16x8 *)p_src3_temp, (rem_itr<<1));
 
-                temp = AE_MAX16(src2, src3);
-                src2 = AE_MAX16(temp, src1);
+            temp = AE_MAX16(src2, src3);
+            src2 = AE_MAX16(temp, src1);
+            temp = AE_MAX16(j2, j3);
+            j2 = AE_MAX16(temp, j1);
 
-                AE_S16_0_IP(src2, (ae_int16 *)p_dst_temp, 2);
-            }
+            AE_SAV16X4X2_XP(src2, j2, align_dst, (ae_int16x8 *)p_dst_temp, (rem_itr<<1));
+            AE_SA128POS_FP(align_dst, p_dst_temp);
 
             if(!pool_width)
                 break;

@@ -22,6 +22,8 @@
 #ifndef __XA_NNLIB_COMMON_MACROS_H__
 #define __XA_NNLIB_COMMON_MACROS_H__
 
+#include "xa_nnlib_quant_macros_hifi5.h"
+
 #ifndef NULL
 #define NULL (void *)0
 #endif /* NULL */
@@ -1881,12 +1883,8 @@ ae_int16 _ae_int16_bias = ZERO16; \
 /* For time batching */
 #define ADJUST_ACC_BATCH_ASYM8b(idx_row, idx_vec) \
   /* Multiply accumulator with 'out_multiplier', same as Tensorflow */ \
-  ae_int32x2 _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_SLAA32(AE_MOVINT32X2_FROMINT64(_ae_int64_acc_ ##idx_row ##_ ##idx_vec), left_shift); \
-  _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_MULFP32X2RAS(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, AE_MOVDA32(out_multiplier)); \
-  /* Shift by out_shift, same as Tensorflow */ \
-  _ae_int64_acc_ ##idx_row ##_ ##idx_vec = AE_SLAI64(AE_MOVINT64_FROMINT32X2(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec), 32); \
-  _ae_int64_acc_ ##idx_row ##_ ##idx_vec = AE_SRAA64(_ae_int64_acc_ ##idx_row ##_ ##idx_vec, right_shift); \
-  _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_ROUND32F64SSYM(_ae_int64_acc_ ##idx_row ##_ ##idx_vec); \
+  ae_int32x2 _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_MOVINT32X2_FROMINT64(_ae_int64_acc_ ##idx_row ##_ ##idx_vec); \
+  MPY_BY_QUANT_MULT_X2_OUT32(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, out_multiplier, left_shift, right_shift); \
   /* Add output zero point */ \
   (_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec) = AE_ADD32S(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, AE_MOVDA32(out_zero_bias)); \
 

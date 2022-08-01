@@ -21,11 +21,7 @@
 ******************************************************************************/
 #include "xa_nnlib_common.h"
 #include "xa_nn_conv2d_std_state.h"
-
-#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2(inp, multiplier, left_shift, right_shift) \
-    inp = AE_SLAA32(inp, left_shift); \
-    inp = AE_MULFP32X2RAS(inp, AE_MOVDA32(multiplier)); \
-    inp = AE_SRAA32SYMS(inp, right_shift);
+#include "xa_nnlib_common_macros_hifi5.h"
 
 static WORD32 conv_x_left_pad(
     WORD32 x_padding,
@@ -50,9 +46,17 @@ static WORD32 conv_x_left_pad(
 
   ae_int32x2 max_uint8 = AE_MOVDA32(255);
   ae_int32x2 min_uint8 = AE_MOVDA32(0);
-  
+
+#if TFLITE_SINGLE_ROUNDING
+  left_shift = out_shift;
+  right_shift = out_shift;
+  /* Single rounding macro doesn't need two shifts so this is not used */
+  (void)right_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
   left_shift = out_shift<0?0:out_shift;
   right_shift = out_shift>0?0:-out_shift;
+#endif /* #if TFLITE_SINGLE_ROUNDING */
+
   /* When kernel convolves over x-left pad region only, output is just bias */
   for(i=0;i<out_height;i++)
   {
@@ -61,7 +65,7 @@ static WORD32 conv_x_left_pad(
       for(k=0;k<out_channels;k++)
       {
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
-        MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc, out_multiplier, left_shift, right_shift);
+        MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, out_multiplier, left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_uint8, max_uint8);
         p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
@@ -94,9 +98,16 @@ static WORD32 conv_x_right_pad(
 
   ae_int32x2 max_uint8 = AE_MOVDA32(255);
   ae_int32x2 min_uint8 = AE_MOVDA32(0);
-  
+
+#if TFLITE_SINGLE_ROUNDING
+  left_shift = out_shift;
+  right_shift = out_shift;
+  /* Single rounding macro doesn't need two shifts so this is not used */
+  (void)right_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
   left_shift = out_shift<0?0:out_shift;
   right_shift = out_shift>0?0:-out_shift;
+#endif /* #if TFLITE_SINGLE_ROUNDING */
   /* When kernel convolves over x-right pad region only, output is just bias */
   for(i=0;i<out_height;i++)
   {
@@ -105,7 +116,7 @@ static WORD32 conv_x_right_pad(
       for(k=0;k<out_channels;k++)
       {
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
-        MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc, out_multiplier, left_shift, right_shift);
+        MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, out_multiplier, left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_uint8, max_uint8);
         p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);

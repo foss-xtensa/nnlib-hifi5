@@ -21,17 +21,27 @@
 ******************************************************************************/
 
 
-#ifndef __XA_OPUS_CODEC_DEFINITIONS_H__
-#define __XA_OPUS_CODEC_DEFINITIONS_H__
+#ifndef __XA_NNLIB_DEFINITIONS_H__
+#define __XA_NNLIB_DEFINITIONS_H__
 
 #include "xa_api_defs.h"
 
 /* Identification Strings */
-#define LIBNAME "HiFi Neural Network Library"
-#define LIBVERSION "1.7.0"
+#ifdef hifi5
+#define LIBNAME "HiFi5 Neural Network Library"
+#define LIBVERSION "1.8.0"
 
 #define LIB_APIVERSION_MAJOR 1
-#define LIB_APIVERSION_MINOR 1
+#define LIB_APIVERSION_MINOR 2
+
+#else /* #ifdef hifi5 */
+#define LIBNAME "HiFi Neural Network Library"
+#define LIBVERSION "1.8.0"
+
+#define LIB_APIVERSION_MAJOR 1
+#define LIB_APIVERSION_MINOR 2
+
+#endif /* #ifdef hifi5 */
 
 #if LIB_APIVERSION_MAJOR != XA_APIVERSION_MAJOR || \
 LIB_APIVERSION_MINOR != XA_APIVERSION_MINOR
@@ -42,4 +52,4 @@ LIB_APIVERSION_MINOR != XA_APIVERSION_MINOR
                                     LIB_APIVERSION_MAJOR, \
                                     LIB_APIVERSION_MINOR)
 
-#endif /* __XA_OPUS_CODEC_DEFINITIONS_H__ */
+#endif /* __XA_NNLIB_DEFINITIONS_H__ */

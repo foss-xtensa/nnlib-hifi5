@@ -80,6 +80,21 @@ VOID xa_nn_conv2d_std_init_state(
     WORD32 out_height,
     WORD32 input_precision);
 
+VOID xa_nn_trans_conv2d_std_init_state(
+    VOID *p_scratch,
+    VOID *p_kernel,
+    WORD32 input_height,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    WORD32 y_stride,
+    WORD32 x_padding,
+    WORD32 y_padding,
+    WORD32 out_height,
+    WORD32 output_width,
+    WORD32 input_precision);
+
 VOID xa_nn_dilated_conv2d_std_init_circ_buf(
     VOID *p_handle,
     VOID *p_kernel,
@@ -188,6 +203,23 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
     WORD32 * p_out_shift,
     WORD32 out_offset);
 
+WORD32 xa_nn_matXvec_sym8sxsym16s_sym16s_circ(
+    WORD16 * __restrict__ p_out,
+    WORD16 * __restrict__ p_mat1,
+    const WORD8 * __restrict__ p_vec1,
+    const WORD64 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols1,
+    WORD32 row_stride1,
+    WORD32 vec_count,
+    WORD32 vec_stride,
+    WORD32 out_col_offset,
+    WORD32 out_row_offset,
+    WORD32 mat1_offset,
+    WORD32 * p_out_multiplier,
+    WORD32 * p_out_shift,
+    WORD32 out_offset);
+
 VOID conv2d_std_init_cir_buf(
     WORD32 input_channels,
     WORD32 input_channels_pad,
@@ -202,6 +234,21 @@ VOID conv2d_std_init_cir_buf(
     VOID **pp_inp,
     xa_nn_conv_state_t *p_state);
 
+VOID trans_conv2d_std_init_cir_buf(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    WORD32 ext_inp_width,
+    VOID **pp_inp,
+    xa_nn_conv_state_t *p_state);
+
 VOID conv2d_std_update_cir_buf(
     WORD32 input_channels,
     WORD32 input_channels_pad,
@@ -213,6 +260,22 @@ VOID conv2d_std_update_cir_buf(
     WORD32 x_padding,
     WORD32 kernel_width,
     WORD32 x_stride,
+    VOID **pp_inp,
+    WORD32 idx_beg_inp_width_pad,
+    xa_nn_conv_state_t *p_state);
+
+VOID trans_conv2d_std_update_cir_buf(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    WORD32 ext_inp_width,
     VOID **pp_inp,
     WORD32 idx_beg_inp_width_pad,
     xa_nn_conv_state_t *p_state);

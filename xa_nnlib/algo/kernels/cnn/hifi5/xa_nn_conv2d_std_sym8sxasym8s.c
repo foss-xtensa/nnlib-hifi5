@@ -21,11 +21,7 @@
 ******************************************************************************/
 #include "xa_nnlib_common.h"
 #include "xa_nn_conv2d_std_state.h"
-
-#define MULTIPLYBYQUANTIZEDMULTIPLIER_X2(inp, multiplier, left_shift, right_shift) \
-    inp = AE_SLAA32(inp, left_shift); \
-    inp = AE_MULFP32X2RAS(inp, AE_MOVDA32(multiplier)); \
-    inp = AE_SRAA32SYMS(inp, right_shift);
+#include "xa_nnlib_common_macros_hifi5.h"
 
 static WORD32 conv_x_left_pad(
     WORD32 x_padding,
@@ -51,6 +47,11 @@ static WORD32 conv_x_left_pad(
   ae_int32x2 max_int8 = AE_MOVDA32(127);
   ae_int32x2 min_int8 = AE_MOVDA32(-128);
 
+#if TFLITE_SINGLE_ROUNDING
+  /* Single rounding macro doesn't need two shifts so this is not used */
+  (void)right_shift;
+#endif
+
   /* When kernel convolves over x-left pad region only, output is just bias */
   for(i = 0; i < out_height; i++)
   {
@@ -58,10 +59,14 @@ static WORD32 conv_x_left_pad(
     {
       for(k = 0; k < out_channels; k++)
       {
+#if TFLITE_SINGLE_ROUNDING
+        left_shift = p_out_shift[k];
+#else /* #if TFLITE_SINGLE_ROUNDING */
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
+#endif /* #if TFLITE_SINGLE_ROUNDING */
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
-        MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc, p_out_multiplier[k], left_shift, right_shift);
+        MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
@@ -95,6 +100,11 @@ static WORD32 conv_x_right_pad(
   ae_int32x2 max_int8 = AE_MOVDA32(127);
   ae_int32x2 min_int8 = AE_MOVDA32(-128);
 
+#if TFLITE_SINGLE_ROUNDING
+  /* Single rounding macro doesn't need two shifts so this is not used */
+  (void)right_shift;
+#endif
+
   /* When kernel convolves over x-right pad region only, output is just bias */
   for(i = 0; i < out_height; i++)
   {
@@ -102,10 +112,14 @@ static WORD32 conv_x_right_pad(
     {
       for(k = 0; k < out_channels; k++)
       {
+#if TFLITE_SINGLE_ROUNDING
+        left_shift = p_out_shift[k];
+#else /* #if TFLITE_SINGLE_ROUNDING */
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
+#endif /* #if TFLITE_SINGLE_ROUNDING */
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
-        MULTIPLYBYQUANTIZEDMULTIPLIER_X2(acc, p_out_multiplier[k], left_shift, right_shift);
+        MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
@@ -114,6 +128,56 @@ static WORD32 conv_x_right_pad(
   }
   return out_width_over_x_r_pad;
 }
+
+static void conv_y_pad_nhwc_out(
+    WORD8 *__restrict__ p_out,
+    WORD32 out_height,
+    WORD32 out_width,
+    WORD32 out_channels,
+    const WORD32* __restrict__ p_bias,
+    WORD32 * p_out_multiplier,
+    WORD32 * p_out_shift,
+    WORD32 out_zero_bias)
+{
+  WORD32 i,j,k;
+  WORD32 left_shift, right_shift;
+  WORD32 out_height_offset, out_width_offset, out_channels_offset;
+
+  out_channels_offset = 1;
+  out_width_offset = out_channels;
+  out_height_offset = out_width * out_width_offset;
+
+  ae_int32x2 max_int8 = AE_MOVDA32(127);
+  ae_int32x2 min_int8 = AE_MOVDA32(-128);
+
+#if TFLITE_SINGLE_ROUNDING
+  /* Single rounding macro doesn't need two shifts so this is not used */
+  (void)right_shift;
+#endif
+
+  /* When kernel convolves over x-right pad region only, output is just bias */
+  for(i = 0; i < out_height; i++)
+  {
+    for(j = 0; j < out_width; j++)
+    {
+      for(k = 0; k < out_channels; k++)
+      {
+#if TFLITE_SINGLE_ROUNDING
+        left_shift = p_out_shift[k];
+#else /* #if TFLITE_SINGLE_ROUNDING */
+        left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
+        right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
+#endif /* #if TFLITE_SINGLE_ROUNDING */
+        ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+        MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
+        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        AE_MINMAX32(acc, min_int8, max_int8);
+        p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (WORD8)AE_MOVAD32_L(acc);
+      }
+    }
+  }
+}
+
 //#define polyphase_debug
 #ifdef polyphase_debug
 #include<stdio.h>
@@ -484,7 +548,8 @@ WORD32 xa_nn_dilated_conv2d_std_per_chan_sym8sxasym8s(
   return 0;
 }
 
-WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
+__attribute__ ((noinline)) 
+static WORD32 internal_xa_nn_conv2d_std_per_chan_sym8sxasym8s(
     WORD8* __restrict__ p_out,
     const WORD8* __restrict__ p_inp,
     const WORD8* __restrict__ p_kernel,
@@ -508,38 +573,6 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
     WORD32 out_data_format,
     VOID *p_scratch)
 {
-   /* NULL pointer checks */
-  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
-  XA_NNLIB_ARG_CHK_PTR(p_kernel, -1);
-  XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
-  XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
-  XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
-  /* Pointer alignment checks */
-  //XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(UWORD8), -1);
-  //XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(UWORD8), -1);
-  //XA_NNLIB_ARG_CHK_ALIGN(p_kernel, sizeof(UWORD8), -1);
-  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD32), -1);
-  XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
-  /* Basic Parameter checks */
-  XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND((input_channels <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND((kernel_height <= 0 || kernel_width <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND((kernel_height > input_height), -1);
-  XA_NNLIB_ARG_CHK_COND((kernel_width > input_width), -1);
-  XA_NNLIB_ARG_CHK_COND((out_channels <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND((y_stride <= 0 || x_stride <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND((y_padding < 0 || x_padding < 0), -1);
-  XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND((input_zero_bias < -127 || input_zero_bias > 128), -1);
-  XA_NNLIB_ARG_CHK_COND((out_zero_bias < -128 || out_zero_bias > 127), -1);
-  XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
-
-  int itr;
-  for(itr=0;itr<out_channels;itr++){
-    XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 31), -1);
-  }
-
-
   WORD32 j;
   WORD32 input_bytewidth = 1;
   VOID *pp_inp = (VOID *)p_inp;
@@ -620,3 +653,158 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
   return 0;
 }
 
+WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
+    WORD8* __restrict__ p_out,
+    const WORD8* __restrict__ p_inp,
+    const WORD8* __restrict__ p_kernel,
+    const WORD32* __restrict__ p_bias,
+    WORD32 input_height,
+    WORD32 input_width,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 out_channels,
+    WORD32 x_stride,
+    WORD32 y_stride,
+    WORD32 x_padding,
+    WORD32 y_padding,
+    WORD32 out_height,
+    WORD32 out_width,
+    WORD32 input_zero_bias,
+    WORD32 * p_out_multiplier,
+    WORD32 * p_out_shift,
+    WORD32 out_zero_bias,
+    WORD32 out_data_format,
+    VOID *p_scratch)
+{
+   /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_kernel, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD32), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((input_channels <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((kernel_height <= 0 || kernel_width <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((kernel_height > input_height), -1);
+  XA_NNLIB_ARG_CHK_COND((kernel_width > input_width), -1);
+  XA_NNLIB_ARG_CHK_COND((out_channels <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((y_stride <= 0 || x_stride <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((y_padding < 0 || x_padding < 0), -1);
+  XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((input_zero_bias < -127 || input_zero_bias > 128), -1);
+  XA_NNLIB_ARG_CHK_COND((out_zero_bias < -128 || out_zero_bias > 127), -1);
+  XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
+
+  int itr;
+  for(itr=0;itr<out_channels;itr++){
+    XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 31), -1);
+  }
+  int ret = 0;
+  int tile_height = out_height;
+  int mem_req = 0;
+
+  do
+  {
+    mem_req = tile_height * out_width * out_channels + kernel_height * kernel_width * input_channels;
+    mem_req += ((tile_height - 1)*y_stride + kernel_height) * input_width * input_channels;
+    mem_req += xa_nn_conv2d_std_getsize(((tile_height - 1)*y_stride + kernel_height), input_channels,
+                    kernel_height, kernel_width, y_stride, y_padding, tile_height, out_channels, -4);
+    mem_req += tile_height * 3 * sizeof(WORD32);
+    if(mem_req < XCHAL_DCACHE_SIZE || tile_height <= 0)
+      break;
+    tile_height = (tile_height - 8) & (~3);
+  } while(1);
+  
+  if(tile_height <= 0)
+    tile_height = out_height;
+
+  if(tile_height == out_height || out_data_format == 1)
+  {
+    ret |= internal_xa_nn_conv2d_std_per_chan_sym8sxasym8s(
+        p_out,
+        p_inp,
+        p_kernel,
+        p_bias,
+        input_height,
+        input_width,
+        input_channels,
+        kernel_height,
+        kernel_width,
+        out_channels,
+        x_stride,
+        y_stride,
+        x_padding,
+        y_padding,
+        out_height,
+        out_width,
+        input_zero_bias,
+        p_out_multiplier,
+        p_out_shift,
+        out_zero_bias,
+        out_data_format,
+        p_scratch);
+  }
+  else
+  {
+    int itr_oh, itr_ih;
+    itr_oh = 0;
+    itr_ih = -y_padding;
+    do
+    {
+      int inp_h_idx = itr_ih < 0 ? 0 : (itr_ih >= input_height ? input_height - 1 : itr_ih);
+      int y_padding_cur = itr_ih < 0 ? -itr_ih : 0;
+      int inp_height_cur = (tile_height - 1)*y_stride + kernel_height - y_padding_cur;
+      inp_height_cur = inp_height_cur > input_height - inp_h_idx ? input_height - inp_h_idx : inp_height_cur;
+      inp_height_cur = itr_ih >= input_height ? 0 : inp_height_cur;
+
+      if(inp_height_cur == 0)
+      {
+        conv_y_pad_nhwc_out(
+            &p_out[itr_oh * out_width * out_channels],
+            tile_height,
+            out_width,
+            out_channels,
+            p_bias,
+            p_out_multiplier,
+            p_out_shift,
+            out_zero_bias);
+      }
+      else
+      {
+        ret |= internal_xa_nn_conv2d_std_per_chan_sym8sxasym8s(
+            &p_out[itr_oh * out_width * out_channels],
+            &p_inp[inp_h_idx * input_width * input_channels],
+            p_kernel,
+            p_bias,
+            inp_height_cur,
+            input_width,
+            input_channels,
+            kernel_height,
+            kernel_width,
+            out_channels,
+            x_stride,
+            y_stride,
+            x_padding,
+            y_padding_cur,
+            tile_height,
+            out_width,
+            input_zero_bias,
+            p_out_multiplier,
+            p_out_shift,
+            out_zero_bias,
+            out_data_format,
+            p_scratch);
+      }
+      itr_oh += tile_height;
+      itr_ih += tile_height * y_stride;
+      tile_height = tile_height > out_height - itr_oh ? out_height - itr_oh : tile_height;
+    } while(itr_oh < out_height);
+  }
+
+  return ret;
+}

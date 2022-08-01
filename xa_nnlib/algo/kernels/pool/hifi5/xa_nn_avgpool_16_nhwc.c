@@ -164,7 +164,9 @@ const WORD16* __restrict__ p_inp,
 
                 AE_SA64POS_FP(align_dst, p_dst_temp); // finalize the stream
 
+#if !defined(AE_SAV32X2X2_XP)
                 /* remainder loop */
+#pragma loop_count max=3
                 for(i = 0; i < (plane_size & 3); i++)
                 {
                     ae_int16x4 i1, i2, i3;
@@ -181,6 +183,34 @@ const WORD16* __restrict__ p_inp,
 
                     AE_S32_L_IP(wout1, (ae_int32 *)p_dst_temp, sizeof(WORD32));
                 }
+#else /* #if !defined(AE_SAV32X2X2_XP) */
+                int rem_itr = (plane_size & 3);
+                {
+                    ae_int16x4 i1, i2, i3, i1t, i2t, i3t;
+                    ae_int32x2 wout1, wout2;
+                    ae_int16x4 one = AE_MOVDA16(1);
+                    ae_valignx2 align_src1_x2, align_src2_x2, align_src3_x2;
+                    ae_valignx2 align_dst_x2;
+
+                    align_src1_x2 = AE_LA128_PP((ae_int16x8 *)p_src1_temp);
+                    align_src2_x2 = AE_LA128_PP((ae_int16x8 *)p_src2_temp);
+                    align_src3_x2 = AE_LA128_PP((ae_int16x8 *)p_src3_temp);
+                    align_dst_x2 = AE_ZALIGN128();
+
+                    rem_itr <<= 1;
+
+                    AE_LAV16X4X2_XP(i1, i1t, align_src1_x2, (ae_int16x8 *)p_src1_temp, rem_itr);
+                    AE_LAV16X4X2_XP(i2, i2t, align_src2_x2, (ae_int16x8 *)p_src2_temp, rem_itr);
+                    AE_LAV16X4X2_XP(i3, i3t, align_src3_x2, (ae_int16x8 *)p_src3_temp, rem_itr);
+
+                    AE_MUL16X4 (wout1, wout2, i1, one);
+                    AE_MULA16X4(wout1, wout2, i2, one);
+                    AE_MULA16X4(wout1, wout2, i3, one);
+
+                    AE_SAV32X2X2_XP(wout1, wout2, align_dst_x2, (ae_int32x4 *)p_dst_temp, (rem_itr << 1));
+                    AE_SA128POS_FP(align_dst_x2, (ae_int32x4 *)p_dst_temp);
+                }
+#endif /* #if !defined(AE_SAV32X2X2_XP) */
             }
 
             if(pool_height)
@@ -225,6 +255,7 @@ const WORD16* __restrict__ p_inp,
                     AE_SA64POS_FP(align_dst, p_dst_temp); // finalize the stream
 
                     /* remainder loop */
+#pragma loop_count max=3
                     for(i = 0; i < (plane_size & 3); i++)
                     {
                         ae_int16x4 i2, i3;
@@ -356,14 +387,20 @@ const WORD16* __restrict__ p_inp,
 
                 p_out1 = (WORD32 *)p_dst;
 
-                den_h = AE_MOVDA32(p_den_height[itr_oh]);
-                den_w = AE_MOVDA32(p_den_width[itr_ow]);
-                d_tmp = AE_MUL32U_LL(den_h, den_w);
+                if(kernel_height * kernel_width <= 1024)
+                {
+                    d_tmp32hw = AE_MOVDA32(inv_256_tbl[p_den_height[itr_oh] * p_den_width[itr_ow]]);
+                }
+                else
+                {
+                    den_h = AE_MOVDA32(inv_256_tbl[p_den_height[itr_oh]]);
+                    den_w = AE_MOVDA32(inv_256_tbl[p_den_width[itr_ow]]);
+                    d_tmp = AE_MUL32U_LL(den_h, den_w);
 
-                /* Max value of den_h or den_w is 0x80000000
-                   so 1 left shift is possible without overflow */
-
-                d_tmp32hw = AE_TRUNCI32X2F64S(d_tmp, d_tmp, 1);
+                    /* Max value of den_h or den_w is 0x80000000
+                       so 1 left shift is possible without overflow */
+                    d_tmp32hw = AE_TRUNCI32X2F64S(d_tmp, d_tmp, 1);
+                }
 
                 for(i=0; i<input_channels; i++)
                 {

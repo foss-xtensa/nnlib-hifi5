@@ -45,23 +45,39 @@ static WORD32 xa_nn_conv2d_pointwise_nhwc_per_chan_sym8sxasym8s(
   vec_offset = input_channels;
   out_offset = out_channels;
 
-
-  ret = xa_nn_matmul_per_chan_sym8sxasym8s_asym8s(p_out,
-                                        p_kernel,
-                                        p_inp,
-                                        p_bias,
-                                        out_channels,
-                                        input_channels,
-                                        input_channels,
-                                        out_plane_size,
-                                        vec_offset,
-                                        out_offset,
-                                        1,
-                                        input_zero_bias,
-                                        p_out_multiplier,
-                                        p_out_shift,
-                                        out_zero_bias
-                                        );
+  int tile_size;
+  {
+    tile_size = out_plane_size;
+    while(out_channels*input_channels + tile_size*input_channels + tile_size*out_channels + out_channels*4*3 + XCHAL_DCACHE_LINESIZE*6 > (XCHAL_DCACHE_SIZE>>1) && tile_size > 0)
+    {
+      tile_size -= 4;
+    }
+    tile_size = (tile_size + 3)&(~3);
+    if(tile_size <= 0 || tile_size > out_plane_size)
+      tile_size = out_plane_size;
+  }
+  int itr_t;
+  for(itr_t = 0; itr_t < out_plane_size; )
+  {
+    ret = xa_nn_matmul_per_chan_sym8sxasym8s_asym8s(&p_out[itr_t*out_channels],
+                                          p_kernel,
+                                          &p_inp[itr_t*input_channels],
+                                          p_bias,
+                                          out_channels,
+                                          input_channels,
+                                          input_channels,
+                                          tile_size,
+                                          vec_offset,
+                                          out_offset,
+                                          1,
+                                          input_zero_bias,
+                                          p_out_multiplier,
+                                          p_out_shift,
+                                          out_zero_bias
+                                          );
+    itr_t += tile_size;
+    tile_size = tile_size < out_plane_size - itr_t ? tile_size : out_plane_size - itr_t;
+  }
   if(ret<0)
       return ret;
   return 0;

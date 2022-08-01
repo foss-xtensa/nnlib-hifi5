@@ -90,8 +90,13 @@ WORD32 xa_nn_matXvec_batch_asym8xasym8_asym8(
 #define UNROLL_ROW_STORE_ACC                    STORE_ACC_BATCH_ROW_ASYM8bxASYM8b_AT_OUT_ASYM8b
 #define UNROLL_STORE_ACC_BATCH                  STORE_ACC_BATCH_ASYM8bxASYM8b_AT_OUT_ASYM8b
 
+#if TFLITE_SINGLE_ROUNDING
+  left_shift = out_shift;
+  (void)right_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
   left_shift = out_shift<0?0:out_shift;
   right_shift = out_shift>0?0:-out_shift;
+#endif /* #if TFLITE_SINGLE_ROUNDING */
 
   if(p_mat1 && p_vec1)
   {

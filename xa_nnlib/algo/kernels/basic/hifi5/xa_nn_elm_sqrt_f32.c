@@ -81,8 +81,7 @@ WORD32 xa_nn_elm_sqrt_f32_f32(FLOAT32 * __restrict__ p_out,
   }
 
   // Remainder Loop
-  i = num_elm & (~3);
-  for(; i < num_elm; i++)
+  for(i = 0 ; i < (num_elm & 3); i++)
   {
     xtfloat a1, a;
     AE_LSIP(a1, (xtfloat *)inp, sizeof(FLOAT32));

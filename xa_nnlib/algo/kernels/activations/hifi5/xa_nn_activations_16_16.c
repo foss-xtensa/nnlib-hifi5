@@ -63,14 +63,12 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
             AE_LA16X4X2_IP(x, y, align_src, (ae_int16x8 *)p_v);
             AE_SA16X4X2_IP(x, y, align_dst, (ae_int16x8 *)p_o);
         }
-
-        AE_SA128POS_FP(align_dst, p_o); // finalize the stream
-
-        for(i=0; i < (vec_length & 7); i++)
+        int rem_itr = (vec_length & 7);
         {
-            AE_L16_IP(x, (ae_int16 *)p_v, sizeof(ae_int16));
-            AE_S16_0_IP(x, (ae_int16 *)p_o, sizeof(ae_int16));
+            AE_LAV16X4X2_XP(x, y, align_src, (ae_int16x8 *)p_v, (rem_itr << 1));
+            AE_SAV16X4X2_XP(x, y, align_dst, (ae_int16x8 *)p_o, (rem_itr << 1));
         }
+        AE_SA128POS_FP(align_dst, p_o); // finalize the stream
     }
     else if((activation_max < MAX_WORD16) && (activation_min <= MIN_WORD16))
     {
@@ -83,17 +81,17 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
 
             AE_SA16X4X2_IP(x, y, align_dst, (ae_int16x8 *)p_o);
         }
-
-        AE_SA128POS_FP(align_dst, p_o); // finalize the stream
-
-        for(i=0; i < (vec_length & 7); i++)
+        int rem_itr = vec_length & 7;
         {
-            AE_L16_IP(y, (ae_int16 *)p_v, sizeof(ae_int16));
+            AE_LAV16X4X2_XP(x, y, align_src, (ae_int16x8 *)p_v, (rem_itr << 1));
 
+            x = AE_MIN16(x, max);
             y = AE_MIN16(y, max);
 
-            AE_S16_0_IP(y, (ae_int16 *)p_o, sizeof(ae_int16));
+            AE_SAV16X4X2_XP(x, y, align_dst, (ae_int16x8 *)p_o, (rem_itr << 1));
         }
+
+        AE_SA128POS_FP(align_dst, p_o); // finalize the stream
     }
     else if((activation_max >= MAX_WORD16) && (activation_min > MIN_WORD16))
     {
@@ -106,17 +104,16 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
 
             AE_SA16X4X2_IP(x, y, align_dst, (ae_int16x8 *)p_o);
         }
-
-        AE_SA128POS_FP(align_dst, p_o); // finalize the stream
-
-        for(i=0; i < (vec_length & 7); i++)
+        int rem_itr = (vec_length & 7);
         {
-            AE_L16_IP(y, (ae_int16 *)p_v, sizeof(ae_int16));
+            AE_LAV16X4X2_XP(x, y, align_src, (ae_int16x8 *)p_v, rem_itr << 1);
 
+            x = AE_MAX16(x, min);
             y = AE_MAX16(y, min);
 
-            AE_S16_0_IP(y, (ae_int16 *)p_o, sizeof(ae_int16));
+            AE_SAV16X4X2_XP(x, y, align_dst, (ae_int16x8 *)p_o, rem_itr << 1);
         }
+        AE_SA128POS_FP(align_dst, p_o); // finalize the stream
     }
     else
     {
@@ -129,17 +126,16 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
 
             AE_SA16X4X2_IP(x, y, align_dst, (ae_int16x8 *)p_o);
         }
-
-        AE_SA128POS_FP(align_dst, p_o); // finalize the stream
-
-        for(i=0; i < (vec_length & 7); i++)
+        int rem_itr = (vec_length & 7);
         {
-            AE_L16_IP(x, (ae_int16 *)p_v, sizeof(ae_int16));
+            AE_LAV16X4X2_XP(x, y, align_src, (ae_int16x8 *)p_v, (rem_itr << 1));
 
             AE_MINMAX16(x, min, max);
+            AE_MINMAX16(y, min, max);
 
-            AE_S16_0_IP(x, (ae_int16 *)p_o, sizeof(ae_int16));
+            AE_SAV16X4X2_XP(x, y, align_dst, (ae_int16x8 *)p_o, (rem_itr << 1));
         }
+        AE_SA128POS_FP(align_dst, p_o); // finalize the stream
     }
 
     return 0;
@@ -176,7 +172,7 @@ WORD32 xa_nn_vec_relu_std_16_16(
                                       0,
                                       MAX_WORD16,
                                       vec_length);
-	return 0;
+  return 0;
 }
 
 #define ROUNDING_HALF_SUM_16X4(s0, s1, a, b){\
@@ -329,7 +325,7 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
 
     AE_SA16X4X2_IP(z32_op, z10_op, align_dst_hf5_0, p_o_0);
   }
-  
+
   int rem_itr = vec_length & 7;
   // remainder loop
   if(rem_itr > 0)
@@ -523,9 +519,9 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
 }
 
 WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
-                      	  	const WORD16 *p_vec,
-                      	    WORD32 integer_bits,	/* Number of integer bits to adjust Q-format */
-                      	    WORD32 vec_length)
+                            const WORD16 *p_vec,
+                            WORD32 integer_bits,  /* Number of integer bits to adjust Q-format */
+                            WORD32 vec_length)
 {
   /* NULL pointer checks */
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
@@ -560,7 +556,7 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
 
       AE_SA16X4X2_IP(z32_op, z10_op, align_dst_hf5_0, p_o_0);
     }
-    
+
     int rem_itr = vec_length & 7;
     // remainder loop
     if(rem_itr > 0)
@@ -582,14 +578,14 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
     for(i=0; i<(vec_length >> 3); i++)
     {
       AE_LA16X4X2_IP(z32, z10, align_src_hf5_0, p_in_0);
-      
+
       z32 = AE_MULP16X16X4S(z32, l_mult);
       z10 = AE_MULP16X16X4S(z10, l_mult);
       AE_TANH16X4X2(z32_op, z10_op, z32, z10);
 
       AE_SA16X4X2_IP(z32_op, z10_op, align_dst_hf5_0, p_o_0);
     }
-    
+
     int rem_itr = vec_length & 7;
     // remainder loop
     if(rem_itr > 0)

@@ -21,6 +21,7 @@
 ******************************************************************************/
 #include "xa_nnlib_common.h"
 #include "xa_nn_basic_state.h"
+#include "xa_nnlib_common_macros_hifi5.h"
 
 WORD32 xa_nn_elm_mul_asym8xasym8_asym8(UWORD8 * __restrict__ p_out,
                             WORD32  out_zero_bias,
@@ -62,8 +63,15 @@ WORD32 xa_nn_elm_mul_asym8xasym8_asym8(UWORD8 * __restrict__ p_out,
     ae_int32x2 temp;
     ae_f16x4 temp16X4, zero_bias1, zero_bias2;
     ae_f32x2 op_zero_bias, activation_min, activation_max;
+#if TFLITE_SINGLE_ROUNDING
+    int left_shift = out_shift;
+    int right_shift = out_shift;
+    /* Single rounding doesn't need two shifts */
+    (void)right_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
     int left_shift = out_shift < 0 ? 0 : out_shift;
     int right_shift = out_shift > 0 ? 0 : -out_shift;
+#endif /* #if TFLITE_SINGLE_ROUNDING */
 
     // Taking input zero_bias into 16X4 variable
     temp = AE_MOVDA32X2(inp1_zero_bias, inp1_zero_bias);
@@ -103,10 +111,10 @@ WORD32 xa_nn_elm_mul_asym8xasym8_asym8(UWORD8 * __restrict__ p_out,
             AE_MUL16X4(prod32, prod10, v1, v2);
 
             // unclamped result
-            MULTIPLYBYQUANTIZEDMULTIPLIER_X2(unclamped_out32, prod32, out_multiplier, left_shift, right_shift)
-            MULTIPLYBYQUANTIZEDMULTIPLIER_X2(unclamped_out10, prod10, out_multiplier, left_shift, right_shift)
-            unclamped_out32 = AE_ADD32(unclamped_out32, op_zero_bias);
-            unclamped_out10 = AE_ADD32(unclamped_out10, op_zero_bias);
+            MPY_BY_QUANT_MULT_SLS_X2_OUT32(unclamped_out32, prod32, out_multiplier, left_shift, right_shift)
+            MPY_BY_QUANT_MULT_SLS_X2_OUT32(unclamped_out10, prod10, out_multiplier, left_shift, right_shift)
+            unclamped_out32 = AE_ADD32S(unclamped_out32, op_zero_bias);
+            unclamped_out10 = AE_ADD32S(unclamped_out10, op_zero_bias);
 
             // clamped_out
             CLAMP_VAL(clamped_out32, unclamped_out32, activation_min, activation_max)
@@ -139,10 +147,10 @@ WORD32 xa_nn_elm_mul_asym8xasym8_asym8(UWORD8 * __restrict__ p_out,
             AE_MUL16X4(prod32, prod10, v1, v2);
 
             // unclamped result
-            MULTIPLYBYQUANTIZEDMULTIPLIER_X2(unclamped_out32, prod32, out_multiplier, left_shift, right_shift)
-            MULTIPLYBYQUANTIZEDMULTIPLIER_X2(unclamped_out10, prod10, out_multiplier, left_shift, right_shift)
-            unclamped_out32 = AE_ADD32(unclamped_out32, op_zero_bias);
-            unclamped_out10 = AE_ADD32(unclamped_out10, op_zero_bias);
+            MPY_BY_QUANT_MULT_SLS_X2_OUT32(unclamped_out32, prod32, out_multiplier, left_shift, right_shift)
+            MPY_BY_QUANT_MULT_SLS_X2_OUT32(unclamped_out10, prod10, out_multiplier, left_shift, right_shift)
+            unclamped_out32 = AE_ADD32S(unclamped_out32, op_zero_bias);
+            unclamped_out10 = AE_ADD32S(unclamped_out10, op_zero_bias);
 
             // clamped_out
             CLAMP_VAL(clamped_out32, unclamped_out32, activation_min, activation_max)
@@ -178,8 +186,8 @@ WORD32 xa_nn_elm_mul_asym8xasym8_asym8(UWORD8 * __restrict__ p_out,
         AE_MUL16X4(prod32, prod10, v1, v2);
 
         // unclamped result
-        MULTIPLYBYQUANTIZEDMULTIPLIER_X2(unclamped_out32, prod32, out_multiplier, left_shift, right_shift)
-        unclamped_out32 = AE_ADD32(unclamped_out32, op_zero_bias);
+        MPY_BY_QUANT_MULT_SLS_X2_OUT32(unclamped_out32, prod32, out_multiplier, left_shift, right_shift)
+        unclamped_out32 = AE_ADD32S(unclamped_out32, op_zero_bias);
 
         // clamped_out
         CLAMP_VAL(clamped_out32, unclamped_out32, activation_min, activation_max)
@@ -192,8 +200,155 @@ WORD32 xa_nn_elm_mul_asym8xasym8_asym8(UWORD8 * __restrict__ p_out,
     return 0;
 }
 
-WORD32 xa_nn_elm_mul_asym8sxasym8s_asym8s(
-                             WORD8 * __restrict__ p_out,
+static void internal_elm_mul_broadcast_2D_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
+                            WORD32  out_zero_bias,
+                            WORD32  out_shift,
+                            WORD32  out_multiplier,
+                            WORD32  out_activation_min,
+                            WORD32  out_activation_max,
+                    const    WORD8 * __restrict__ p_inp1,
+                            WORD32  inp1_zero_bias,
+                    const    WORD8 * __restrict__ p_inp2,
+                            WORD32  inp2_zero_bias,
+                            WORD32  out_lc,
+                            WORD32  in_lc)
+{
+  int i, j;
+  WORD8 * __restrict__ p_a;
+  WORD8 * __restrict__ p_b;
+  WORD8 *__restrict__ p_c;
+
+#if TFLITE_SINGLE_ROUNDING
+  int l_shift = out_shift;
+  int r_shift = out_shift;
+  /* Single rounding doesn't need two shifts */
+  (void)r_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
+  int l_shift = out_shift >= 0 ?   out_shift : 0;
+  int r_shift = out_shift <  0 ?  -out_shift : 0;
+#endif /* #if TFLITE_SINGLE_ROUNDING */
+
+  ae_int8x8 a0_7, b0_7;
+
+  const ae_int8x8 za = AE_MOVDA8(-inp1_zero_bias);
+  const ae_int8x8 zb = AE_MOVDA8(-inp2_zero_bias);
+
+  // intermediate results and scratch registers
+  ae_int16x4 a0_3, a4_7, b0_3, b4_7;
+
+  ae_int32x2 raw_mul0_1, raw_mul2_3, raw_mul4_5, raw_mul6_7;
+
+  ae_int16x4 out0, out1;
+
+  int num_simd8_ops;
+  int num_scalar_ops;
+
+  if(out_lc == 1)
+  {
+    num_simd8_ops = in_lc >> 3;
+    num_scalar_ops = in_lc & 7;
+  }
+  else
+  {
+    num_simd8_ops = (in_lc >> 4) << 1;
+    num_scalar_ops = in_lc & 15;
+  }
+
+  ae_valign va_a, va_b, va_c;
+
+#pragma loop_count min=1
+  for(i = 0; i < out_lc; i++)
+  {
+    p_a = (WORD8 *)&p_inp1[i * in_lc];
+    p_b = (WORD8 *)p_inp2;
+    p_c = (WORD8 *)&p_out[i * in_lc];
+
+    va_a = AE_LA64_PP(p_a);
+    va_b = AE_LA64_PP(p_b);
+    va_c = AE_ZALIGN64();
+    for(j = 0; j < num_simd8_ops; j++)
+    {
+      AE_LA8X8_IP(a0_7, va_a, (ae_int8x8 *)p_a);
+      AE_LA8X8_IP(b0_7, va_b, (ae_int8x8 *)p_b);
+
+      // Add input zero bias
+      AE_SUBW8(a0_3, a4_7, a0_7, za);
+      AE_SUBW8(b0_3, b4_7, b0_7, zb);
+
+      AE_MUL16X4(raw_mul0_1, raw_mul2_3, a0_3, b0_3);
+      AE_MUL16X4(raw_mul4_5, raw_mul6_7, a4_7, b4_7);
+
+      // Raw Output
+      MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out0, raw_mul0_1, raw_mul2_3, out_multiplier, l_shift, r_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out1, raw_mul4_5, raw_mul6_7, out_multiplier, l_shift, r_shift, out_zero_bias);
+
+      // Clamp output
+      AE_MINMAX16(out0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+      AE_MINMAX16(out1, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+      ae_int8x8 res = AE_SAT8X8X16(out0, out1);
+
+      AE_SA8X8_IP(res, va_c, (ae_int8x8 *)p_c);
+    }
+    AE_SA64POS_FP(va_c, p_c);
+  }
+
+  if(num_scalar_ops != 0)
+  {
+    ae_int8x8 a8_15, b8_15;
+    ae_int16x4 out2, out3;
+    ae_valignx2 va_ax2, va_bx2, va_cx2;
+    ae_int16x4 a8_11, a12_15, b8_11, b12_15;
+    ae_int32x2 raw_mul8_9, raw_mul10_11, raw_mul12_13, raw_mul14_15;
+
+    p_b = (WORD8 *)&p_inp2[num_simd8_ops << 3];
+    va_bx2 = AE_LA128_PP((ae_int8x16 *)p_b);
+    AE_LAV8X8X2_XP(b0_7, b8_15, va_bx2, (ae_int8x16 *)p_b, num_scalar_ops);
+    AE_SUBW8(b0_3, b4_7, b0_7, zb);
+    AE_SUBW8(b8_11, b12_15, b8_15, zb);
+
+#pragma loop_count min=1
+    for(i = 0; i < out_lc; i++)
+    {
+      p_a = (WORD8 *)&p_inp1[i * in_lc + (num_simd8_ops << 3)];
+      p_c = (WORD8 *)&p_out[i * in_lc + (num_simd8_ops << 3)];
+
+      va_ax2 = AE_LA128_PP((ae_int8x16 *)p_a);
+      va_cx2 = AE_ZALIGN128();
+
+      AE_LAV8X8X2_XP(a0_7, a8_15, va_ax2, (ae_int8x16 *)p_a, num_scalar_ops);
+
+      // Add input zero bias
+      AE_SUBW8(a0_3, a4_7, a0_7, za);
+      AE_SUBW8(a8_11, a12_15, a8_15, za);
+
+      AE_MUL16X4(raw_mul0_1, raw_mul2_3, a0_3, b0_3);
+      AE_MUL16X4(raw_mul4_5, raw_mul6_7, a4_7, b4_7);
+      AE_MUL16X4(raw_mul8_9, raw_mul10_11, a8_11, b8_11);
+      AE_MUL16X4(raw_mul12_13, raw_mul14_15, a12_15, b12_15);
+
+      // Raw Output
+      MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out0, raw_mul0_1, raw_mul2_3, out_multiplier, l_shift, r_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out1, raw_mul4_5, raw_mul6_7, out_multiplier, l_shift, r_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out2, raw_mul8_9, raw_mul10_11, out_multiplier, l_shift, r_shift, out_zero_bias);
+      MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out3, raw_mul12_13, raw_mul14_15, out_multiplier, l_shift, r_shift, out_zero_bias);
+
+      // Clamp output
+      AE_MINMAX16(out0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+      AE_MINMAX16(out1, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+      AE_MINMAX16(out2, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+      AE_MINMAX16(out3, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+      ae_int8x8 res0 = AE_SAT8X8X16(out0, out1);
+      ae_int8x8 res1 = AE_SAT8X8X16(out2, out3);
+
+      AE_SAV8X8X2_XP(res0, res1, va_cx2, (ae_int8x16 *)p_c, num_scalar_ops);
+      AE_SA128POS_FP(va_cx2, (ae_int8x16 *)p_c);
+    }
+  }
+}
+
+static void internal_elm_mul_broadcast_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
                             WORD32  out_zero_bias,
                             WORD32  out_shift,
                             WORD32  out_multiplier,
@@ -205,160 +360,365 @@ WORD32 xa_nn_elm_mul_asym8sxasym8s_asym8s(
                             WORD32  inp2_zero_bias,
                             WORD32  num_elm)
 {
-    /* NULL pointer checks */
-    XA_NNLIB_ARG_CHK_PTR(p_out, -1);
-    XA_NNLIB_ARG_CHK_PTR(p_inp1, -1);
-    XA_NNLIB_ARG_CHK_PTR(p_inp2, -1);
-    /* Pointer alignment checks */
-    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(UWORD8), -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_inp1, sizeof(UWORD8), -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_inp2, sizeof(UWORD8), -1);
-    /* Basic Parameter checks */
-    XA_NNLIB_ARG_CHK_COND((num_elm <= 0), -1);
-    XA_NNLIB_ARG_CHK_COND(((out_zero_bias < -128) || (out_zero_bias > 127)), -1);
-    XA_NNLIB_ARG_CHK_COND(((inp1_zero_bias < -127) || (inp1_zero_bias > 128)), -1);
-    XA_NNLIB_ARG_CHK_COND(((inp2_zero_bias < -127) || (inp2_zero_bias > 128)), -1);
-    XA_NNLIB_ARG_CHK_COND(((out_shift < -31) || (out_shift > 31)), -1);
-    XA_NNLIB_ARG_CHK_COND(((out_activation_min < -128) || (out_activation_min > 127)), -1);
-    XA_NNLIB_ARG_CHK_COND(((out_activation_max < -128) || (out_activation_max > 127)), -1);
-    XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min), -1);
+  int i;
+  WORD8 * __restrict__ p_a = (WORD8 *)p_inp1;
+  WORD8 * __restrict__ p_b = (WORD8 *)p_inp2;
+  WORD8 *__restrict__ p_c =          p_out;
 
-    unsigned int i = 0;
+#if TFLITE_SINGLE_ROUNDING
+  int l_shift = out_shift;
+  int r_shift = out_shift;
+  /* Single rounding doesn't need two shifts */
+  (void)r_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
+  int l_shift = out_shift >= 0 ?   out_shift : 0;
+  int r_shift = out_shift <  0 ?  -out_shift : 0;
+#endif /* #if TFLITE_SINGLE_ROUNDING */
 
-    // c = ( a + za ) * ( b + zb )
-    ae_int16x4 a0_3, a4_7, b0_3, b4_7;
-    ae_int32x2 c0_3, c4_7;
+  ae_int8x8 a0_7, b;
 
-    ae_int8x8 res;
-    ae_int32x2 res0_1, res2_3, res4_5, res6_7;
+  ae_int8x8  za = AE_MOVDA8(-inp1_zero_bias);
+  ae_int8x8  zb = AE_MOVDA8(-inp2_zero_bias);
 
-    ae_int16x4 za = AE_MOVDA16(inp1_zero_bias);     // replicate 16LSBs of input into 16x4 output
-    ae_int16x4 zb = AE_MOVDA16(inp2_zero_bias);     // zero_bias is already signed, no need for ZE
-    ae_int32x2 zc = AE_MOVDA32( out_zero_bias);
+  // intermediate results and scratch registers
+  ae_int16x4 a0_3, a4_7, b0, b1;
 
-    ae_f32x2 multiplier = AE_MOVDA32(out_multiplier);
+  ae_int32x2 raw_mul0_1, raw_mul2_3, raw_mul4_5, raw_mul6_7;
 
-    int l_shift = out_shift >= 0 ?   out_shift : 0;
-    int r_shift = out_shift <  0 ?  -out_shift : 0;
+  ae_int16x4 out0, out1;
 
-    ae_int32x2 activation_max = AE_MOVDA32(out_activation_max);
-    ae_int32x2 activation_min = AE_MOVDA32(out_activation_min);
+  const int num_simd8_ops = num_elm >> 3;
+  const int num_scalar_ops = num_elm & 7;
 
-    WORD8 *in1 = (WORD8 *)p_inp1;
-    WORD8 *in2 = (WORD8 *)p_inp2;
+  ae_valign va_a = AE_LA64_PP(p_a);
+  ae_valign va_c = AE_ZALIGN64();
 
-    xtbool io_pointers_aligned = ((uintptr_t)in1%4 == 0) && ((uintptr_t)in2%4==0) && ((uintptr_t)p_out%8==0);
+  b = AE_MOVDA8(p_b[0]);
+  AE_SUBW8(b0, b1, b, zb);
 
-    unsigned int num_simd8_ops = num_elm/8;
-    unsigned int num_scalar_ops = num_elm%8;
+  for(i=0; i<num_simd8_ops; i++)
+  {
+    AE_LA8X8_IP(a0_7, va_a, (ae_int8x8 *)p_a);
 
-    if(io_pointers_aligned){
-        for(i=0; i<num_simd8_ops; i++){
+    // Add input zero bias
+    AE_SUBW8(a0_3, a4_7, a0_7, za);
 
-            AE_L8X4S_IP(a0_3, in1, 4);  AE_L8X4S_IP(a4_7, in1, 4);      // Load 8bit and SignEx to 16bit
-            AE_L8X4S_IP(b0_3, in2, 4);  AE_L8X4S_IP(b4_7, in2, 4);
+    AE_MUL16X4(raw_mul0_1, raw_mul2_3, a0_3, b0);
+    AE_MUL16X4(raw_mul4_5, raw_mul6_7, a4_7, b0);
 
-            a0_3 = AE_ADD16(a0_3, za);  a4_7 = AE_ADD16(a4_7, za);      // Add zero points
-            b0_3 = AE_ADD16(b0_3, zb);  b4_7 = AE_ADD16(b4_7, zb);
+    // Raw Output
+    MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out0, raw_mul0_1, raw_mul2_3, out_multiplier, l_shift, r_shift, out_zero_bias);
+    MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out1, raw_mul4_5, raw_mul6_7, out_multiplier, l_shift, r_shift, out_zero_bias);
 
-            AE_MUL16X4(res0_1, res2_3, a0_3, b0_3);                     // a & b are 9-bit vals in 16-bit containers.
-            AE_MUL16X4(res4_5, res6_7, a4_7, b4_7);                     // res, therefore is 18-bit val in 32-bit container.
+    // Clamp output
+    AE_MINMAX16(out0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+    AE_MINMAX16(out1, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
 
-            res0_1 = AE_SLAA32S(res0_1, l_shift);
-            res2_3 = AE_SLAA32S(res2_3, l_shift);
-            AE_MULF2P32X4RAS(res0_1, res2_3, res0_1, res2_3, multiplier, multiplier);
-            res0_1 = AE_SRAA32SYMS(res0_1, r_shift);
-            res2_3 = AE_SRAA32SYMS(res2_3, r_shift);
+    ae_int8x8 res = AE_SAT8X8X16(out0, out1);
 
-            res4_5 = AE_SLAA32S(res4_5, l_shift);
-            res6_7 = AE_SLAA32S(res6_7, l_shift);
-            AE_MULF2P32X4RAS(res4_5, res6_7, res4_5, res6_7, multiplier, multiplier);
-            res4_5 = AE_SRAA32SYMS(res4_5, r_shift);
-            res6_7 = AE_SRAA32SYMS(res6_7, r_shift);
+    AE_SA8X8_IP(res, va_c, (ae_int8x8 *)p_c);
+  }
+  AE_SA64POS_FP(va_c, p_c);
 
-            // add output zero bias
-            res0_1 = AE_ADD32S(res0_1, zc);     res2_3 = AE_ADD32S(res2_3, zc);
-            res4_5 = AE_ADD32S(res4_5, zc);     res6_7 = AE_ADD32S(res6_7, zc);
+  if(num_scalar_ops != 0)
+  {
+    ae_valignx2 va_ax2, va_cx2;
 
-            // Clamp to activation max/min
-            AE_MINMAX32(res0_1, activation_min, activation_max);
-            AE_MINMAX32(res2_3, activation_min, activation_max);
-            AE_MINMAX32(res4_5, activation_min, activation_max);
-            AE_MINMAX32(res6_7, activation_min, activation_max);
+    va_ax2 = AE_LA128_PP((ae_int8x16 *)p_a);
+    va_cx2 = AE_ZALIGN128();
 
-            // Extract the 8-bit vals from the four 32x2 data points
-            c0_3 = AE_SEL32I(res0_1, res2_3, 8);
-            c4_7 = AE_SEL32I(res4_5, res6_7, 8);
-            res = AE_SEL8X8I(AE_MOVINT8X8_FROMINT32X2(c0_3), AE_MOVINT8X8_FROMINT32X2(c4_7), 25);
+    ae_int8x8 at0;
 
-            AE_S8X8_IP(res, (ae_int8x8 *)p_out, 8);
-        }
-    }else{
-        ae_valign va_in1 = AE_LA64_PP(in1);
-        ae_valign va_in2 = AE_LA64_PP(in2);
-        ae_valign va_out = AE_ZALIGN64();
+    AE_LAV8X8X2_XP(a0_7, at0, va_ax2, (ae_int8x16 *)p_a, num_scalar_ops);
 
-        for(i=0; i<num_simd8_ops; i++){
+    // Add input zero bias
+    AE_SUBW8(a0_3, a4_7, a0_7, za);
 
-            AE_LA8X4S_IP(a0_3, va_in1, in1);    AE_LA8X4S_IP(a4_7, va_in1, in1);
-            AE_LA8X4S_IP(b0_3, va_in2, in2);    AE_LA8X4S_IP(b4_7, va_in2, in2);
+    AE_MUL16X4(raw_mul0_1, raw_mul2_3, a0_3, b0);
+    AE_MUL16X4(raw_mul4_5, raw_mul6_7, a4_7, b0);
 
-            a0_3 = AE_ADD16(a0_3, za);  a4_7 = AE_ADD16(a4_7, za);      // Add zero points
-            b0_3 = AE_ADD16(b0_3, zb);  b4_7 = AE_ADD16(b4_7, zb);
+    // Raw Output
+    MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out0, raw_mul0_1, raw_mul2_3, out_multiplier, l_shift, r_shift, out_zero_bias);
+    MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out1, raw_mul4_5, raw_mul6_7, out_multiplier, l_shift, r_shift, out_zero_bias);
 
-            AE_MUL16X4(res0_1, res2_3, a0_3, b0_3);                     // a & b are 9-bit vals in 16-bit containers.
-            AE_MUL16X4(res4_5, res6_7, a4_7, b4_7);                     // res, therefore is 18-bit val in 32-bit container.
+    // Clamp output
+    AE_MINMAX16(out0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+    AE_MINMAX16(out1, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
 
-            res0_1 = AE_SLAA32S(res0_1, l_shift);
-            res2_3 = AE_SLAA32S(res2_3, l_shift);
-            AE_MULF2P32X4RAS(res0_1, res2_3, res0_1, res2_3, multiplier, multiplier);
-            res0_1 = AE_SRAA32SYMS(res0_1, r_shift);
-            res2_3 = AE_SRAA32SYMS(res2_3, r_shift);
+    ae_int8x8 res = AE_SAT8X8X16(out0, out1);
 
-            res4_5 = AE_SLAA32S(res4_5, l_shift);
-            res6_7 = AE_SLAA32S(res6_7, l_shift);
-            AE_MULF2P32X4RAS(res4_5, res6_7, res4_5, res6_7, multiplier, multiplier);
-            res4_5 = AE_SRAA32SYMS(res4_5, r_shift);
-            res6_7 = AE_SRAA32SYMS(res6_7, r_shift);
-
-            // add output zero bias
-            res0_1 = AE_ADD32S(res0_1, zc);     res2_3 = AE_ADD32S(res2_3, zc);
-            res4_5 = AE_ADD32S(res4_5, zc);     res6_7 = AE_ADD32S(res6_7, zc);
-
-            // Clamp to activation max/min
-            AE_MINMAX32(res0_1, activation_min, activation_max);
-            AE_MINMAX32(res2_3, activation_min, activation_max);
-            AE_MINMAX32(res4_5, activation_min, activation_max);
-            AE_MINMAX32(res6_7, activation_min, activation_max);
-
-            // Extract the 8-bit vals from the four 32x2 data points
-            c0_3 = AE_SEL32I(res0_1, res2_3, 8);
-            c4_7 = AE_SEL32I(res4_5, res6_7, 8);
-            res = AE_SEL8X8I(AE_MOVINT8X8_FROMINT32X2(c0_3), AE_MOVINT8X8_FROMINT32X2(c4_7), 25);
-
-            AE_SA8X8_IP(res, va_out, (ae_int8x8 *)p_out);
-        }
-        AE_SA64POS_FP(va_out, p_out);
-    }
-
-    for(i=0; i<num_scalar_ops; i++){
-        ae_int32 tmp = (in1[i] + inp1_zero_bias) *
-                            ( in2[i] + inp2_zero_bias );
-
-        ae_int32x2 res = tmp;
-
-        res = AE_SLAA32S(res, l_shift);
-        res = AE_MULFP32X2RAS(res, multiplier);
-        res = AE_SRAA32SYMS(res, r_shift);
-
-        res = AE_ADD32S(res, zc);
-
-        AE_MINMAX32(res, activation_min, activation_max);
-
-        *p_out = (WORD8)AE_MOVAD32_L(res);
-        p_out++;
-    }
-
-    return 0;
+    AE_SAV8X8X2_XP(res, res, va_cx2, (ae_int8x16 *)p_c, num_scalar_ops);
+    AE_SA128POS_FP(va_cx2, (ae_int8x16 *)p_c);
+  }
 }
 
+WORD32 xa_nn_elm_mul_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
+                            WORD32  out_zero_bias,
+                            WORD32  out_shift,
+                            WORD32  out_multiplier,
+                            WORD32  out_activation_min,
+                            WORD32  out_activation_max,
+                    const    WORD8 * __restrict__ p_inp1,
+                            WORD32  inp1_zero_bias,
+                    const    WORD8 * __restrict__ p_inp2,
+                            WORD32  inp2_zero_bias,
+                            WORD32  num_elm)
+{
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp2, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp1, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp2, sizeof(WORD8), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((num_elm <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND(((out_zero_bias < -128) || (out_zero_bias > 127)), -1);
+  XA_NNLIB_ARG_CHK_COND(((out_shift < -31) || (out_shift > 31)), -1);
+  XA_NNLIB_ARG_CHK_COND(((inp1_zero_bias < -127) || (inp1_zero_bias > 128)), -1);
+  XA_NNLIB_ARG_CHK_COND(((inp2_zero_bias < -127) || (inp2_zero_bias > 128)), -1);
+  XA_NNLIB_ARG_CHK_COND(((out_activation_min < -128) || (out_activation_min > 127)), -1);
+  XA_NNLIB_ARG_CHK_COND(((out_activation_max < -128) || (out_activation_max > 127)), -1);
+  XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min), -1);
+
+  internal_elm_mul_broadcast_2D_asym8sxasym8s_asym8s(
+      p_out,
+      out_zero_bias,
+      out_shift,
+      out_multiplier,
+      out_activation_min,
+      out_activation_max,
+      p_inp1,
+      inp1_zero_bias,
+      p_inp2,
+      inp2_zero_bias,
+      1,
+      num_elm);
+
+  return 0;
+}
+
+WORD32 xa_nn_elm_mul_broadcast_4D_asym8sxasym8s_asym8s(WORD8 * __restrict__ p_out,
+                      const WORD32 *const p_out_shape,
+                            WORD32  out_zero_bias,
+                            WORD32  out_shift,
+                            WORD32  out_multiplier,
+                            WORD32  out_activation_min,
+                            WORD32  out_activation_max,
+                      const WORD8 * __restrict__ p_inp1,
+                      const WORD32 *const p_inp1_shape,
+                            WORD32  inp1_zero_bias,
+                      const WORD8 * __restrict__ p_inp2,
+                      const WORD32 *const p_inp2_shape,
+                            WORD32  inp2_zero_bias)
+{
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp2, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_out_shape, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp1_shape, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp2_shape, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp1, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp2, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_out_shape, sizeof(WORD32), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp1_shape, sizeof(WORD32), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp2_shape, sizeof(WORD32), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND(((out_zero_bias < -128) || (out_zero_bias > 127)), -1);
+  XA_NNLIB_ARG_CHK_COND(((out_shift < -31) || (out_shift > 31)), -1);
+  XA_NNLIB_ARG_CHK_COND(((inp1_zero_bias < -127) || (inp1_zero_bias > 128)), -1);
+  XA_NNLIB_ARG_CHK_COND(((inp2_zero_bias < -127) || (inp2_zero_bias > 128)), -1);
+  XA_NNLIB_ARG_CHK_COND(((out_activation_min < -128) || (out_activation_min > 127)), -1);
+  XA_NNLIB_ARG_CHK_COND(((out_activation_max < -128) || (out_activation_max > 127)), -1);
+  XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min), -1);
+
+  /* Check shapes */
+  int i;
+  for(i = 0; i < 4; i++)
+  {
+    if((p_inp1_shape[i] != p_inp2_shape[i] && p_inp1_shape[i] != 1 && p_inp2_shape[i] != 1) ||
+       (p_out_shape[i] != (p_inp1_shape[i] > p_inp2_shape[i] ? p_inp1_shape[i] : p_inp2_shape[i])))
+    {
+      return -1;
+    }
+  }
+
+  WORD32 inp1_strides[4], inp2_strides[4];
+  inp1_strides[3] = 1;
+  inp2_strides[3] = 1;
+  for(i = 2; i >= 0; i--)
+  {
+    // inp1_strides[i] = inp1_strides[i + 1] * p_inp1_shape[i + 1];
+    // inp2_strides[i] = inp2_strides[i + 1] * p_inp2_shape[i + 1];
+    ae_int32x2 d_str, d_shape;
+    d_str = AE_MOVDA32X2(inp1_strides[i + 1], inp2_strides[i + 1]);
+    d_shape = AE_MOVDA32X2(p_inp1_shape[i + 1], p_inp2_shape[i + 1]);
+    d_str = AE_MULP32X2(d_str, d_shape);
+    inp1_strides[i] = AE_MOVAD32_H(d_str);
+    inp2_strides[i] = AE_MOVAD32_L(d_str);
+  }
+
+  int need_broadcast = 0;
+  for(i = 0; i < 4; i++)
+  {
+    if(p_inp1_shape[i] != p_inp2_shape[i])
+    {
+      if(p_inp1_shape[i] == 1)
+        inp1_strides[i] = 0;
+      else
+        inp2_strides[i] = 0;
+
+      need_broadcast = 1;
+    }
+  }
+  int itr0, itr1, itr2;
+
+  WORD8 *p_out_tmp = p_out;
+  const WORD8 *__restrict__ p_inp1_tmp = p_inp1;
+  const WORD8 *__restrict__ p_inp2_tmp = p_inp2;
+  if(need_broadcast == 0)
+  {
+    internal_elm_mul_broadcast_2D_asym8sxasym8s_asym8s(
+                p_out,
+                out_zero_bias,
+                out_shift,
+                out_multiplier,
+                out_activation_min,
+                out_activation_max,
+                p_inp1,
+                inp1_zero_bias,
+                p_inp2,
+                inp2_zero_bias,
+                1,
+                p_out_shape[0] * inp1_strides[0]);
+  }
+  else if(inp1_strides[3] == inp2_strides[3])
+  {
+    WORD32 in_lc, out_lc;
+    WORD32 inp1_zb;
+    WORD32 inp2_zb;
+
+    inp1_zb = inp1_zero_bias;
+    inp2_zb = inp2_zero_bias;
+
+    in_lc = p_out_shape[2] * p_out_shape[3];
+    out_lc = 1;
+    if(inp1_strides[2] == 0)
+    {
+      inp2_zb = inp1_zero_bias;
+      inp1_zb = inp2_zero_bias;
+      const WORD8 *tmp;
+      tmp = p_inp1_tmp;   p_inp1_tmp = p_inp2_tmp;    p_inp2_tmp = tmp;
+
+      int tmp_strides[2];
+      tmp_strides[0] = inp1_strides[0];
+      tmp_strides[1] = inp1_strides[1];
+
+      inp1_strides[0] = inp2_strides[0];
+      inp1_strides[1] = inp2_strides[1];
+
+      inp2_strides[0] = tmp_strides[0];
+      inp2_strides[1] = tmp_strides[1];
+      in_lc = p_out_shape[3];
+      out_lc = p_out_shape[2];
+    }
+    else if(inp2_strides[2] == 0)
+    {
+      in_lc = p_out_shape[3];
+      out_lc = p_out_shape[2];
+    }
+
+    for(itr0 = 0; itr0 < p_out_shape[0]; itr0++)
+    {
+      const WORD8 *__restrict__ p_inp1_tmp0 = p_inp1_tmp;
+      const WORD8 *__restrict__ p_inp2_tmp0 = p_inp2_tmp;
+      for(itr1 = 0; itr1 < p_out_shape[1]; itr1++)
+      {
+        internal_elm_mul_broadcast_2D_asym8sxasym8s_asym8s(
+            p_out_tmp,
+            out_zero_bias,
+            out_shift,
+            out_multiplier,
+            out_activation_min,
+            out_activation_max,
+            p_inp1_tmp0,
+            inp1_zb,
+            p_inp2_tmp0,
+            inp2_zb,
+            out_lc,
+            in_lc);
+        p_out_tmp += in_lc * out_lc;
+        p_inp1_tmp0 += inp1_strides[1];
+        p_inp2_tmp0 += inp2_strides[1];
+      }
+      p_inp1_tmp += inp1_strides[0];
+      p_inp2_tmp += inp2_strides[0];
+    }
+  }
+  else
+  {
+    WORD32 inp1_zb;
+    WORD32 inp2_zb;
+    inp1_zb = inp1_zero_bias;
+    inp2_zb = inp2_zero_bias;
+    if(inp1_strides[3] == 0)
+    {
+      inp2_zb = inp1_zero_bias;
+      inp1_zb = inp2_zero_bias;
+      const WORD8 *tmp;
+      tmp = p_inp1_tmp;   p_inp1_tmp = p_inp2_tmp;    p_inp2_tmp = tmp;
+
+      int tmp_strides[3];
+      tmp_strides[0] = inp1_strides[0];
+      tmp_strides[1] = inp1_strides[1];
+      tmp_strides[2] = inp1_strides[2];
+
+      inp1_strides[0] = inp2_strides[0];
+      inp1_strides[1] = inp2_strides[1];
+      inp1_strides[2] = inp2_strides[2];
+
+      inp2_strides[0] = tmp_strides[0];
+      inp2_strides[1] = tmp_strides[1];
+      inp2_strides[2] = tmp_strides[2];
+    }
+    for(itr0 = 0; itr0 < p_out_shape[0]; itr0++)
+    {
+      const WORD8 *__restrict__ p_inp1_tmp0 = p_inp1_tmp;
+      const WORD8 *__restrict__ p_inp2_tmp0 = p_inp2_tmp;
+      for(itr1 = 0; itr1 < p_out_shape[1]; itr1++)
+      {
+        const WORD8 *__restrict__ p_inp1_tmp1 = p_inp1_tmp0;
+        const WORD8 *__restrict__ p_inp2_tmp1 = p_inp2_tmp0;
+        for(itr2 = 0; itr2 < p_out_shape[2]; itr2++)
+        {
+          {
+            internal_elm_mul_broadcast_asym8sxasym8s_asym8s(
+                p_out_tmp,
+                out_zero_bias,
+                out_shift,
+                out_multiplier,
+                out_activation_min,
+                out_activation_max,
+                p_inp1_tmp1,
+                inp1_zb,
+                p_inp2_tmp1,
+                inp2_zb,
+                p_out_shape[3]);
+          }
+          p_out_tmp += p_out_shape[3];
+          p_inp1_tmp1 += inp1_strides[2];
+          p_inp2_tmp1 += inp2_strides[2];
+        }
+        p_inp1_tmp0 += inp1_strides[1];
+        p_inp2_tmp0 += inp2_strides[1];
+      }
+      p_inp1_tmp += inp1_strides[0];
+      p_inp2_tmp += inp2_strides[0];
+    }
+  }
+  return 0;
+}
