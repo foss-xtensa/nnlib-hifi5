@@ -1214,7 +1214,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s(
            ,0
            ,p_vec1
            ,0
-           ,&p_bias[i]
+           ,p_bias == NULL ? NULL : &p_bias[i]
            ,cur_tile_size
            ,cols1
            ,0

@@ -27,6 +27,14 @@ Cadence HiFi 5 Neural Network (NN) Library
 Revision History
 ===============================================================================
 
+Version 1.8.1 API 1.2: August 25, 2022
+
++ Fixed issue with p_bias == NULL support in following kernels:
+  xa_nn_matXvec_sym8sxasym8s_asym8s
+  xa_nn_fully_connected_sym8sxasym8s_asym8s
+
+-------------------------------------------------------------------------------
+
 Version 1.8.0 API 1.2: August 1, 2022
 
 + Intermediate Release of HiFi5 NN Library
