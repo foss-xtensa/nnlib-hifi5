@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -326,6 +326,11 @@ static WORD32 xa_nn_conv2d_depthwise_getsize_generic
       circ_buf_bytewidth = (circ_buf_precision/8); /* bytewidth as per precision */
       break;
 
+    case -8: /* For sym16s */
+      scratch_bytewidth = 8; /* 64b scratch */
+      circ_buf_bytewidth = 2; /* bytewidth for sym16s */
+      break;
+            
     case -1: /* For f32 */
       scratch_bytewidth = 4; /* f32 scratch */
       circ_buf_bytewidth = 4; /* bytewidth for f32 */

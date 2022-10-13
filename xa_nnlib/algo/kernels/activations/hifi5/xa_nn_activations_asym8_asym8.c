@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -328,7 +328,7 @@ WORD32 xa_nn_vec_sigmoid_asym8_asym8(UWORD8 *p_out,
   /* Basic Parameter checks */
   XA_NNLIB_ARG_CHK_COND(((zero_point < 0) || (zero_point > 255)), -1);
   XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND(((input_left_shift < -31) || (input_left_shift > 31)), -1);
+  XA_NNLIB_ARG_CLIP(input_left_shift, -31, 31);
   XA_NNLIB_ARG_CHK_COND((input_multiplier < 0), -1);
   XA_NNLIB_ARG_CHK_COND((input_range_radius < 0), -1);
 
@@ -618,7 +618,7 @@ WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
   /* Basic Parameter checks */
   XA_NNLIB_ARG_CHK_COND(((zero_point < -128) || (zero_point > 127)), -1);
   XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND(((input_left_shift < -31) || (input_left_shift > 31)), -1);
+  XA_NNLIB_ARG_CLIP(input_left_shift, -31, 31);
   XA_NNLIB_ARG_CHK_COND((input_multiplier < 0), -1);
   XA_NNLIB_ARG_CHK_COND((input_range_radius < 0), -1);
 
@@ -2228,7 +2228,7 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
   /* Basic Parameter checks */
   XA_NNLIB_ARG_CHK_COND(((zero_point < -128) || (zero_point > 127)), -1);
   XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
-  XA_NNLIB_ARG_CHK_COND(((input_left_shift < -31) || (input_left_shift > 31)), -1);
+  XA_NNLIB_ARG_CLIP(input_left_shift, -31, 31);
   XA_NNLIB_ARG_CHK_COND((input_multiplier < 0), -1);
   XA_NNLIB_ARG_CHK_COND((input_range_radius < 0), -1);
 

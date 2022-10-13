@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+# Copyright (c) 2022 Cadence Design Systems, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -27,11 +27,23 @@ Cadence HiFi 5 Neural Network (NN) Library
 Revision History
 ===============================================================================
 
-Version 1.8.1 API 1.2: August 25, 2022
+Version 1.9.0 API 1.3: October 14, 2022
 
-+ Fixed issue with p_bias == NULL support in following kernels:
-  xa_nn_matXvec_sym8sxasym8s_asym8s
-  xa_nn_fully_connected_sym8sxasym8s_asym8s
++ Intermediate Release of HiFi5 NN Library
++ Tested using RI.9 tools, xt-clang compiler.
++ Adds support for depthwise-conv2d, matXvec and fully connected kernels for
+  sym8sxsym16s datatype
++ Adds support for new datatype for TFLM operator:
+  REQUANTIZE (asym16s to asym16s)
+  STRIDED_SLICE (int8)
++ Adds support for kernel-dimension greater than input-dimension for standard
+  convolution quantized datatypes (TENA-3528)
++ Fixes unexpected behaviour for null bias data pointers for kernel
+  xa_nn_matXvec_sym8sxasym8s_asym8s (TENA-3510)
++ Changes input_left_shift handling for returning error to clipping between -31 to +31
+  for sigmoid_asym8s, sigmoid_asym8 & tanh_asym8s kernels (TENA-3615)
++ Optimizes performance for following kernels
+  broadcast_4D (cases when one input is constant)
 
 -------------------------------------------------------------------------------
 
