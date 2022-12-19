@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -549,24 +549,6 @@ WORD32 xa_nn_elm_dequantize_asym8s_f32(FLOAT32 * __restrict__ p_out,
 }
 #endif /* #if !HAVE_VFPU */
 
-#if 1
-#define CVT_FLOAT_TO_INT_X2(out, inp) \
-{ \
-  FLOAT32 d_i0, d_i1; \
-  FLOAT32 *ptr = (FLOAT32 *)&inp; \
-  d_i0 = ptr[0]; \
-  d_i1 = ptr[1]; \
-  out = AE_MOVDA32X2((WORD32)d_i0, (WORD32)d_i1); \
-}
-
-#define CVT_FLOAT_TO_INT(out, inp) \
-{ \
-  out = AE_MOVDA32((WORD32)inp); \
-}
-#else
-#define CVT_FLOAT_TO_INT_X2(out, inp) out = AE_MOVINT32X2_FROMXTFLOATX2(XT_FITRUNC_SX2(inp));
-#endif
-
 #if !HAVE_VFPU
 DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_elm_quantize_f32_asym8s,
                                (WORD8 * __restrict__ p_out,
@@ -620,10 +602,15 @@ WORD32 xa_nn_elm_quantize_f32_asym8s(WORD8 * __restrict__ p_out,
     d_inp2_t = XT_DIV_SX2(d_inp2, d_out_scale);
     d_inp3_t = XT_DIV_SX2(d_inp3, d_out_scale);
 
-    CVT_FLOAT_TO_INT_X2(d_out32_0, d_inp0_t);
-    CVT_FLOAT_TO_INT_X2(d_out32_1, d_inp1_t);
-    CVT_FLOAT_TO_INT_X2(d_out32_2, d_inp2_t);
-    CVT_FLOAT_TO_INT_X2(d_out32_3, d_inp3_t);
+    d_inp0_t = XT_FIROUND_SX2(d_inp0_t);
+    d_inp1_t = XT_FIROUND_SX2(d_inp1_t);
+    d_inp2_t = XT_FIROUND_SX2(d_inp2_t);
+    d_inp3_t = XT_FIROUND_SX2(d_inp3_t);
+
+    d_out32_0 = XT_TRUNC_SX2(d_inp0_t, 0);
+    d_out32_1 = XT_TRUNC_SX2(d_inp1_t, 0);
+    d_out32_2 = XT_TRUNC_SX2(d_inp2_t, 0);
+    d_out32_3 = XT_TRUNC_SX2(d_inp3_t, 0);
 
     d_out16_0 = AE_SAT16X4(d_out32_0, d_out32_1);
     d_out16_1 = AE_SAT16X4(d_out32_2, d_out32_3);
@@ -649,7 +636,9 @@ WORD32 xa_nn_elm_quantize_f32_asym8s(WORD8 * __restrict__ p_out,
 
     d_inp0_t = XT_DIV_S(d_inp0, (FLOAT32)d_out_scale);
 
-    CVT_FLOAT_TO_INT(d_out32_0, d_inp0_t);
+    d_inp0_t = XT_FIROUND_S(d_inp0_t);
+
+    d_out32_0 = XT_TRUNC_S(d_inp0_t, 0);
 
     d_out16_0 = AE_SAT16X4(d_out32_0, d_out32_0);
 

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -261,17 +261,16 @@ static void avgpool_f32(
         else
         {
             itr_ow = 0;
-            den_inv = p_out[itr_oh*out_width+itr_ow];
-            den1_inv = p_out[itr_oh*out_width+itr_ow+1];
             for(itr_ow = 0; itr_ow < out_width-1; itr_ow+=2)
             {
+                den_inv = p_out[itr_oh*out_width+itr_ow];
+                den1_inv = p_out[itr_oh*out_width+itr_ow+1];
                 p_out[itr_oh*out_width+itr_ow]   = MUL_S(ptr_out1[itr_ow*x_stride], den_inv);
                 p_out[itr_oh*out_width+itr_ow+1] = MUL_S(ptr_out1[itr_ow*x_stride+x_stride], den1_inv);
-                den_inv = p_out[itr_oh*out_width+itr_ow+2];
-                den1_inv = p_out[itr_oh*out_width+itr_ow+3];
             }
             if(out_width & 1)
             {
+                den_inv = p_out[itr_oh*out_width+itr_ow];
                 p_out[itr_oh*out_width+itr_ow]   = MUL_S(ptr_out1[itr_ow*x_stride], den_inv);
 
             }

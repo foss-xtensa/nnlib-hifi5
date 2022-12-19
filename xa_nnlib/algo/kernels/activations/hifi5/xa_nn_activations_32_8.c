@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -342,11 +342,11 @@ WORD32 xa_nn_vec_tanh_32_8(
         aX = AE_LA128_PP(pX);
         aX1 = AE_LA128_PP(pX1);
 
-        AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);
-        AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);
-
         for (n = 0; n < (N >> 3); n++)
         {
+            AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);
+            AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);
+
             Za = AE_MULFP32X2RAS(Xa_, AE_MOVDA32X2(1549082005, 1549082005));
             Xa = AE_ABS32S(Za);
             Zb = AE_MULFP32X2RAS(Xb_, AE_MOVDA32X2(1549082005, 1549082005));
@@ -437,8 +437,8 @@ WORD32 xa_nn_vec_tanh_32_8(
             Zc = AE_MOVNEG32S_T(Zc, Xc);
             Zd = AE_MOVNEG32S_T(Zd, Xd);
 
-            AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);
-            AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);
+/*            AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);
+              AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);*/
 
             Y_8  = AE_ROUND8X4F32SASYM_L(Za, Zb);
             Y1_8 = AE_ROUND8X4F32SASYM_L(Zc, Zd);

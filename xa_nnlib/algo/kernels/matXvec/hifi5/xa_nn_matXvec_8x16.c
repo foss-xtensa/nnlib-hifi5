@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -561,7 +561,7 @@ WORD32 xa_nn_matXvec_8x16_16(
 
   acc_shift=32+acc_shift;
   LIMIT_ACC_LSH
-  if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
+  if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && !((unsigned int)p_mat2 & 15) && !((unsigned int)p_vec2 & 15) && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
   {
     /* All four pointers are non-null */
     SETUP_BIAS;
@@ -620,7 +620,7 @@ WORD32 xa_nn_matXvec_8x16_16(
       }
 
   }
-  else if (p_mat1 && p_vec1 && cols1%32==0)
+  else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && cols1%32==0 && row_stride1%16==0)
   {
     /* Only mat1, vec1 are non-null */
     SETUP_BIAS;
@@ -760,7 +760,7 @@ WORD32 xa_nn_matXvec_8x16_32(
   //ADJUST_ACC_LSH_AND_BIAS_LSH_AxB_C(WORD8, WORD16, WORD32);
   acc_shift=32+acc_shift;
   LIMIT_ACC_LSH
-  if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
+  if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && !((unsigned int)p_mat2 & 15) && !((unsigned int)p_vec2 & 15) && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
   {
     /* All four pointers are non-null */
     SETUP_BIAS;
@@ -817,7 +817,7 @@ WORD32 xa_nn_matXvec_8x16_32(
       }
 
   }
-  else if (p_mat1 && p_vec1 && cols1%16==0)
+  else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && cols1%16==0 && row_stride1%16==0)
   {
     /* Only mat1, vec1 are non-null */
     SETUP_BIAS;
@@ -922,7 +922,7 @@ WORD32 xa_nn_matXvec_8x16_64(
 #define UNROLL_ADD_BIAS_ACC     ADD_BIAS_16b_ACC_FOR_8bx16b
   LIMIT_ACC_LSH
 
-  if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
+  if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && !((unsigned int)p_mat2 & 15) && !((unsigned int)p_vec2 & 15) && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
   {
     /* All four pointers are non-null */
     SETUP_BIAS;
@@ -979,7 +979,7 @@ WORD32 xa_nn_matXvec_8x16_64(
       }
 
   }
-  else if (p_mat1 && p_vec1 && cols1%16==0)
+  else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && cols1%16==0 && row_stride1%16==0)
   {
     /* Only mat1, vec1 are non-null */
     SETUP_BIAS;
@@ -1114,7 +1114,7 @@ WORD32 xa_nn_matXvec_8x16_16_tanh(
 #define UNROLL_ADD_BIAS_ACC     ADD_BIAS_64b_ACC_FOR_8bx16b
         acc_shift=32+acc_shift;
         LIMIT_ACC_LSH
-        if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
+        if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && !((unsigned int)p_mat2 & 15) && !((unsigned int)p_vec2 & 15) && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
         {
           /* All four pointers are non-null */
           SETUP_BIAS;
@@ -1173,7 +1173,7 @@ WORD32 xa_nn_matXvec_8x16_16_tanh(
               }
 
           }
-        else if (p_mat1 && p_vec1 && cols1%16==0)
+        else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && cols1%16==0 && row_stride1%16==0)
         {
           /* Only mat1, vec1 are non-null */
           SETUP_BIAS;
@@ -1314,7 +1314,7 @@ WORD32 xa_nn_matXvec_8x16_16_sigmoid(
 #define UNROLL_ADD_BIAS_ACC     ADD_BIAS_64b_ACC_FOR_8bx16b
         acc_shift=32+acc_shift;
         LIMIT_ACC_LSH
-        if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
+        if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && !((unsigned int)p_mat2 & 15) && !((unsigned int)p_vec2 & 15) && cols1%16==0 && cols2%16==0 && row_stride1%16==0 && row_stride2%16==0)
         {
           /* All four pointers are non-null */
           SETUP_BIAS;
@@ -1370,7 +1370,7 @@ WORD32 xa_nn_matXvec_8x16_16_sigmoid(
               }
 
           }
-        else if (p_mat1 && p_vec1 &&  cols1%16==0)
+        else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) &&  cols1%16==0 && row_stride1%16==0)
         {
           /* Only mat1, vec1 are non-null */
           SETUP_BIAS;

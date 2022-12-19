@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022 Cadence Design Systems, Inc.
+# Copyright (c) 2018-2022 Cadence Design Systems, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -26,6 +26,15 @@ Cadence HiFi 5 Neural Network (NN) Library
 ===============================================================================
 Revision History
 ===============================================================================
+
+Version 2.0.0 API 1.3: December 16, 2022
+
++ GA Release of HiFi5 NN Library
++ Tested using RI.9 tools, xt-clang compiler.
++ Adds support for additional data-types (16x16, 8x16, f32xf32) for matmul kernels
++ Updates matXvec testbench to accept matmul (16x16, 8x16, f32xf32) arguments
+
+-------------------------------------------------------------------------------
 
 Version 1.9.0 API 1.3: October 14, 2022
 
