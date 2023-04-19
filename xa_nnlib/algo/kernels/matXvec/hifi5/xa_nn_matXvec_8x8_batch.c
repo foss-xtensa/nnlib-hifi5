@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -38,25 +38,44 @@ WORD32 xa_nn_matXvec_batch_8x8_32(
          WORD32 bias_shift,                       /* bias shift amount */
          WORD32 vec_count)                      /* number of vectors: 2, 4, 2n */
 {
+  int i;
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
+  for(i = 0; i < vec_count; i++)
+  {
+    XA_NNLIB_ARG_CHK_PTR(p_out[i], -1);
+    XA_NNLIB_ARG_CHK_PTR(p_vec1[i], -1);
+  }
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD32 *), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(WORD8 *), -1);
+  int isAlignedvec = 1;
+  for(i = 0; i < vec_count; i++)
+  {
+    XA_NNLIB_ARG_CHK_ALIGN(p_out[i], sizeof(WORD32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_vec1[i],sizeof(WORD8), -1);
+    isAlignedvec &= (((unsigned int)p_vec1[i] & 15) == 0);
+  }
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+  XA_NNLIB_ARG_CHK_COND((vec_count <= 0), -1);
+  
   /* Iterators used in for loops */
   int m_itr, c_itr, vec_itr;
   /* Assign initial value so this value will be used in trailing loop */
   m_itr = 0;
   vec_itr = 0;
 
-  if (!p_bias)
-  {
-    return -1;
-  }
-
 #define VEC_UNROLL 2
 #define SETUP_BIAS                          SETUP_BIAS_8b
-#define LOAD_BIAS                           LOAD_BIAS_8b_FOR_8bx8b
-  // ae_int32x2 _ae_int32x2_sat_bias;
-  // ae_int32x2 sat_1,sat_2;
   acc_shift = acc_shift + 32;
-  if (p_mat1 && p_vec1 && ((cols1&15) == 0) && ((row_stride1&15) == 0)
-      && (cols1 > 0) && (row_stride1 > 0))
+  if (((unsigned int)p_mat1 & 15) == 0 && isAlignedvec && ((cols1&15) == 0) && ((row_stride1&15) == 0))
   {
     if(rows > ROW_UNROLL)
     {
@@ -64,9 +83,6 @@ WORD32 xa_nn_matXvec_batch_8x8_32(
       {
         for (vec_itr = 0; vec_itr < (vec_count & ~(VEC_UNROLL-1)); vec_itr += VEC_UNROLL)
         {
-          // ae_int8x8 _ae_int8_bias;
-          // ae_int8x8 _ae_int8_bias_1;
-          // ae_int8 *_ae_int8_p_bias = (ae_int8 *) p_bias;
           SETUP_BIAS;
           int loop_count=rows -rows%ROW_UNROLL;
           for(m_itr = 0; m_itr < loop_count; m_itr += ROW_UNROLL)
@@ -193,10 +209,6 @@ WORD32 xa_nn_matXvec_batch_8x8_32(
             AE_S32_L_I(temp32_2,output_ptr1,4);
             AE_S32_H_I(temp32_4,output_ptr1,8);
             AE_S32_L_I(temp32_4,output_ptr1,12);
-            // AE_S32X2_I(temp32_1, output_1ptr, 0*sizeof(ae_int32x2));
-            // AE_S32X2_I(temp32_3, output_ptr, 1*sizeof(ae_int32x2));
-            // AE_S32X2_I(temp32_2, output_ptr1, 0*sizeof(ae_int32x2));
-            // AE_S32X2_I(temp32_4, output_ptr1, 1*sizeof(ae_int32x2));
 
             AE_L8_IP(_ae_int8_bias,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);
             AE_L8_IP(_ae_int8_bias_1,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);
@@ -255,14 +267,6 @@ WORD32 xa_nn_matXvec_batch_8x8_32(
             AE_S32_L_I(temp32_2,output_ptr1,20);
             AE_S32_H_I(temp32_4,output_ptr1,24);
             AE_S32_L_I(temp32_4,output_ptr1,28);
-            // AE_S32X2_I(temp32_1, output_1ptr, 0*sizeof(ae_int32x2));
-
-            // AE_S32X2_I(temp32_1, output_ptr, 2*sizeof(ae_int32x2));
-            // AE_S32X2_I(temp32_3, output_ptr, 3*sizeof(ae_int32x2));
-            // AE_S32X2_I(temp32_2, output_ptr1, 2*sizeof(ae_int32x2));
-            // AE_S32X2_I(temp32_4, output_ptr1, 3*sizeof(ae_int32x2));
-            //AE_S32X2X2_I(temp32_1,temp32_3, output_ptr, 1*sizeof(ae_int32x4));
-            //AE_S32X2X2_I(temp32_2,temp32_4, output_ptr1, 1*sizeof(ae_int32x4));
           }
 
           for(m_itr =loop_count; m_itr < rows; m_itr++)
@@ -389,7 +393,6 @@ WORD32 xa_nn_matXvec_batch_8x8_32(
               AE_MULA8Q8X8(_ae_int32x2_acc_row0_vec2,_ae_int32x2_acc_row0_vec1 ,zero_temp,zero_temp ,zero_temp,_ae_int8x8_mat1_0 , _ae_int8x8_vec1);
 
             }
-
 
             ae_int32x2 temp32_1;
             ae_int64 _ae_int64_acc_0, _ae_int64_acc_1;
@@ -643,7 +646,6 @@ WORD32 xa_nn_matXvec_batch_8x8_32(
   {
     return -1;
   }
-
 
 #undef SETUP_BIAS
 #undef LOAD_BIAS

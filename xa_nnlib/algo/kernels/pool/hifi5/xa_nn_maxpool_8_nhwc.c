@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -25,8 +25,6 @@
 #include <math.h>
 #include <string.h>
 
-#define INCR_N_PLANE_1(ptr, n, plane_size) \
-    ptr = (ptr) + ((n) * (plane_size));
 
 #define INCR_N_PLANE(ptr, n, plane_size) \
     ptr = (ptr) + ((n) * (plane_size));
@@ -48,13 +46,6 @@
             width--; \
         }
 
-#define MAX_16X4(out, id2, id1, id0) {\
-        out = id1;\
-        b0 = AE_LT16(id1, id0); \
-        AE_MOVT16X4(out, id0, b0);\
-        b0 = AE_LT16(out, id2); \
-        AE_MOVT16X4(out, id2, b0);\
-}
 
 /* Max pooling without using extra copy of input data
  * Works with unaligned input, output.

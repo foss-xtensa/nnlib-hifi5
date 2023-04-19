@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -361,6 +361,7 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_aligned
     ,WORD32      vec1_zero_bias
     )
 {
+  (VOID) vec1_zero_bias;
   int c_itr = 0;
   int rem_cols = cols & 15;
   
@@ -485,6 +486,8 @@ static inline void _xa_nn_dot_product_4_rows_1_vecs_aligned
     ,WORD32      vec1_zero_bias
     )
 {
+  (VOID) mat1_zero_bias;
+  (VOID) vec1_zero_bias;
   int c_itr = 0;
   int rem_cols = cols & 15;
   
@@ -562,6 +565,7 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_aligned
     ,WORD32      vec1_zero_bias
     )
 {
+  (VOID) vec1_zero_bias;
   int c_itr = 0;
   int rem_cols = cols & 15;
 
@@ -634,7 +638,7 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_offset_aligned
     ,WORD32      vec1_zero_bias
     )
 {
-
+  (VOID) vec1_zero_bias;
   int pre_loop_count, loop_count, post_loop_count;
   int c_itr;
 
@@ -866,6 +870,7 @@ static inline void _xa_nn_dot_product_4_rows_1_vecs_offset_aligned
     ,WORD32      vec1_zero_bias
     )
 {
+  (VOID) vec1_zero_bias;
   int c_itr = 0;
 
 #ifndef AE_MULAZB8Q8X8
@@ -951,6 +956,7 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_unaligned
     ,WORD32      vec1_zero_bias
     )
 {
+  (VOID) vec1_zero_bias;
   int c_itr = 0;
 
 #ifndef AE_MULAZB8Q8X8
@@ -1074,6 +1080,8 @@ static inline void _xa_nn_dot_product_4_rows_1_vecs_unaligned
     ,WORD32      vec1_zero_bias
     )
 {
+  (VOID) mat1_zero_bias;
+  (VOID) vec1_zero_bias;
   int c_itr = 0;
 
 #ifndef AE_MULAZB8Q8X8
@@ -1151,6 +1159,7 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_unaligned
     ,WORD32      vec1_zero_bias
     )
 {
+  (VOID) vec1_zero_bias;
   int c_itr = 0;
 
 #ifndef AE_MULAZB8Q8X8

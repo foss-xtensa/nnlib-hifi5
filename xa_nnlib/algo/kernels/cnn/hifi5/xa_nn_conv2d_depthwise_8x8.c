@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -49,6 +49,7 @@ static inline void conv2d_nchw_8x8
   ,pWORD32 __restrict__ p_scratch
   )
 {
+  (VOID) input_height;
   int kernel_height_pad = ALIGNED_SIZE(kernel_height, 2);
   int kernel_width_pad = (kernel_width + 3) & (~3);
 
@@ -369,7 +370,7 @@ static void xa_nn_conv2d_depthwise_nchw_8x8
   )
 {
   WORD8 pad_val = 0;
-  xa_nn_conv2d_depthwise_init
+  xa_nn_dilated_conv2d_depthwise_init
     (p_scratch
     ,input_height
     ,input_width
@@ -377,6 +378,8 @@ static void xa_nn_conv2d_depthwise_nchw_8x8
     ,kernel_height
     ,kernel_width
     ,channels_multiplier
+    ,1
+    ,1
     ,x_stride
     ,y_stride
     ,x_padding
@@ -471,7 +474,7 @@ static void xa_nn_conv2d_depthwise_nchw_8x8
           ((WORD8 *)(&p_out[(itr_ic*channels_multiplier+itr_cm)+itr_oh*out_width*(input_channels*channels_multiplier)])
           ,p_kernel_padded
           ,p_inp_circ
-          ,bias
+          ,(WORD8)bias
           ,p_circ_buf->rows
           ,p_circ_buf->row_offset
           ,kernel_height
@@ -512,6 +515,8 @@ static inline void conv2d_nhwc_8x8
   ,pWORD32 __restrict__ p_scratch
   )
 {
+  (VOID) x_stride;
+  (VOID) p_scratch;
   WORD32 ker_channels_pad, inp_channels_pad;
   WORD32 i, itr_oh, itr_ch, itr_kw;
   ae_int8x8 *pt_inp0;
@@ -719,7 +724,7 @@ static void xa_nn_conv2d_depthwise_nhwc_8x8
   )
 {
   WORD8 pad_val = 0;
-  xa_nn_conv2d_depthwise_init
+  xa_nn_dilated_conv2d_depthwise_init
     (p_scratch
     ,input_height
     ,input_width
@@ -727,6 +732,8 @@ static void xa_nn_conv2d_depthwise_nhwc_8x8
     ,kernel_height
     ,kernel_width
     ,channels_multiplier
+    ,1
+    ,1
     ,x_stride
     ,y_stride
     ,x_padding
@@ -760,6 +767,7 @@ static void xa_nn_conv2d_depthwise_nhwc_8x8
     ,input_height
     ,input_width
     ,input_channels
+    ,kernel_height
     ,kernel_width
     ,channels_multiplier
     ,x_stride
@@ -782,6 +790,7 @@ static void xa_nn_conv2d_depthwise_nhwc_8x8
       ,input_height
       ,input_width
       ,input_channels
+      ,kernel_height
       ,kernel_width
       ,channels_multiplier
       ,x_stride

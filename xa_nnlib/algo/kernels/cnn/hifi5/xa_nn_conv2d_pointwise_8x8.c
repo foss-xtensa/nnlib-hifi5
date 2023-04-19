@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -123,10 +123,10 @@ WORD32 xa_nn_conv2d_pointwise_8x8
   XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
   XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
   /* Pointer alignment checks */
-  XA_NNLIB_ARG_CHK_ALIGN(p_out, ALIGNMENT, -1);
-  XA_NNLIB_ARG_CHK_ALIGN(p_kernel, ALIGNMENT, -1);
-  XA_NNLIB_ARG_CHK_ALIGN(p_inp, ALIGNMENT, -1);
-  XA_NNLIB_ARG_CHK_ALIGN(p_bias, ALIGNMENT, -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_kernel, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD8), -1);
   /* Basic Parameter checks */
   XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((input_channels <= 0), -1);

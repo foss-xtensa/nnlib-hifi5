@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -477,8 +477,6 @@ WORD32 xa_nn_matXvec_8x8_8(
 #define UNROLL_SETUP_ACC        SETUP_ACC_FOR_8bx8b
 #define UNROLL_SETUP_MAT1       SETUP_MAT1_8b
 #define UNROLL_SETUP_MAT2       SETUP_MAT2_8b
-#define UNROLL_LOAD_MAT1        LOAD_ROW_MAT1_8b
-#define UNROLL_LOAD_MAT2        LOAD_ROW_MAT2_8b
 #define SETUP_VEC1              SETUP_VEC1_8b
 #define SETUP_VEC2              SETUP_VEC2_8b
 #define LOAD_VEC1               LOAD_VEC1_8b
@@ -805,14 +803,11 @@ WORD32 xa_nn_matXvec_8x8_16(
 #define UNROLL_SETUP_ACC        SETUP_ACC_FOR_8bx8b
 #define UNROLL_SETUP_MAT1       SETUP_MAT1_8b
 #define UNROLL_SETUP_MAT2       SETUP_MAT2_8b
-#define UNROLL_LOAD_MAT1        LOAD_ROW_MAT1_8b
-#define UNROLL_LOAD_MAT2        LOAD_ROW_MAT2_8b
 #define SETUP_VEC1              SETUP_VEC1_8b
 #define SETUP_VEC2              SETUP_VEC2_8b
 #define LOAD_VEC1               LOAD_VEC1_8b
 #define LOAD_VEC2               LOAD_VEC2_8b
 #define SETUP_BIAS              SETUP_BIAS_8b
-#define UNROLL_ADD_BIAS_ACC     ADD_BIAS_8b_ACC_FOR_8bx8b
 
   acc_shift=acc_shift+32;
   LIMIT_ACC_LSH
@@ -1101,14 +1096,11 @@ WORD32 xa_nn_matXvec_8x8_32(
 #define UNROLL_SETUP_ACC        SETUP_ACC_FOR_8bx8b
 #define UNROLL_SETUP_MAT1       SETUP_MAT1_8b
 #define UNROLL_SETUP_MAT2       SETUP_MAT2_8b
-#define UNROLL_LOAD_MAT1        LOAD_ROW_MAT1_8b
-#define UNROLL_LOAD_MAT2        LOAD_ROW_MAT2_8b
 #define SETUP_VEC1              SETUP_VEC1_8b
 #define SETUP_VEC2              SETUP_VEC2_8b
 #define LOAD_VEC1               LOAD_VEC1_8b
 #define LOAD_VEC2               LOAD_VEC2_8b
 #define SETUP_BIAS              SETUP_BIAS_8b
-#define UNROLL_ADD_BIAS_ACC     ADD_BIAS_8b_ACC_FOR_8bx8b
 
   acc_shift=acc_shift+32;
   LIMIT_ACC_LSH
@@ -1411,9 +1403,6 @@ WORD32 xa_nn_matXvec_8x8_8_tanh(
 #define SETUP_VEC2              SETUP_VEC2_8b
 #define LOAD_VEC1               LOAD_VEC1_8b
 #define LOAD_VEC2               LOAD_VEC2_8b
-#define UNROLL_LOAD_MAT1        LOAD_ROW_MAT1_8b
-#define UNROLL_LOAD_MAT2        LOAD_ROW_MAT2_8b
-#define UNROLL_ADD_BIAS_ACC     ADD_BIAS_32b_ACC_FOR_8bx8b
 #define SETUP_BIAS              SETUP_BIAS_32b
         acc_shift=acc_shift+32;
         LIMIT_ACC_LSH
@@ -1732,9 +1721,6 @@ WORD32 xa_nn_matXvec_8x8_8_sigmoid(
 #define SETUP_VEC2              SETUP_VEC2_8b
 #define LOAD_VEC1               LOAD_VEC1_8b
 #define LOAD_VEC2               LOAD_VEC2_8b
-#define UNROLL_LOAD_MAT1        LOAD_ROW_MAT1_8b
-#define UNROLL_LOAD_MAT2        LOAD_ROW_MAT2_8b
-#define UNROLL_ADD_BIAS_ACC     ADD_BIAS_32b_ACC_FOR_8bx8b
 #define SETUP_BIAS              SETUP_BIAS_32b
         acc_shift=acc_shift+32;
         LIMIT_ACC_LSH

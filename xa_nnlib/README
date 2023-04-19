@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+# Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -26,6 +26,51 @@ Cadence HiFi 5 Neural Network (NN) Library
 ===============================================================================
 Revision History
 ===============================================================================
+
+Version 2.1.0 API 1.4: April 19, 2023
+
++ Intermediate Release of HiFi5 NN Library
++ Tested using RI.9 tools, xt-clang/xt-clang++ compiler
++ Adds support for depthwise separable 2D convolution with dilation for
+  single precision float and quantized int8 data-types
++ Adds support for TRANSPOSE_CONV TFLM operator for single precision float data-type
++ Adds support for new datatype symmetric quantized int16 for TFLM operators:
+  TANH
+  SIGMOID
+  MUL (with 4D broadcast)
++ Adds supports for TFLM reorg operators:
+  PAD (32-bit)
+  STRIDED_SLICE (32-bit)
+  TRANSPOSE (8-bit)
++ Adds support for new datatypes with for TFLM operators:
+  SUB (single precision float inputs/outputs, with 4D broadcast)
+  QUANTIZE (single precision float to asymmetric quantized int16)
+  DEQUANTIZE (asymmetric quantized int16 to single precision float)
++ Adds kernels xa_nn_matmul_sym8sxsym16s_sym16s, xa_nn_lstm_cell_state_update_16,
+  xa_nn_elm_mul_sym16sxsym16s_asym8s and xa_nn_elm_add_16x16_16 for supporting TFLM
+  LSTM operator.
++ Adds single precision float support for existing GRU layer
++ Adds Pytorch GRU equations support for precisions 8x16, 16x16 and float32xfloat32 
+  to existing GRU layer
++ Adds XA_NNLIB_CNN_EXECUTE_FATAL_INVALID_INPUT_SHAPE error code for CNN layer
++ Adds support for scalar-aligned i/o pointers for xa_nn_matXvec_f32xf32_f32_sigmoid/tanh
++ Add NULL bias-pointer support to kernels
+  xa_nn_matXvec_f32xf32_f32, xa_nn_matXvec_f32xf32_f32_tanh/sigmoid
++ Improved performance for kernels xa_nn_matXvec_f32xf32_f32 and
+  xa_nn_fully_connected_f32.
++ Improved performance for kernels xa_nn_matmul_f32xf32_f32 and
+  xa_nn_conv2d_pointwise_f32.
++ Improved performance for kernel xa_nn_fully_connected_sym8sxsym16s_sym16s.
++ Removes kernel padding requirement for conv2d_std_f32
++ Improves performance of
+  conv2d_std_sym8sxasym8s for small kernels sizes (H*W*C <= 8).
++ Fixed high stack usage issue in tanh/sigmoid kernel for float32 datatype.
+
+Note
+> Processor Configuration must be built with SP-VFPU option in order to compile 
+  floating point variants of the kernels.
+
+----------------------------------------------------------------------
 
 Version 2.0.0 API 1.3: December 16, 2022
 

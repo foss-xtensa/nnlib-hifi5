@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -23,64 +23,6 @@
 #include "xa_nn_conv2d_depthwise_state.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
-#define INTERLEAVE_6(dst0, dst1, dst2, dst3, dst4, dst5, dst6, dst7, src0, src1, src2, src3, src4, src5) \
- { \
-   ae_int8x8 tmp01_0, tmp01_1, tmp23_0, tmp23_1, tmp0123_0, tmp0123_1, tmp0123_2, tmp0123_3, tmp45_0, tmp45_1; \
-   AE_DSEL8X8(tmp01_0, tmp01_1, src0, src1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
-   AE_DSEL8X8(tmp23_0, tmp23_1, src2, src3, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
-   AE_DSEL8X8(tmp45_0, tmp45_1, src4, src5, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
-   AE_DSEL8X8(tmp0123_0, tmp0123_1, tmp01_0, tmp23_0, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe76dc54, 0xba329810)));\
-   AE_DSEL8X8(tmp0123_2, tmp0123_3, tmp01_1, tmp23_1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe76dc54, 0xba329810)));\
-   AE_DSEL8X8(dst0, dst1, tmp0123_0, tmp45_0, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc7600, 0xba984500)));\
-   AE_DSEL8X8(dst2, dst3, tmp0123_1, tmp45_0, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc3200, 0xba981000)));\
-   AE_DSEL8X8(dst4, dst5, tmp0123_2, tmp45_1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc7600, 0xba984500)));\
-   AE_DSEL8X8(dst6, dst7, tmp0123_3, tmp45_1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc3200, 0xba981000)));\
- }
-
-#define INTERLEAVE_5(dst0, dst1, dst2, dst3, dst4, dst5, dst6, dst7, src0, src1, src2, src3, src4) \
- { \
-   ae_int8x8 tmp01_0, tmp01_1, tmp23_0, tmp23_1, tmp0123_0, tmp0123_1, tmp0123_2, tmp0123_3, tmp45_0, tmp45_1; \
-   AE_DSEL8X8(tmp01_0, tmp01_1, src0, src1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
-   AE_DSEL8X8(tmp23_0, tmp23_1, src2, src3, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xf7e6d5c4, 0xb3a29180)));\
-   AE_DSEL8X8(tmp0123_0, tmp0123_1, tmp01_0, tmp23_0, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe76dc54, 0xba329810)));\
-   AE_DSEL8X8(tmp0123_2, tmp0123_3, tmp01_1, tmp23_1, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe76dc54, 0xba329810)));\
-   AE_DSEL8X8(dst0, dst1, tmp0123_0, src4, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc7000, 0xba986000)));\
-   AE_DSEL8X8(dst2, dst3, tmp0123_1, src4, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc5000, 0xba984000)));\
-   AE_DSEL8X8(dst4, dst5, tmp0123_2, src4, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc3000, 0xba982000)));\
-   AE_DSEL8X8(dst6, dst7, tmp0123_3, src4, AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfedc1000, 0xba980000)));\
- }
-
-#define INTERLEAVE_3(dst0, dst1, src0, src1, src2) \
- { \
-   ae_int8x8 tmp01_0; \
-   tmp01_0 = AE_SEL8X8(AE_MOVINT8X8_FROMINT16X4(src0), AE_MOVINT8X8_FROMINT16X4(src1), AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x0e060c04, 0x0a020800)));\
-   AE_DSEL8X8(dst0, dst1, tmp01_0, AE_MOVINT8X8_FROMINT16X4(src2), AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0xfe60dc40, 0xba209800)));\
- }
-
-#define PACK_32X2(dst1, src1, src2) \
-  dst1 = AE_SEL8X8(AE_MOVINT8X8_FROMINT16X4(src1), AE_MOVINT8X8_FROMINT16X4(src2), AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x080a0c0e, 0x00020406)));
-
-#define SET_INP_PTR_X_Y(ptr, x, y) \
-          if((x < x_padding) || (x >= x_padding + input_width)) \
-            ptr = p_dummy_inp; \
-          else \
-            ptr = (ae_int8x8 *)(p_inp + (y - y_padding) * input_width * input_channels + (x - x_padding) * input_channels); \
-
-#define SET_INP_PTR_Y(ptr0, ptr1, ptr2, ptr3, ptr4, ptr5, y) \
-        if((y < y_padding) || (y >= y_padding + input_height)) \
-        { \
-          ptr0 = ptr1 = ptr2 = ptr3 = ptr4 = ptr5 = p_dummy_inp; \
-        } \
-        else \
-        { \
-          int x_idx = itr_ow * x_stride; \
-          SET_INP_PTR_X_Y(ptr0, x_idx, y); x_idx++; \
-          SET_INP_PTR_X_Y(ptr1, x_idx, y); x_idx++; \
-          SET_INP_PTR_X_Y(ptr2, x_idx, y); x_idx++; \
-          SET_INP_PTR_X_Y(ptr3, x_idx, y); x_idx++; \
-          SET_INP_PTR_X_Y(ptr4, x_idx, y); x_idx++; \
-          SET_INP_PTR_X_Y(ptr5, x_idx, y); x_idx++; \
-        } \
 
 /* 2D Convolution implementation */
 static inline void conv2d_nchw_asym8xasym8_hf5_convmul
@@ -105,6 +47,7 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
   ,pWORD32 __restrict__ p_scratch
   )
 {
+  (VOID) input_height;
   /* Importance of actual_out_width, since we are appending zeros input left
    * and right side. No problem with left padding, but for right padding that
    * is done to make sure that input_width is multiple of 4. Here
@@ -465,8 +408,9 @@ static void xa_nn_conv2d_depthwise_nchw_asym8xasym8
   ,pVOID p_scratch
   )
 {
-  UWORD8 input_zero_bias_neg = -input_zero_bias;
-  xa_nn_conv2d_depthwise_init
+  (VOID) out_data_format;
+  UWORD8 input_zero_bias_neg = (WORD8)-input_zero_bias;
+  xa_nn_dilated_conv2d_depthwise_init
     (p_scratch
     ,input_height
     ,input_width
@@ -474,6 +418,8 @@ static void xa_nn_conv2d_depthwise_nchw_asym8xasym8
     ,kernel_height
     ,kernel_width
     ,channels_multiplier
+    ,1
+    ,1
     ,x_stride
     ,y_stride
     ,x_padding
@@ -786,6 +732,8 @@ static inline void conv2d_nhwc_asym8xasym8
   ,pWORD32 __restrict__ p_scratch
   )
 {
+  (VOID) x_stride;
+  (VOID) p_scratch;
   WORD32 ker_channels_pad, inp_channels_pad;
   WORD32 itr_oh, itr_ch, itr_kw;
   ae_int8x16 *pt_inp0, *pt_inp1;
@@ -1081,8 +1029,9 @@ static void xa_nn_conv2d_depthwise_nhwc_asym8xasym8
   ,pVOID p_scratch
   )
 {
-  UWORD8 input_zero_bias_neg = -input_zero_bias;
-  xa_nn_conv2d_depthwise_init
+  (VOID) out_data_format;
+  UWORD8 input_zero_bias_neg = (WORD8)-input_zero_bias;
+  xa_nn_dilated_conv2d_depthwise_init
     (p_scratch
     ,input_height
     ,input_width
@@ -1090,6 +1039,8 @@ static void xa_nn_conv2d_depthwise_nhwc_asym8xasym8
     ,kernel_height
     ,kernel_width
     ,channels_multiplier
+    ,1
+    ,1
     ,x_stride
     ,y_stride
     ,x_padding
@@ -1147,6 +1098,7 @@ static void xa_nn_conv2d_depthwise_nhwc_asym8xasym8
     ,input_height
     ,input_width
     ,input_channels
+    ,kernel_height
     ,kernel_width
     ,channels_multiplier
     ,x_stride
@@ -1170,6 +1122,7 @@ static void xa_nn_conv2d_depthwise_nhwc_asym8xasym8
       ,input_height
       ,input_width
       ,input_channels
+      ,kernel_height
       ,kernel_width
       ,channels_multiplier
       ,x_stride

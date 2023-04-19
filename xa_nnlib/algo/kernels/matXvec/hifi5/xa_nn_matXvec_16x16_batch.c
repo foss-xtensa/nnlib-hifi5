@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -84,17 +84,39 @@ WORD32 xa_nn_matXvec_batch_16x16_64(
          WORD32 bias_shift,                       /* bias shift amount */
          WORD32 vec_count)                      /* number of vectors: 2, 4, 2n */
 {
+    int i;
+    /* NULL pointer checks */
+    XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
+    for(i = 0; i < vec_count; i++)
+    {
+      XA_NNLIB_ARG_CHK_PTR(p_out[i], -1);
+      XA_NNLIB_ARG_CHK_PTR(p_vec1[i], -1);
+    }
+    /* Pointer alignment checks */
+    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD64 *), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(WORD16), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(WORD16 *), -1);
+    int isAlignedvec = 1;
+    for(i = 0; i < vec_count; i++)
+    {
+      XA_NNLIB_ARG_CHK_ALIGN(p_out[i], sizeof(WORD64), -1);
+      XA_NNLIB_ARG_CHK_ALIGN(p_vec1[i],sizeof(WORD16), -1);
+      isAlignedvec &= (((unsigned int)p_vec1[i] & 15) == 0);
+    }
+    /* Basic Parameter checks */
+    XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+    XA_NNLIB_ARG_CHK_COND((vec_count <= 0), -1);
+    
     /* Iterators used in for loops */
     int m_itr, c_itr, vec_itr;
     /* Assign initial value so this value will be used in trailing loop */
     m_itr = 0;
     vec_itr = 0;
-
-
-    if (!p_bias)
-    {
-      return -1;
-    }
 
     #define VEC_UNROLL 2
     #define UNROLL_ROW_SETUP_ACC_BATCH          SETUP_ACC_BATCH_ROW_FOR_16bx16b
@@ -114,7 +136,7 @@ WORD32 xa_nn_matXvec_batch_16x16_64(
 
     ADJUST_ACC_LSH_AND_BIAS_LSH_AxB_C(WORD16, WORD16, WORD64);
 
-    if (p_mat1 && p_vec1 && cols1%8==0 && row_stride1%8==0)
+    if (((unsigned int)p_mat1 & 15) == 0 && isAlignedvec && ((cols1&7) == 0) && ((row_stride1&7) == 0))
     {
         if(rows > ROW_UNROLL)
         {

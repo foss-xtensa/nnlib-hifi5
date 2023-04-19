@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -511,6 +511,7 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
                                                     ,WORD32 num_axis_dims
                                                     ,pVOID p_scratch_in)
 {
+  (VOID) num_inp_dims;
   WORD8 *p_in = (WORD8 *)(p_inp);
   WORD32 *p_scratch = (WORD32 *)(p_scratch_in);
 
@@ -1260,6 +1261,10 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
        
       num_elm_in_axis *= p_inp_shape[p_axis[axis_itr]];
     }
+  }
+  if(num_elm_in_axis <= 1024)
+  {
+    inv_mult = AE_MOVDA32(inv_256_tbl[num_elm_in_axis]);
   }
 
   for(inp_itr=0; inp_itr < num_inp_dims; inp_itr++)

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -51,8 +51,6 @@ WORD32 xa_nn_matXvec_16x8_16(
 #define UNROLL_SETUP_ACC        SETUP_ACC_FOR_8bx16b
 #define UNROLL_SETUP_MAT1       SETUP_MAT1_16b
 #define UNROLL_SETUP_MAT2       SETUP_MAT2_16b
-#define UNROLL_KERNEL_MAT1_VEC1 KERNEL_MAT1_VEC1_16b_8b
-#define UNROLL_KERNEL_MAT2_VEC2 KERNEL_MAT2_VEC2_16b_8b
 #define UNROLL_STORE_ACC        STORE_ACC_16bx8b_AT_OUT_16b
 #define SETUP_VEC1              SETUP_VEC1_8b_SINGLE
 #define SETUP_VEC2              SETUP_VEC2_8b_SINGLE

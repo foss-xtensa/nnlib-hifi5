@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -22,8 +22,10 @@
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
+#ifndef AE_S8X4U_IP
 #define PACK_32X2(dst1, src1, src2) \
     dst1 = AE_SEL8X8(AE_MOVINT8X8_FROMINT16X4(src1), AE_MOVINT8X8_FROMINT16X4(src2), AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x080a0c0e, 0x00020406)));
+#endif 
 
 // Defining macros for HiFi5 RI.6 and HiFi5 RI.5(< RI.6) compatibility
 #ifndef AE_MULAZB8Q8X8 // HiFI5 RI.5 

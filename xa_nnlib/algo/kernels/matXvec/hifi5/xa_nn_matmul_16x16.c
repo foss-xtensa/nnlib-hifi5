@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -135,22 +135,22 @@ WORD32 xa_nn_matmul_16x16_16(
                 ae_f32x2 tmp_var_0_0_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_0_0, acc_shift)), 16);
                 tmp_var_0_0_0 = AE_SRAI32(tmp_var_0_0_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride)) = (*((UWORD32 *)&tmp_var_0_0_0));
+                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_0_0_0));
                 ae_int32 tmp_var_1_0_0;
                 ae_f32x2 tmp_var_1_0_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_1_0, acc_shift)), 16);
                 tmp_var_1_0_0 = AE_SRAI32(tmp_var_1_0_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 1)*out_stride)) = (*((UWORD32 *)&tmp_var_1_0_0));
+                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 1)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_1_0_0));
                 ae_int32 tmp_var_0_1_0;
                 ae_f32x2 tmp_var_0_1_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_0_1, acc_shift)), 16);
                 tmp_var_0_1_0 = AE_SRAI32(tmp_var_0_1_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 1)*out_offset + (m_itr + 0)*out_stride)) = (*((UWORD32 *)&tmp_var_0_1_0));
+                (*((WORD16 *) p_out + (vec_itr + 1)*out_offset + (m_itr + 0)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_0_1_0));
                 ae_int32 tmp_var_1_1_0;
                 ae_f32x2 tmp_var_1_1_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_1_1, acc_shift)), 16);
                 tmp_var_1_1_0 = AE_SRAI32(tmp_var_1_1_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 1)*out_offset + (m_itr + 1)*out_stride)) = (*((UWORD32 *)&tmp_var_1_1_0));
+                (*((WORD16 *) p_out + (vec_itr + 1)*out_offset + (m_itr + 1)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_1_1_0));
             }
             //Remaining row
             for(; m_itr < rows; m_itr++)
@@ -199,12 +199,12 @@ WORD32 xa_nn_matmul_16x16_16(
                 ae_f32x2 tmp_var_0_0_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_0_0, acc_shift)), 16);
                 tmp_var_0_0_0 = AE_SRAI32(tmp_var_0_0_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride)) = (*((UWORD32 *)&tmp_var_0_0_0));
+                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_0_0_0));
                 ae_int32 tmp_var_0_1_0;
                 ae_f32x2 tmp_var_0_1_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_0_1, acc_shift)), 16);
                 tmp_var_0_1_0 = AE_SRAI32(tmp_var_0_1_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 1)*out_offset + (m_itr + 0)*out_stride)) = (*((UWORD32 *)&tmp_var_0_1_0));
+                (*((WORD16 *) p_out + (vec_itr + 1)*out_offset + (m_itr + 0)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_0_1_0));
             }
 
         }
@@ -263,12 +263,12 @@ WORD32 xa_nn_matmul_16x16_16(
                 ae_f32x2 tmp_var_0_0_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_0_0, acc_shift)), 16);
                 tmp_var_0_0_0 = AE_SRAI32(tmp_var_0_0_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride)) = (*((UWORD32 *)&tmp_var_0_0_0));
+                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_0_0_0));
                 ae_int32 tmp_var_1_0_0;
                 ae_f32x2 tmp_var_1_0_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_1_0, acc_shift)), 16);
                 tmp_var_1_0_0 = AE_SRAI32(tmp_var_1_0_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 1)*out_stride)) = (*((UWORD32 *)&tmp_var_1_0_0));
+                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 1)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_1_0_0));
             }
 
             for(; m_itr < rows; m_itr++)
@@ -309,7 +309,7 @@ WORD32 xa_nn_matmul_16x16_16(
                 ae_f32x2 tmp_var_0_0_1 =
                 AE_SLAI32S(AE_ROUND32F64SSYM(AE_SLAA64S(acc_0_0, acc_shift)), 16);
                 tmp_var_0_0_0 = AE_SRAI32(tmp_var_0_0_1, 16);
-                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride)) = (*((UWORD32 *)&tmp_var_0_0_0));
+                (*((WORD16 *) p_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride)) = (WORD16)(*((UWORD32 *)&tmp_var_0_0_0));
             }
         }
     }

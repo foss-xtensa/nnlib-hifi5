@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -28,36 +28,9 @@
 #else
 #define UNROLL_D  4 /// Optimal unroll
 #endif
-#define LIMIT_VARIABLE(_var, _left_limit, _right_limit) \
-  _var = _var > _right_limit ? _right_limit : _var < _left_limit ? _left_limit : _var;
 
 /******************  Marcos for multiple of 8 cols *****************/
-#define SETUP_ROW_D_8(N) \
-  ae_int64 accu1_ ##N, accu2_ ##N;\
-  ae_int16x4 *p_mat1_ ##N = (ae_int16x4*) p_mat; \
-  AE_ADDCIRC16X4_XC(p_mat1_ ##N, (row+N) * row_offset * sizeof(WORD16)); \
-  accu1_ ##N = p_bias[vec];            \
-  accu2_ ##N = p_bias[vec+1];            \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , bias_shift); \
-  accu2_ ##N = AE_SLAA64S(accu2_ ##N , bias_shift);
 
-#define KERNEL_ROW_D_8(N) \
-  ae_int16x4 temp_in1_ ## N; \
-  ae_int16x4 temp_in2_ ## N; \
-  AE_L16X4X2_XC(temp_in1_ ## N,temp_in2_ ## N, p_mat1_ ##N, 2*sizeof(ae_int16x4)); \
-
-#define KERNEL_ROW_D_I_8(N) \
-  ae_int16x4 temp_in1_ ## N; \
-  ae_int16x4 temp_in2_ ## N; \
-  AE_L16X4X2_XC(temp_in1_ ## N,temp_in2_ ## N, p_mat1_ ##N, 2*sizeof(ae_int16x4)); \
-  AE_L8X8_IP(temp_src1, p_src1, 8); \
-  AE_L8X8_IP(temp_src2, p_src2, 8); \
-
-#define STORE_ROW_D_8(N) \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift);\
-  accu2_ ##N = AE_SLAA64S(accu2_ ##N , acc_shift);\
-  p_dst1[(row+N) * out_row_offset] =AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_ ##N),16),16)); \
-  p_dst2[(row+N) * out_row_offset] =AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_ ##N),16),16));
 /******************  Marcos for multiple of 8 cols *****************/
 
 /******************  Marcos for multiple of 4 cols *****************/
@@ -126,12 +99,6 @@
 #define SETUP_D  SETUP_ROW_D(0)  SETUP_ROW_D(1)  SETUP_ROW_D(2)  SETUP_ROW_D(3)
 #define KERNEL_D KERNEL_ROW_D_I(0) KERNEL_ROW_D(1) KERNEL_ROW_D(2) KERNEL_ROW_D(3)
 #define STORE_D  STORE_ROW_D(0)  STORE_ROW_D(1)  STORE_ROW_D(2)  STORE_ROW_D(3)
-#define SETUP_D_8  SETUP_ROW_D_8(0)  SETUP_ROW_D_8(1)  SETUP_ROW_D_8(2)  SETUP_ROW_D_8(3)
-#define KERNEL_D_8 KERNEL_ROW_D_I_8(0) KERNEL_ROW_D_8(1) KERNEL_ROW_D_8(2) KERNEL_ROW_D_8(3)
-#define STORE_D_8  STORE_ROW_D_8(0)  STORE_ROW_D_8(1)  STORE_ROW_D_8(2)  STORE_ROW_D_8(3)
-#define SETUP_D_16  SETUP_ROW_D_16(0)  SETUP_ROW_D_16(1)  SETUP_ROW_D_16(2)  SETUP_ROW_D_16(3)
-#define KERNEL_D_16 KERNEL_ROW_D_I_16(0) KERNEL_ROW_D_16(1) KERNEL_ROW_D_16(2) KERNEL_ROW_D_16(3)
-#define STORE_D_16  STORE_ROW_D_16(0)  STORE_ROW_D_16(1)  STORE_ROW_D_16(2)  STORE_ROW_D_16(3)
 
 #elif (UNROLL_D == 8)
 #define SETUP_D   SETUP_ROW_D(0)  SETUP_ROW_D(1)  SETUP_ROW_D(2)  SETUP_ROW_D(3)  SETUP_ROW_D(4)  SETUP_ROW_D(5)  SETUP_ROW_D(6)  SETUP_ROW_D(7)

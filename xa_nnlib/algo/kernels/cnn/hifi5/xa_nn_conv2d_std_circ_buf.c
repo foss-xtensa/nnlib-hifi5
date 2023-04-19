@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -83,7 +83,7 @@ WORD32 xa_nn_conv2d_std_getsize(
   WORD32 y_b_pad = kernel_height + (out_height - 1) * y_stride - (y_padding + input_height);
   y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
 
-  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S) //TODO: remove the condition when the padding requirement is removed for other variants.
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S || input_precision == PREC_F32) //TODO: remove the condition when the padding requirement is removed for other variants.
     input_channels_pad = input_channels;
   else
     input_channels_pad = PADDED_SIZE(input_channels, align_size);
@@ -203,6 +203,7 @@ VOID xa_nn_conv2d_std_init_state(
     WORD32 out_height,
     WORD32 input_precision)
 {
+  (VOID) x_stride;
   WORD8 *p_mem = (WORD8 *)p_scratch;
   xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_mem;
   size_t input_size = 0;
@@ -250,7 +251,7 @@ VOID xa_nn_conv2d_std_init_state(
   WORD32 y_b_pad = kernel_height + (out_height - 1) * y_stride - (y_padding + input_height);
   y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
 
-  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S) //TODO: remove the condition when the padding requirement is removed for other variants.
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S || input_precision == PREC_F32) //TODO: remove the condition when the padding requirement is removed for other variants.
     input_channels_pad = input_channels;
   else
     input_channels_pad = PADDED_SIZE(input_channels, align_size);
@@ -260,57 +261,6 @@ VOID xa_nn_conv2d_std_init_state(
   while(cir_buf_size_bytes%16 !=0)
   {
       cir_buf_size_bytes+= kernel_width*input_channels_pad*input_size;
-  }
-
-  p_mem += cir_buf_size_bytes;
-  p_state->cir_buf.p_end = p_mem;
-
-  AE_SETCBEGIN0(p_state->cir_buf.p_begin);
-  AE_SETCEND0(p_state->cir_buf.p_end);
-
-}
-
-VOID xa_nn_trans_conv2d_std_init_state(
-    VOID *p_scratch,
-    VOID *p_kernel,
-    WORD32 input_height,
-    WORD32 input_channels,
-    WORD32 kernel_height,
-    WORD32 kernel_width,
-    WORD32 input_precision)
-{
-  WORD8 *p_mem = (WORD8 *)p_scratch;
-  xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_mem;
-  size_t input_size = 0;
-  UWORD32 align_size = 0;
-
-  switch(input_precision)
-  {
-    case -8:
-      input_size = sizeof(WORD16);
-      align_size = ALIGNMENT>>1;
-      break;
-    default:
-      break;
-  }
-
-  p_mem += sizeof(xa_nn_conv_state_t);
-  p_mem = ALIGNED_ADDR(p_mem, ALIGNMENT_16);
-
-  if(((UWORD32)p_kernel & BUS_WIDTH_MASK) == ((UWORD32)p_mem & BUS_WIDTH_MASK))
-  {
-    p_mem += BUS_WIDTH; /* Add a offset to avoid banking stall */
-  }
-
-  p_state->cir_buf.p_begin = p_mem;
-  p_state->cir_buf.p_curr = p_mem;
-
-  // Computing circular buffer size
-  WORD32 cir_buf_size_bytes = (2*(kernel_height-1) + input_height) * kernel_width * input_channels * input_size;
-
-  while(cir_buf_size_bytes % 16 !=0)
-  {
-      cir_buf_size_bytes+= kernel_width*input_channels*input_size;
   }
 
   p_mem += cir_buf_size_bytes;
@@ -356,6 +306,8 @@ VOID xa_nn_dilated_conv2d_std_init_circ_buf(
     WORD32 dilation_height,
     WORD32 dilation_h_offset)
 {
+  (VOID) p_kernel;
+  (VOID) x_stride;
   WORD8 *p_mem;// = (WORD8 *)p_scratch;
   xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_scratch;
   size_t input_size = 0;
@@ -795,6 +747,8 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
     WORD32 heightIndexIteration,
     WORD32 y_stride_dilated)
 {
+  (VOID) x_stride;
+  (VOID) y_stride_dilated;
   WORD32 i,k;
   WORD8 *p_inp = (WORD8 *)*pp_inp;
   //WORD32 planes_to_add = x_stride > kernel_width ? 0 : kernel_width - x_stride;

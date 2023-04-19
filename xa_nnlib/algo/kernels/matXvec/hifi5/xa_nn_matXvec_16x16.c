@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -437,10 +437,10 @@ WORD32 xa_nn_matXvec_16x16_16(
         out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
         out_16 = AE_SAT16X4(out1_32, out2_32);
 
-        p_out[(row + 0)]  = AE_MOVAD16_3(out_16);
-        p_out[(row + 1 * rows_by_four)]  = AE_MOVAD16_2(out_16);
-        p_out[(row + 2 * rows_by_four)]  = AE_MOVAD16_1(out_16);
-        p_out[(row + 3 * rows_by_four)]  = AE_MOVAD16_0(out_16);
+        p_out[(row + 0)]  = (WORD16)AE_MOVAD16_3(out_16);
+        p_out[(row + 1 * rows_by_four)]  = (WORD16)AE_MOVAD16_2(out_16);
+        p_out[(row + 2 * rows_by_four)]  = (WORD16)AE_MOVAD16_1(out_16);
+        p_out[(row + 3 * rows_by_four)]  = (WORD16)AE_MOVAD16_0(out_16);
     }
 
     row = rows_by_four * 4;
@@ -520,9 +520,9 @@ WORD32 xa_nn_matXvec_16x16_16(
         out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
         out_16 = AE_SAT16X4(out1_32, out2_32);
 
-        p_out[(row+0)]  = AE_MOVAD16_3(out_16);
-        p_out[(row+1)]  = AE_MOVAD16_2(out_16);
-        p_out[(row+2)]  = AE_MOVAD16_1(out_16);
+        p_out[(row+0)]  = (WORD16)AE_MOVAD16_3(out_16);
+        p_out[(row+1)]  = (WORD16)AE_MOVAD16_2(out_16);
+        p_out[(row+2)]  = (WORD16)AE_MOVAD16_1(out_16);
     }
 
     for (; row < rows ; row++)
@@ -600,10 +600,10 @@ WORD32 xa_nn_matXvec_16x16_16(
         out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
         out_16 = AE_SAT16X4(out1_32, out2_32);
 
-        p_out[(row+0 * rows_by_four)]  = AE_MOVAD16_3(out_16);
-        p_out[(row+1 * rows_by_four)]  = AE_MOVAD16_2(out_16);
-        p_out[(row+2 * rows_by_four)]  = AE_MOVAD16_1(out_16);
-        p_out[(row+3 * rows_by_four)]  = AE_MOVAD16_0(out_16);
+        p_out[(row+0 * rows_by_four)]  = (WORD16)AE_MOVAD16_3(out_16);
+        p_out[(row+1 * rows_by_four)]  = (WORD16)AE_MOVAD16_2(out_16);
+        p_out[(row+2 * rows_by_four)]  = (WORD16)AE_MOVAD16_1(out_16);
+        p_out[(row+3 * rows_by_four)]  = (WORD16)AE_MOVAD16_0(out_16);
     }
 
     row = rows_by_four * 4;
@@ -661,9 +661,9 @@ WORD32 xa_nn_matXvec_16x16_16(
         out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
         out_16 = AE_SAT16X4(out1_32, out2_32);
 
-        p_out[(row+0)]  = AE_MOVAD16_3(out_16);
-        p_out[(row+1)]  = AE_MOVAD16_2(out_16);
-        p_out[(row+2)]  = AE_MOVAD16_1(out_16);
+        p_out[(row+0)]  = (WORD16)AE_MOVAD16_3(out_16);
+        p_out[(row+1)]  = (WORD16)AE_MOVAD16_2(out_16);
+        p_out[(row+2)]  = (WORD16)AE_MOVAD16_1(out_16);
     }
 
     for (; row < rows ; row++)

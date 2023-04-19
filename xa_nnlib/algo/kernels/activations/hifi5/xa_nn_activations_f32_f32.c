@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -26,7 +26,6 @@
 #include "xa_nnlib_err_chk.h"
 #include <math.h>
 
-#define ALIGNMENT   16   /* 16 bytes alignment */
 #define LIMIT_SX2(out, inp, min, max){\
         out = MAX_SX2(min, inp); \
         out = MIN_SX2(max, out); \

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -43,12 +43,7 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_f32_circ,(
 #define ROW_UNROLL 4
 
 #define INCREMENT_IN_BYTES_FOR_FLOAT32      sizeof(FLOAT32)
-#define INCREMENT_IN_BYTES_FOR_FLOAT32x2    2*sizeof(FLOAT32)
 
-#define SETUP_ACC_BATCH_VEC_UNROLL(idx_row)     UNROLL_SETUP_ACC_BATCH(idx_row,0)   UNROLL_SETUP_ACC_BATCH(idx_row,1)
-#define KERNEL_MAT_VEC_BATCH_VEC_UNROLL(idx_row)   UNROLL_KERNEL_MAT_VEC_BATCH(idx_row,0)     UNROLL_KERNEL_MAT_VEC_BATCH(idx_row,1)
-#define ADD_BIAS_BATCH_ACC_VEC_UNROLL(idx_row)      UNROLL_ADD_BIAS_ACC_BATCH(idx_row,0)     UNROLL_ADD_BIAS_ACC_BATCH(idx_row,1)
-#define STORE_ACC_BATCH_VEC_UNROLL(idx_row)     UNROLL_STORE_ACC_BATCH(idx_row,0)     UNROLL_STORE_ACC_BATCH(idx_row,1)
 
 
 
@@ -135,7 +130,6 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_f32_circ,(
 #define STORE_ACC           UNROLL_STORE_ACC(0)           UNROLL_STORE_ACC(1)
 #elif (ROW_UNROLL == 4)
 #define SETUP_MAT           UNROLL_SETUP_MAT(0)           UNROLL_SETUP_MAT(1)           UNROLL_SETUP_MAT(2)           UNROLL_SETUP_MAT(3)
-#define STORE_ACC           UNROLL_STORE_ACC(0)           UNROLL_STORE_ACC(1)           UNROLL_STORE_ACC(2)           UNROLL_STORE_ACC(3)
 #elif (ROW_UNROLL == 8)
 #define SETUP_MAT           UNROLL_SETUP_MAT(0)           UNROLL_SETUP_MAT(1)           UNROLL_SETUP_MAT(2)           UNROLL_SETUP_MAT(3)           UNROLL_SETUP_MAT(4)           UNROLL_SETUP_MAT(5)           UNROLL_SETUP_MAT(6)           UNROLL_SETUP_MAT(7)
 #define STORE_ACC           UNROLL_STORE_ACC(0)           UNROLL_STORE_ACC(1)           UNROLL_STORE_ACC(2)           UNROLL_STORE_ACC(3)           UNROLL_STORE_ACC(4)           UNROLL_STORE_ACC(5)           UNROLL_STORE_ACC(6)           UNROLL_STORE_ACC(7)
@@ -189,7 +183,8 @@ WORD32 xa_nn_matXvec_f32_circ(
     /* Assign initial value so this value will be used in trailing loop */
     m_itr = 0;
     vec_itr = 0;
-    if(cols%4==0)//&& row_offset %8==0 && ((UWORD32)p_mat)%16==0)
+    if(((((unsigned)p_mat) & 15) == 0) && ((((unsigned)p_vec) & 15) == 0) &&
+      ((row_offset & 3) == 0) && (cols & 7) == 0)
     {
         if(rows >= ROW_UNROLL)
         {

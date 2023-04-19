@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -150,10 +150,10 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
             out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
             out = AE_SAT16X4(out1_32, out2_32);
 
-            p_dst1[(row+0) * out_row_offset] = AE_MOVAD16_3(out);
-            p_dst1[(row+1) * out_row_offset] = AE_MOVAD16_2(out);
-            p_dst2[(row+0) * out_row_offset] = AE_MOVAD16_1(out);
-            p_dst2[(row+1) * out_row_offset] = AE_MOVAD16_0(out);
+            p_dst1[(row+0) * out_row_offset] = (WORD16)AE_MOVAD16_3(out);
+            p_dst1[(row+1) * out_row_offset] = (WORD16)AE_MOVAD16_2(out);
+            p_dst2[(row+0) * out_row_offset] = (WORD16)AE_MOVAD16_1(out);
+            p_dst2[(row+1) * out_row_offset] = (WORD16)AE_MOVAD16_0(out);
         }
 
         /* Process 1 row and 2 vectors for remaining rows */
@@ -224,8 +224,8 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
             out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
             out = AE_SAT16X4(out1_32, out1_32);
 
-            p_dst1[(row+0) * out_row_offset] = AE_MOVAD16_3(out);
-            p_dst2[(row+0) * out_row_offset] = AE_MOVAD16_2(out);
+            p_dst1[(row+0) * out_row_offset] = (WORD16)AE_MOVAD16_3(out);
+            p_dst2[(row+0) * out_row_offset] = (WORD16)AE_MOVAD16_2(out);
         }
     }
 
@@ -325,9 +325,9 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
             out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
             out = AE_SAT16X4(out1_32, out2_32);
 
-            p_dst1[(row+0) * out_row_offset] = AE_MOVAD16_3(out);
-            p_dst1[(row+1) * out_row_offset] = AE_MOVAD16_2(out);
-            p_dst1[(row+2) * out_row_offset] = AE_MOVAD16_1(out);
+            p_dst1[(row+0) * out_row_offset] = (WORD16)AE_MOVAD16_3(out);
+            p_dst1[(row+1) * out_row_offset] = (WORD16)AE_MOVAD16_2(out);
+            p_dst1[(row+2) * out_row_offset] = (WORD16)AE_MOVAD16_1(out);
         }
 
         /* Processing 1 row and 1 vec */
@@ -384,7 +384,7 @@ WORD32 xa_nn_matXvec_16x16_16_circ(
             accu1 = AE_SLAA64S(accu1, acc_shift);
             out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
             out = AE_SAT16X4(out1_32, out1_32);
-            p_dst1[(row+0) * out_row_offset] = AE_MOVAD16_0(out);
+            p_dst1[(row+0) * out_row_offset] = (WORD16)AE_MOVAD16_0(out);
         }
     }
 

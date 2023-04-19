@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -88,7 +88,7 @@ static void __sigmoidf(float32_t * y, const float32_t * x, int N, float32_t* scr
   ae_valignx2 X_va, Y_va;
 
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ/2*2*sz_f32;
+  const int blkSize = 2*MAX_ALLOCA_SZ/(sz_f32);
   int n;
   NASSERT_ALIGN16(scr);
   NASSERT(N%8==0);

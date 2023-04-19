@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -30,8 +30,6 @@
 #else
 #define UNROLL_S  8 /// Optimal unroll
 #endif
-#define LIMIT_VARIABLE(_var, _left_limit, _right_limit) \
-  _var = _var > _right_limit ? _right_limit : _var < _left_limit ? _left_limit : _var;
 
 /**************************** Multiple of 4 ***********************************************************/
 #define SETUP_ROW_S(N) \
@@ -64,7 +62,7 @@
   accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N); \
   accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift); \
   temp8_ ##N = AE_MOVINT8X8_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(accu1_ ##N),24),-24));\
-  p_out[(row+N)*out_offset] = AE_MOVAD8(temp8_ ##N,0);
+  p_out[(row+N)*out_offset] = (WORD8)AE_MOVAD8(temp8_ ##N,0);
 
 #define STORE_ROW_S(N) \
   accu1_ ##N = AE_SLAA64S(accu1_ ##N , -16); \
@@ -77,7 +75,7 @@
   accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N); \
   accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift); \
   temp8_ ##N = AE_MOVINT8X8_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(accu1_ ##N),24),-24));\
-  p_out[(row+N)*out_offset] = AE_MOVAD8(temp8_ ##N,0);
+  p_out[(row+N)*out_offset] = (WORD8)AE_MOVAD8(temp8_ ##N,0);
 
 
 /**************************** Multiple of 4 ***********************************************************/

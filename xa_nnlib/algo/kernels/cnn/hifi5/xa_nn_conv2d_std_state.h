@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -78,15 +78,6 @@ VOID xa_nn_conv2d_std_init_state(
     WORD32 y_stride,
     WORD32 y_padding,
     WORD32 out_height,
-    WORD32 input_precision);
-
-VOID xa_nn_trans_conv2d_std_init_state(
-    VOID *p_scratch,
-    VOID *p_kernel,
-    WORD32 input_height,
-    WORD32 input_channels,
-    WORD32 kernel_height,
-    WORD32 kernel_width,
     WORD32 input_precision);
 
 VOID xa_nn_dilated_conv2d_std_init_circ_buf(

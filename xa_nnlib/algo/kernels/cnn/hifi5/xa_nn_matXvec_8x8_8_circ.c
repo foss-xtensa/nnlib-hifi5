@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -29,35 +29,8 @@
 #else
 #define UNROLL_D  4 /// Optimal unroll
 #endif
-#define LIMIT_VARIABLE(_var, _left_limit, _right_limit) \
-  _var = _var > _right_limit ? _right_limit : _var < _left_limit ? _left_limit : _var;
 
-#define SETUP_ROW_D(N) \
-  ae_int64 accu1_ ##N, accu2_ ##N;\
-  WORD8 *p_mat1_ ##N = p_mat; \
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1_ ##N, (row+N) * row_offset * sizeof(WORD8)); \
-  accu1_ ##N = ZERO64; \
-  accu2_ ##N = ZERO64;
 
-#define KERNEL_ROW_D(N) \
-{\
-  ae_int16x4 temp_in1; \
-  temp_in1 = AE_L8X4F_I(p_mat1_ ##N, 0); \
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1_ ##N, 4 * sizeof(WORD8)); \
-  AE_MULAAAAQ16(accu1_ ##N, temp_src1, temp_in1);\
-  AE_MULAAAAQ16(accu2_ ##N, temp_src2, temp_in1); \
-}
-
-#define KERNEL_ROW_D_I(N) \
-{\
-  ae_int16x4 temp_in1; \
-  temp_in1 = AE_L8X4F_I(p_mat1_ ##N, 0); \
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1_ ##N, 4 * sizeof(WORD8)); \
-  AE_L8X4F_IP(temp_src1, p_src1, 4); \
-  AE_L8X4F_IP(temp_src2, p_src2, 4); \
-  AE_MULAAAAQ16(accu1_ ##N, temp_src1, temp_in1);\
-  AE_MULAAAAQ16(accu2_ ##N, temp_src2, temp_in1); \
-}
 #define STORE_ROW_D_WITHOUT_SHIFT(N) \
   ae_int64 temp1_ ##N, temp2_ ##N; \
   ae_int8x8 temp8_ ##N;\
@@ -75,32 +48,10 @@
   accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift); \
   accu2_ ##N = AE_SLAA64S(accu2_ ##N , acc_shift); \
   temp8_ ##N = AE_MOVINT8X8_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_ ##N),24),24));\
-  p_dst1[(row+N) * out_row_offset] = AE_MOVAD8(temp8_ ##N,0);\
+  p_dst1[(row+N) * out_row_offset] = (WORD8)AE_MOVAD8(temp8_ ##N,0);\
   temp81_ ##N = AE_MOVINT8X8_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_ ##N),24),24));\
-  p_dst2[(row+N) * out_row_offset] = AE_MOVAD8(temp81_ ##N,0);
+  p_dst2[(row+N) * out_row_offset] = (WORD8)AE_MOVAD8(temp81_ ##N,0);
 
-#define STORE_ROW_D(N) \
-  accu1_ ##N = AE_SRAI64(accu1_ ##N , 16); \
-  accu2_ ##N = AE_SRAI64(accu2_ ##N , 16); \
-  ae_int64 temp1_ ##N, temp2_ ##N; \
-  ae_int8x8 temp8_ ##N;\
-  ae_int8x8 temp81_ ##N;\
-  temp1_ ##N = AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[vec]));            \
-  temp2_ ##N = AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[vec+1]));            \
-  temp1_ ##N = AE_SLAI64S(temp1_ ##N , 8); \
-  temp1_ ##N = AE_SRAI64(temp1_ ##N , 56); \
-  temp2_ ##N = AE_SLAI64S(temp2_ ##N , 8); \
-  temp2_ ##N = AE_SRAI64(temp2_ ##N , 56); \
-  temp1_ ##N = AE_SLAA64S(temp1_ ##N , bias_shift); \
-  temp2_ ##N = AE_SLAA64S(temp2_ ##N , bias_shift); \
-  accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N); \
-  accu2_ ##N = AE_ADD64(accu2_ ##N , temp2_ ##N); \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift); \
-  accu2_ ##N = AE_SLAA64S(accu2_ ##N , acc_shift); \
-  temp8_ ##N = AE_MOVINT8X8_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_ ##N),24),24));\
-  p_dst1[(row+N) * out_row_offset] = AE_MOVAD8(temp8_ ##N,0);\
-  temp81_ ##N = AE_MOVINT8X8_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_ ##N),24),24));\
-  p_dst2[(row+N) * out_row_offset] = AE_MOVAD8(temp81_ ##N,0);
 
 
 #if (UNROLL_D == 1)
@@ -114,9 +65,6 @@
 #define STORE_D  STORE_ROW_D(0)  STORE_ROW_D(1)
 
 #elif (UNROLL_D == 4)
-#define SETUP_D  SETUP_ROW_D(0)  SETUP_ROW_D(1)  SETUP_ROW_D(2)  SETUP_ROW_D(3)
-#define KERNEL_D KERNEL_ROW_D_I(0) KERNEL_ROW_D(1) KERNEL_ROW_D(2) KERNEL_ROW_D(3)
-#define STORE_D  STORE_ROW_D(0)  STORE_ROW_D(1)  STORE_ROW_D(2)  STORE_ROW_D(3)
 #elif (UNROLL_D == 8)
 #define SETUP_D   SETUP_ROW_D(0)  SETUP_ROW_D(1)  SETUP_ROW_D(2)  SETUP_ROW_D(3)  SETUP_ROW_D(4)  SETUP_ROW_D(5)  SETUP_ROW_D(6)  SETUP_ROW_D(7)
 #define KERNEL_D KERNEL_ROW_D_I(0) KERNEL_ROW_D(1) KERNEL_ROW_D(2) KERNEL_ROW_D(3) KERNEL_ROW_D(4) KERNEL_ROW_D(5) KERNEL_ROW_D(6) KERNEL_ROW_D(7)
@@ -130,31 +78,8 @@
 #define UNROLL_S  8 /// Optimal unroll
 #endif
 
-#define SETUP_ROW_S(N) \
-  ae_int64 accu1_ ##N;\
-  WORD8 *p_mat1_ ##N = p_mat; \
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1_ ##N, (row+N) * row_offset * sizeof(WORD8)); \
-  accu1_ ##N = ZERO64; \
 
-#define KERNEL_ROW_S(N) \
-{ \
-  ae_int8x8 temp_in8; \
-  ae_int32x2 temp_in1, temp_in2; \
-  AE_L8_XC(temp_in8, (ae_int8*)p_mat1_ ##N, 1); \
-  AE_CVTA32X4F8_L(temp_in1, temp_in2, temp_in8, 0); \
-  AE_MULA32_LL(accu1_ ##N, temp_src32_1, temp_in1);\
-}
 
-#define KERNEL_ROW_S_I(N) \
-{ \
-  ae_int8x8 temp_in8, temp_src8; \
-  ae_int32x2 temp_in1, temp_in2; \
-  AE_L8_IP(temp_src8, (ae_int8*)p_src1, 1); \
-  AE_L8_XC(temp_in8, (ae_int8*)p_mat1_ ##N, 1); \
-  AE_CVTA32X4F8_L(temp_in1, temp_in2, temp_in8, 0); \
-  AE_CVTA32X4F8_L(temp_src32_1, temp_src32_2, temp_src8, 0); \
-  AE_MULA32_LL(accu1_ ##N, temp_src32_1, temp_in1);\
-}
 #define STORE_ROW_S_WITHOUT_SHIFT(N) \
   ae_int64 temp1_ ##N; \
   ae_int8x8 temp8_ ##N;\
@@ -165,19 +90,8 @@
   accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N); \
   accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift); \
   temp8_ ##N = AE_MOVINT8X8_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_ ##N),24),24));\
-  p_dst1[(row+N) * out_row_offset] = AE_MOVAD8(temp8_ ##N,0);
+  p_dst1[(row+N) * out_row_offset] = (WORD8)AE_MOVAD8(temp8_ ##N,0);
 
-#define STORE_ROW_S(N) \
-  ae_int64 temp1_ ##N; \
-  ae_int8x8 temp8_ ##N;\
-  temp1_ ##N = AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[vec]));            \
-  temp1_ ##N = AE_SLAI64S(temp1_ ##N , 8); \
-  temp1_ ##N = AE_SRAI64(temp1_ ##N , 56); \
-  temp1_ ##N = AE_SLAA64S(temp1_ ##N , bias_shift); \
-  accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N); \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift); \
-  temp8_ ##N = AE_MOVINT8X8_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_ ##N),24),24));\
-  p_dst1[(vec+N) * out_col_offset] = AE_MOVAD8(temp8_ ##N,0);
 
 #if (UNROLL_S == 1)
 #define SETUP_S SETUP_ROW_S(0)
@@ -194,9 +108,6 @@
 #define KERNEL_S KERNEL_ROW_S_I(0) KERNEL_ROW_S(1) KERNEL_ROW_S(2) KERNEL_ROW_S(3)
 #define STORE_S  STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3)
 #elif (UNROLL_S == 8)
-#define SETUP_S   SETUP_ROW_S(0)  SETUP_ROW_S(1)  SETUP_ROW_S(2)  SETUP_ROW_S(3)  SETUP_ROW_S(4)  SETUP_ROW_S(5)  SETUP_ROW_S(6)  SETUP_ROW_S(7)
-#define KERNEL_S KERNEL_ROW_S_I(0) KERNEL_ROW_S(1) KERNEL_ROW_S(2) KERNEL_ROW_S(3) KERNEL_ROW_S(4) KERNEL_ROW_S(5) KERNEL_ROW_S(6) KERNEL_ROW_S(7)
-#define STORE_S   STORE_ROW_S(0)  STORE_ROW_S(1)  STORE_ROW_S(2)  STORE_ROW_S(3)  STORE_ROW_S(4)  STORE_ROW_S(5)  STORE_ROW_S(6)  STORE_ROW_S(7)
 
 #endif
 

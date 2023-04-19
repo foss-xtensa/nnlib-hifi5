@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -26,7 +26,6 @@
 #endif
 #define ROW_UNROLL  4
 
-#define GET_SUM_BY_MULTIPLY
 
 #include "xa_nnlib_common_macros_hifi5.h"
 
@@ -45,6 +44,38 @@ WORD32 xa_nn_matXvec_batch_asym8xasym8_asym8(
     WORD32 out_shift,
     WORD32 out_zero_bias)
 {
+  int i;
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
+  for(i = 0; i < vec_count; i++)
+  {
+    XA_NNLIB_ARG_CHK_PTR(p_out[i], -1);
+    XA_NNLIB_ARG_CHK_PTR(p_vec1[i], -1);
+  }
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(UWORD8 *), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_mat1, 4*sizeof(UWORD8), -1);/* 8x4 loads need 4 byte alignment */
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(UWORD8 *), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD32), -1);
+  for(i = 0; i < vec_count; i++)
+  {
+    XA_NNLIB_ARG_CHK_ALIGN(p_vec1[i], 4*sizeof(UWORD8), -1);/* 8x4 loads need 4 byte alignment */
+  }
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+  XA_NNLIB_ARG_CHK_COND((vec_count <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((mat1_zero_bias < -255 || mat1_zero_bias > 0), -1);
+  XA_NNLIB_ARG_CHK_COND((vec1_zero_bias < -255 || vec1_zero_bias > 0), -1);
+  XA_NNLIB_ARG_CHK_COND((out_shift < -31 || out_shift > 31), -1);
+  XA_NNLIB_ARG_CHK_COND((out_zero_bias < 0 || out_zero_bias > 255), -1);
+  /* Implementation dependent checks */
+  XA_NNLIB_ARG_CHK_COND(((cols1&3) != 0), -1);
+  XA_NNLIB_ARG_CHK_COND(((row_stride1&3) != 0), -1);
 
   /* Iterators used in for loops */
   int m_itr, c_itr, vec_itr;
@@ -98,94 +129,85 @@ WORD32 xa_nn_matXvec_batch_asym8xasym8_asym8(
   right_shift = out_shift>0?0:-out_shift;
 #endif /* #if TFLITE_SINGLE_ROUNDING */
 
-  if(p_mat1 && p_vec1)
+  for(vec_itr = 0; vec_itr < (vec_count & ~(VEC_UNROLL-1)); vec_itr+=VEC_UNROLL)
   {
+    SETUP_BIAS;
+    for(m_itr = 0; m_itr < (rows & ~(ROW_UNROLL-1)); m_itr += ROW_UNROLL)
     {
-      for(vec_itr = 0; vec_itr < (vec_count & ~(VEC_UNROLL-1)); vec_itr+=VEC_UNROLL)
+      SETUP_ACC_BATCH;
+      SETUP_VEC_BATCH;
+      SETUP_MAT1;
+
+      for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
       {
-        SETUP_BIAS;
-        for(m_itr = 0; m_itr < (rows & ~(ROW_UNROLL-1)); m_itr += ROW_UNROLL)
-        {
-          SETUP_ACC_BATCH;
-          SETUP_VEC_BATCH;
-          SETUP_MAT1;
-
-          for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
-          {
-            LOAD_VEC_BATCH;
-            LOAD_MAT1;
-            KERNEL_MAT1_VEC_BATCH;
-          }
-
-          ADD_BIAS_ACC_BATCH;
-          ADJUST_ACC_BATCH;
-          STORE_ACC_BATCH;
-        }
-
-        for(; m_itr < rows; m_itr++)
-        {
-          UNROLL_ROW_SETUP_ACC_BATCH(0);
-          SETUP_VEC_BATCH;
-          UNROLL_SETUP_MAT1(0);
-
-          for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
-          {
-              LOAD_VEC_BATCH;
-              UNROLL_LOAD_ROW_MAT1(0);
-              UNROLL_ROW_KERNEL_MAT1_VEC_BATCH(0);
-          }
-
-          UNROLL_ROW_ADD_BIAS_ACC(0);
-          UNROLL_ROW_ADJUST_ACC(0);
-          UNROLL_ROW_STORE_ACC(0);
-        }
+        LOAD_VEC_BATCH;
+        LOAD_MAT1;
+        KERNEL_MAT1_VEC_BATCH;
       }
-      /* Tail loop for vec unroll */
-      for(; vec_itr < vec_count; vec_itr++)
+
+      ADD_BIAS_ACC_BATCH;
+      ADJUST_ACC_BATCH;
+      STORE_ACC_BATCH;
+    }
+
+    for(; m_itr < rows; m_itr++)
+    {
+      UNROLL_ROW_SETUP_ACC_BATCH(0);
+      SETUP_VEC_BATCH;
+      UNROLL_SETUP_MAT1(0);
+
+      for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
       {
-        SETUP_BIAS;
-        for(m_itr = 0; m_itr < (rows & ~(ROW_UNROLL-1)); m_itr += ROW_UNROLL)
-        {
-          SETUP_ACC_BATCH_TAIL;
-          UNROLL_SETUP_VEC_BATCH(0);
-          SETUP_MAT1;
-
-          for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
-          {
-            UNROLL_LOAD_VEC_BATCH(0);
-            LOAD_MAT1;
-            KERNEL_MAT1_VEC_BATCH_TAIL;
-          }
-
-          ADD_BIAS_ACC_BATCH_TAIL;
-          ADJUST_ACC_BATCH_TAIL;
-          STORE_ACC_BATCH_TAIL;
-        }
-
-        for(; m_itr < rows; m_itr++)
-        {
-          UNROLL_SETUP_ACC_BATCH(0,0);
-          UNROLL_SETUP_VEC_BATCH(0);
-          UNROLL_SETUP_MAT1(0);
-
-          for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
-          {
-              UNROLL_LOAD_VEC_BATCH(0);
-              UNROLL_LOAD_ROW_MAT1(0);
-              UNROLL_KERNEL_MAT1_VEC_BATCH(0,0);
-          }
-
-          LOAD_BIAS;
-          UNROLL_ADD_BIAS_ACC_BATCH(0,0);
-          UNROLL_ADJUST_ACC_BATCH(0,0);
-          UNROLL_STORE_ACC_BATCH(0,0);
-        }
+          LOAD_VEC_BATCH;
+          UNROLL_LOAD_ROW_MAT1(0);
+          UNROLL_ROW_KERNEL_MAT1_VEC_BATCH(0);
       }
+
+      UNROLL_ROW_ADD_BIAS_ACC(0);
+      UNROLL_ROW_ADJUST_ACC(0);
+      UNROLL_ROW_STORE_ACC(0);
     }
   }
-  else
+  /* Tail loop for vec unroll */
+  for(; vec_itr < vec_count; vec_itr++)
   {
-    return -1;
+    SETUP_BIAS;
+    for(m_itr = 0; m_itr < (rows & ~(ROW_UNROLL-1)); m_itr += ROW_UNROLL)
+    {
+      SETUP_ACC_BATCH_TAIL;
+      UNROLL_SETUP_VEC_BATCH(0);
+      SETUP_MAT1;
+
+      for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
+      {
+        UNROLL_LOAD_VEC_BATCH(0);
+        LOAD_MAT1;
+        KERNEL_MAT1_VEC_BATCH_TAIL;
+      }
+
+      ADD_BIAS_ACC_BATCH_TAIL;
+      ADJUST_ACC_BATCH_TAIL;
+      STORE_ACC_BATCH_TAIL;
+    }
+
+    for(; m_itr < rows; m_itr++)
+    {
+      UNROLL_SETUP_ACC_BATCH(0,0);
+      UNROLL_SETUP_VEC_BATCH(0);
+      UNROLL_SETUP_MAT1(0);
+
+      for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
+      {
+          UNROLL_LOAD_VEC_BATCH(0);
+          UNROLL_LOAD_ROW_MAT1(0);
+          UNROLL_KERNEL_MAT1_VEC_BATCH(0,0);
+      }
+
+      LOAD_BIAS;
+      UNROLL_ADD_BIAS_ACC_BATCH(0,0);
+      UNROLL_ADJUST_ACC_BATCH(0,0);
+      UNROLL_STORE_ACC_BATCH(0,0);
+    }
   }
 
   /* Undefining the defined macro to make them available for reuse */

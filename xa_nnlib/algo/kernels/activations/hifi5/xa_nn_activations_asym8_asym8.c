@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -2115,6 +2115,7 @@ WORD32 xa_nn_vec_hard_swish_asym8s_asym8s( WORD8 * __restrict__ p_out,
   return 0;
 }
 
+#if !(defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2))
 //output: y1 (ae_int32x2)
 //input:  a1 (ae_int32x2)
 #define ONE_MINUS_X_OVER_ONE_PLUS_X_FOR_X_IN_0_1(y1, a1){\
@@ -2210,6 +2211,7 @@ WORD32 xa_nn_vec_hard_swish_asym8s_asym8s( WORD8 * __restrict__ p_out,
   y2 = AE_SLAI32S(x2, 2);\
 \
 }
+#endif /* #if !(defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2)) */
 
 WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
                       const WORD8 *p_vec,

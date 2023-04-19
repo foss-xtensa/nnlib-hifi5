@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -24,32 +24,6 @@
 #include "xa_nnlib_common_macros_hifi5.h"
 
 extern const long long g_sel_pattern[16];
-
-#define MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(out0, inp0, inp1, mult01, l_shift01) \
-{ \
-  ae_int32x2 d_red_mult01 = AE_SEXT32X2D16_10(AE_ROUND16X4F32SASYM(mult01, mult01)); \
-  ae_int32x2 d_red_mult01_l16 = AE_CVT32X2F16_10(AE_ROUND16X4F32SASYM(mult01, mult01)); \
-  ae_int32x2 d_inp01_h = AE_ROUND32X2F64SASYM(inp0, inp1); \
-  ae_int64 q0_l, q1_l; \
-  AE_MUL32X2S_HH_LL(q0_l, q1_l, d_red_mult01, AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(inp0), AE_MOVINT32X2_FROMINT64(inp1))); \
-  AE_MULAFP32X2S_HH_LL(q0_l, q1_l, d_red_mult01_l16, AE_SLAI32(d_inp01_h, 15)); \
-  q0_l = AE_SLAA64(q0_l, (AE_MOVAD32_H(l_shift01)+17)); \
-  q1_l = AE_SLAA64(q1_l, (AE_MOVAD32_L(l_shift01)+17)); \
-  out0 = AE_ROUND32X2F64SASYM(q0_l, q1_l); \
-}
-
-#define MPY_BY_QUANT_MULT_ACC64_X2_OUT32(out0, inp0, inp1, mult, l_shift) \
-{ \
-  ae_int32x2 d_red_mult = AE_SEXT32X2D16_10(AE_ROUND16X4F32SASYM(AE_MOVDA32(mult), AE_MOVDA32(mult))); \
-  ae_int32x2 d_red_mult_l16 = AE_CVT32X2F16_10(AE_ROUND16X4F32SASYM(AE_MOVDA32(mult), AE_MOVDA32(mult)));  \
-  ae_int32x2 d_inp01_h = AE_ROUND32X2F64SASYM(inp0, inp1); \
-  ae_int64 q0_l, q1_l; \
-  AE_MUL32X2S_HH_LL(q0_l, q1_l, d_red_mult, AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(inp0), AE_MOVINT32X2_FROMINT64(inp1))); \
-  AE_MULAFP32X2S_HH_LL(q0_l, q1_l, d_red_mult_l16, AE_SLAI32(d_inp01_h, 15)); \
-  q0_l = AE_SLAA64(q0_l, (l_shift + 17)); \
-  q1_l = AE_SLAA64(q1_l, (l_shift + 17)); \
-  out0 = AE_ROUND32X2F64SASYM(q0_l, q1_l); \
-}
 
 static inline void _xa_nn_dot_product_4_rows_4_vecs_aligned
     (ae_int64* out_0
@@ -1195,6 +1169,8 @@ WORD32 xa_nn_matXvec_sym8sxsym16s_sym16s_circ(
     WORD32 * p_out_shift,
     WORD32 out_zero_bias)
 {
+  (VOID) mat1_offset;
+  (VOID) out_zero_bias;
   /* Iterators used in for loops */
   int m_itr, vec_itr;
 
@@ -1210,7 +1186,100 @@ WORD32 xa_nn_matXvec_sym8sxsym16s_sym16s_circ(
     return -1;
   }
 
-  if(((((unsigned)p_mat1) & 15) == 0) && ((((unsigned)p_vec1) & 7) == 0) && ((((unsigned)p_bias) & 3) == 0) &&
+  /* Special conv2d case when k_h*k_w*i_c < 9, o_c is multiple of 4 and out_data_format = NHWC */
+  if(cols1 < 9 && (vec_count & 0x3) == 0 && (out_col_offset == 1))
+  {
+    int out_stride = out_row_offset*sizeof(WORD16);
+    int out_offset = out_col_offset;
+
+    WORD32 *p_out_mult = (WORD32 *)p_out_multiplier;
+    ae_valignx2 alignx2_p_mult = AE_LA128_PP((ae_int32x4 *)p_out_multiplier);
+    WORD32 *p_out_sh = (WORD32 *)p_out_shift;
+    ae_valignx2 alignx2_p_sh = AE_LA128_PP((ae_int32x4 *)p_out_shift);
+    
+    // Process loop for 4 vectors 
+    for(vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
+    {
+      ae_int64 bias_0 = p_bias[vec_itr + 0];
+      ae_int64 bias_1 = p_bias[vec_itr + 1];
+      ae_int64 bias_2 = p_bias[vec_itr + 2];
+      ae_int64 bias_3 = p_bias[vec_itr + 3];
+      
+      WORD16* p_dst_0 = (WORD16*)p_out + (vec_itr + 0) * out_offset;
+      WORD16* p_dst_1 = (WORD16*)p_out + (vec_itr + 1) * out_offset;
+      WORD16* p_dst_2 = (WORD16*)p_out + (vec_itr + 2) * out_offset;
+      WORD16* p_dst_3 = (WORD16*)p_out + (vec_itr + 3) * out_offset;
+
+      ae_int8* p_vec_0  = (ae_int8 *)(p_vec1 + vec_itr * vec_stride);
+      ae_int8* p_vec_1 = p_vec_0 + vec_stride; 
+      ae_int8* p_vec_2 = p_vec_1 + vec_stride;
+      ae_int8* p_vec_3 = p_vec_2 + vec_stride;
+
+      ae_int8x8 vec0_batch_0, vec0_batch_1 /* Dummy reg */; 
+      ae_int8x8 vec1_batch_0, vec1_batch_1 /* Dummy reg */; 
+      ae_int8x8 vec2_batch_0, vec2_batch_1 /* Dummy reg */; 
+      ae_int8x8 vec3_batch_0, vec3_batch_1 /* Dummy reg */;
+
+      ae_valignx2 align_p_vec0, align_p_vec1, align_p_vec2, align_p_vec3; 
+
+      align_p_vec0 = AE_LA128_PP(p_vec_0);
+      align_p_vec1 = AE_LA128_PP(p_vec_1);
+      align_p_vec2 = AE_LA128_PP(p_vec_2);
+      align_p_vec3 = AE_LA128_PP(p_vec_3);
+
+      AE_LAV8X8X2_XP(vec0_batch_0, vec0_batch_1, align_p_vec0, (ae_int8x16 *)p_vec_0, cols1);
+      AE_LAV8X8X2_XP(vec1_batch_0, vec1_batch_1, align_p_vec1, (ae_int8x16 *)p_vec_1, cols1);
+      AE_LAV8X8X2_XP(vec2_batch_0, vec2_batch_1, align_p_vec2, (ae_int8x16 *)p_vec_2, cols1);
+      AE_LAV8X8X2_XP(vec3_batch_0, vec3_batch_1, align_p_vec3, (ae_int8x16 *)p_vec_3, cols1);
+      
+      /* Load shifts and multiplier values */
+      ae_int32x2 out_multiplier_01, out_multiplier_23;
+      AE_LA32X2X2_IP(out_multiplier_01, out_multiplier_23, alignx2_p_mult, (ae_int32x4 *)p_out_mult);
+      ae_int32x2 shift_01, shift_23;
+      AE_LA32X2X2_IP(shift_01, shift_23, alignx2_p_sh, (ae_int32x4 *)p_out_sh);
+#ifdef AE_TRUNCAV32X2F64S
+      ae_int16x4 sh_0123 = AE_ADD16(AE_SAT16X4(shift_01, shift_23), AE_MOVDA16(33));
+      shift_01 = AE_MOVINT32X2_FROMINT16X4(sh_0123);
+      shift_23 = AE_SEL32_LL(shift_01, shift_01);
+#endif
+      
+      for (m_itr = 0; m_itr < rows; m_itr++)
+      {
+        ae_int64 acc_0 = bias_0;
+        ae_int64 acc_1 = bias_1;
+        ae_int64 acc_2 = bias_2;
+        ae_int64 acc_3 = bias_3;
+        
+        WORD16 *p_mat1_0 = (WORD16 *)p_mat1;
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_mat1_0, m_itr * row_stride1 * sizeof(WORD16));
+
+        ae_int16x4 mat1_row0_0, mat1_row0_1;
+        ae_valignx2 align_p_mat1_0;
+
+        AE_LA16X4X2POS_PC(align_p_mat1_0, (ae_int16x8 *)p_mat1_0);
+        AE_LA16X4X2_IC(mat1_row0_0, mat1_row0_1, align_p_mat1_0, (ae_int16x8 *)p_mat1_0);
+
+        AE_MULA8QW8X16(acc_0, acc_1, acc_2, acc_3, vec0_batch_0, vec1_batch_0, vec2_batch_0, vec3_batch_0, mat1_row0_0, mat1_row0_1);
+
+        /* Apply quantization */
+#ifdef AE_TRUNCAV32X2F64S
+        ae_int16x4 d0;
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2X2_OUT16(d0, acc_0, acc_1, acc_2, acc_3, out_multiplier_01, out_multiplier_23, shift_01, shift_23);
+#else  /* AE_TRUNCAV32X2F64S */
+        ae_int32x2 out_0, out_1;
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(out_0, acc_0, acc_1, out_multiplier_01, shift_01);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(out_1, acc_2, acc_3, out_multiplier_23, shift_23);
+        ae_int16x4 d0;
+        d0 = AE_SAT16X4(out_0, out_1);
+#endif
+        AE_S16_0_XP(AE_SEL16_6543(d0, d0), (ae_int16*)p_dst_0, out_stride);
+        AE_S16_0_XP(AE_SEL16_5432(d0, d0), (ae_int16*)p_dst_1, out_stride);
+        AE_S16_0_XP(AE_SEL16_4321(d0, d0), (ae_int16*)p_dst_2, out_stride);
+        AE_S16_0_XP(                   d0, (ae_int16*)p_dst_3, out_stride);
+      }
+    }
+  }
+  else if(((((unsigned)p_mat1) & 15) == 0) && ((((unsigned)p_vec1) & 7) == 0) && ((((unsigned)p_bias) & 3) == 0) &&
      ((row_stride1 & 7) == 0) && (vec_stride & 7) == 0)
   {
     m_itr = 0, vec_itr = 0;

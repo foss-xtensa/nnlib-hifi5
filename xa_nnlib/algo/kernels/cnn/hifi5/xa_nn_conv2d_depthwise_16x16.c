@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -501,8 +501,9 @@ WORD32 xa_nn_conv2d_depthwise_nchw_16x16
  ,pVOID p_scratch
  )
 {
+  (VOID) out_data_format;
   WORD16 pad_val = 0;
-  xa_nn_conv2d_depthwise_init
+  xa_nn_dilated_conv2d_depthwise_init
     (p_scratch
      ,input_height
      ,input_width
@@ -510,6 +511,8 @@ WORD32 xa_nn_conv2d_depthwise_nchw_16x16
      ,kernel_height
      ,kernel_width
      ,channels_multiplier
+     ,1
+     ,1
      ,x_stride
      ,y_stride
      ,x_padding
@@ -676,6 +679,8 @@ static inline void conv2d_nhwc_16x16
  ,pWORD32 __restrict__ p_scratch
  )
 {
+    (VOID) x_stride;
+    (VOID) p_scratch;
     WORD32 ker_channels_pad, inp_channels_pad;
     WORD32 i, itr_oh, itr_ch, itr_kh, itr_kw;
     ae_int16x4 *pt_inp0, *pt_inp1, *pt_ker;
@@ -890,8 +895,9 @@ static void xa_nn_conv2d_depthwise_nhwc_16x16
  ,pVOID p_scratch
 )
 {
+    (VOID) out_data_format;
     WORD16 pad_val = 0;
-    xa_nn_conv2d_depthwise_init
+    xa_nn_dilated_conv2d_depthwise_init
         (p_scratch
          ,input_height
          ,input_width
@@ -899,6 +905,8 @@ static void xa_nn_conv2d_depthwise_nhwc_16x16
          ,kernel_height
          ,kernel_width
          ,channels_multiplier
+         ,1
+         ,1
          ,x_stride
          ,y_stride
          ,x_padding
@@ -931,6 +939,7 @@ static void xa_nn_conv2d_depthwise_nhwc_16x16
             ,input_height
             ,input_width
             ,input_channels
+            ,kernel_height
             ,kernel_width
             ,channels_multiplier
             ,x_stride
@@ -951,6 +960,7 @@ static void xa_nn_conv2d_depthwise_nhwc_16x16
                 ,input_height
                 ,input_width
                 ,input_channels
+                ,kernel_height
                 ,kernel_width
                 ,channels_multiplier
                 ,x_stride

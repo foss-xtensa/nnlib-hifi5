@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -60,7 +60,7 @@ typedef struct _xa_nn_conv2d_dw_k3x3_state_t
 } xa_nn_conv2d_dw_k3x3_state_t;
 #endif
 
-VOID xa_nn_conv2d_depthwise_init
+VOID xa_nn_dilated_conv2d_depthwise_init
 (pVOID p_scratch
  ,WORD32 input_height
  ,WORD32 input_width
@@ -68,6 +68,8 @@ VOID xa_nn_conv2d_depthwise_init
  ,WORD32 kernel_height
  ,WORD32 kernel_width
  ,WORD32 channels_multiplier
+ ,WORD32 dilation_height
+ ,WORD32 dilation_width
  ,WORD32 x_stride
  ,WORD32 y_stride
  ,WORD32 x_padding

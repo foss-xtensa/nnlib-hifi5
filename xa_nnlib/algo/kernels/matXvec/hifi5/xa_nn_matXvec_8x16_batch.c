@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -52,41 +52,46 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
          WORD32 bias_shift,                       /* bias shift amount */
          WORD32 vec_count)                      /* number of vectors: 2, 4, 2n */
 {
+    int i;
+    /* NULL pointer checks */
+    XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
+    for(i = 0; i < vec_count; i++)
+    {
+      XA_NNLIB_ARG_CHK_PTR(p_out[i], -1);
+      XA_NNLIB_ARG_CHK_PTR(p_vec1[i], -1);
+    }
+    /* Pointer alignment checks */
+    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD64 *), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(WORD8), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(WORD16 *), -1);
+    int isAlignedvec = 1;
+    for(i = 0; i < vec_count; i++)
+    {
+      XA_NNLIB_ARG_CHK_ALIGN(p_out[i], sizeof(WORD64), -1);
+      XA_NNLIB_ARG_CHK_ALIGN(p_vec1[i],sizeof(WORD16), -1);
+      isAlignedvec &= (((unsigned int)p_vec1[i] & 15) == 0);
+    }
+    /* Basic Parameter checks */
+    XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+    XA_NNLIB_ARG_CHK_COND((vec_count <= 0), -1);
+    
     /* Iterators used in for loops */
     int m_itr, c_itr, vec_itr;
     /* Assign initial value so this value will be used in trailing loop */
     m_itr = 0;
     vec_itr = 0;
-#if 0
-    for(vec_itr=0;vec_itr<vec_count;vec_itr++)
-    {
-        xa_nn_matXvec_8x16_64(p_out[vec_itr],p_mat1,NULL,p_vec1[vec_itr],NULL,p_bias,rows,cols1,0,row_stride1,0,acc_shift,bias_shift);
-    }
-#endif
-    if (!p_bias)
-    {
-      return -1;
-    }
-#if 1
+
     #define VEC_UNROLL 2
-    #define UNROLL_ROW_SETUP_ACC_BATCH          SETUP_ACC_BATCH_ROW_FOR_8bx16b
-    #define UNROLL_SETUP_ACC_BATCH              SETUP_ACC_BATCH_FOR_8bx16b
-    #define UNROLL_SETUP_MAT1                   SETUP_MAT1_8b
-    #define UNROLL_SETUP_VEC_BATCH              SETUP_VEC_BATCH_16b
     #define SETUP_BIAS                          SETUP_BIAS_16b
-    #define UNROLL_LOAD_VEC_BATCH               LOAD_VEC_BATCH_16b
-    #define UNROLL_LOAD_ROW_MAT1                LOAD_ROW_MAT1_8b
-    #define LOAD_BIAS                           LOAD_BIAS_16b_FOR_8bx16b
-    #define UNROLL_ROW_KERNEL_MAT1_VEC_BATCH    KERNEL_MAT1_VEC_BATCH_ROW_8b_16b
-    #define UNROLL_KERNEL_MAT1_VEC_BATCH        KERNEL_MAT1_VEC_BATCH_8b_16b
-    #define UNROLL_ROW_ADD_BIAS_ACC             ADD_BIAS_BATCH_ROW_16b_ACC_FOR_8bx16b
-    #define UNROLL_ADD_BIAS_ACC_BATCH           ADD_BIAS_BATCH_16b_ACC_FOR_8bx16b
-    #define UNROLL_ROW_STORE_ACC                STORE_ACC_BATCH_ROW_8bx16b_AT_OUT_64b
-    #define UNROLL_STORE_ACC_BATCH              STORE_ACC_BATCH_8bx16b_AT_OUT_64b
 
     LIMIT_ACC_LSH
 
-    if (p_mat1 && p_vec1 && cols1%16==0 && row_stride1%16==0)
+    if (((unsigned int)p_mat1 & 15) == 0 && isAlignedvec && ((cols1&15) == 0) && ((row_stride1&15) == 0))
     {
         if(rows > ROW_UNROLL)
         {
@@ -322,8 +327,8 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
             }
         }
     }
-  else if (p_mat1 && p_vec1)
-  {
+    else if (p_mat1 && p_vec1)
+    {
         ZER0_8x8_Temp_Variable;
         if(rows > 2 && vec_count > VEC_UNROLL)
         {
@@ -531,13 +536,11 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
 
             }
         }
-
-  }
-  else
-  {
-    return -1;
-  }
-
+    }
+    else
+    {
+      return -1;
+    }
 
     #undef UNROLL_ROW_SETUP_ACC_BATCH
     #undef UNROLL_SETUP_ACC_BATCH
@@ -554,7 +557,6 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
     #undef UNROLL_ROW_STORE_ACC
     #undef UNROLL_STORE_ACC_BATCH
     #undef VEC_UNROLL
-#endif
     return 0;
 }
 

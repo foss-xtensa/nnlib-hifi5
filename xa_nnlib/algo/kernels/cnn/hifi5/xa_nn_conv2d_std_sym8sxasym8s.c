@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -702,16 +702,46 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
   for(itr=0;itr<out_channels;itr++){
     XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 31), -1);
   }
+  
+  /* Interchange height and width dimensions when i_h = k_h = o_h = 1 for better throughput */
+  WORD32 inp_h, inp_w, ker_h, ker_w, x_str, y_str, x_pad, y_pad, out_h, out_w;
+  if (input_height == 1 && kernel_height == 1 && out_height == 1)
+  {
+    inp_h = input_width;
+    inp_w = input_height;
+    ker_h = kernel_width;
+    ker_w = kernel_height;
+    x_str = y_stride;
+    y_str = x_stride;
+    x_pad = y_padding;
+    y_pad = x_padding;
+    out_h = out_width;
+    out_w = out_height;
+  }
+  else
+  {
+    inp_h = input_height;
+    inp_w = input_width;
+    ker_h = kernel_height;
+    ker_w = kernel_width;
+    x_str = x_stride;
+    y_str = y_stride;
+    x_pad = x_padding;
+    y_pad = y_padding;
+    out_h = out_height;
+    out_w = out_width;
+  }
+
   int ret = 0;
-  int tile_height = out_height;
+  int tile_height = out_h;
   int mem_req = 0;
 
   do
   {
-    mem_req = tile_height * out_width * out_channels + kernel_height * kernel_width * input_channels;
-    mem_req += ((tile_height - 1)*y_stride + kernel_height) * input_width * input_channels;
-    mem_req += xa_nn_conv2d_std_getsize(((tile_height - 1)*y_stride + kernel_height), input_channels,
-                    kernel_height, kernel_width, y_stride, y_padding, tile_height, out_channels, -4);
+    mem_req = tile_height * out_w * out_channels + ker_h * ker_w * input_channels;
+    mem_req += ((tile_height - 1)*y_str + ker_h) * inp_w * input_channels;
+    mem_req += xa_nn_conv2d_std_getsize(((tile_height - 1)*y_str + ker_h), input_channels,
+                    ker_h, ker_w, y_str, y_pad, tile_height, out_channels, -4);
     mem_req += tile_height * 3 * sizeof(WORD32);
     if(mem_req < XCHAL_DCACHE_SIZE || tile_height <= 0)
       break;
@@ -719,27 +749,27 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
   } while(1);
 
   if(tile_height <= 0)
-    tile_height = out_height;
+    tile_height = out_h;
 
-  if(tile_height == out_height || out_data_format == 1)
+  if(tile_height == out_h || out_data_format == 1)
   {
     ret |= internal_xa_nn_conv2d_std_per_chan_sym8sxasym8s(
         p_out,
         p_inp,
         p_kernel,
         p_bias,
-        input_height,
-        input_width,
+        inp_h,
+        inp_w,
         input_channels,
-        kernel_height,
-        kernel_width,
+        ker_h,
+        ker_w,
         out_channels,
-        x_stride,
-        y_stride,
-        x_padding,
-        y_padding,
-        out_height,
-        out_width,
+        x_str,
+        y_str,
+        x_pad,
+        y_pad,
+        out_h,
+        out_w,
         input_zero_bias,
         p_out_multiplier,
         p_out_shift,
@@ -751,21 +781,21 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
   {
     int itr_oh, itr_ih;
     itr_oh = 0;
-    itr_ih = -y_padding;
+    itr_ih = -y_pad;
     do
     {
-      int inp_h_idx = itr_ih < 0 ? 0 : (itr_ih >= input_height ? input_height - 1 : itr_ih);
+      int inp_h_idx = itr_ih < 0 ? 0 : (itr_ih >= inp_h ? inp_h - 1 : itr_ih);
       int y_padding_cur = itr_ih < 0 ? -itr_ih : 0;
-      int inp_height_cur = (tile_height - 1)*y_stride + kernel_height - y_padding_cur;
-      inp_height_cur = inp_height_cur > input_height - inp_h_idx ? input_height - inp_h_idx : inp_height_cur;
-      inp_height_cur = itr_ih >= input_height ? 0 : inp_height_cur;
+      int inp_height_cur = (tile_height - 1)*y_str + ker_h - y_padding_cur;
+      inp_height_cur = inp_height_cur > inp_h - inp_h_idx ? inp_h - inp_h_idx : inp_height_cur;
+      inp_height_cur = itr_ih >= inp_h ? 0 : inp_height_cur;
 
       if(inp_height_cur == 0)
       {
         conv_y_pad_nhwc_out(
-            &p_out[itr_oh * out_width * out_channels],
+            &p_out[itr_oh * out_w * out_channels],
             tile_height,
-            out_width,
+            out_w,
             out_channels,
             p_bias,
             p_out_multiplier,
@@ -775,22 +805,22 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
       else
       {
         ret |= internal_xa_nn_conv2d_std_per_chan_sym8sxasym8s(
-            &p_out[itr_oh * out_width * out_channels],
-            &p_inp[inp_h_idx * input_width * input_channels],
+            &p_out[itr_oh * out_w * out_channels],
+            &p_inp[inp_h_idx * inp_w * input_channels],
             p_kernel,
             p_bias,
             inp_height_cur,
-            input_width,
+            inp_w,
             input_channels,
-            kernel_height,
-            kernel_width,
+            ker_h,
+            ker_w,
             out_channels,
-            x_stride,
-            y_stride,
-            x_padding,
+            x_str,
+            y_str,
+            x_pad,
             y_padding_cur,
             tile_height,
-            out_width,
+            out_w,
             input_zero_bias,
             p_out_multiplier,
             p_out_shift,
@@ -799,9 +829,9 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
             p_scratch);
       }
       itr_oh += tile_height;
-      itr_ih += tile_height * y_stride;
-      tile_height = tile_height > out_height - itr_oh ? out_height - itr_oh : tile_height;
-    } while(itr_oh < out_height);
+      itr_ih += tile_height * y_str;
+      tile_height = tile_height > out_h - itr_oh ? out_h - itr_oh : tile_height;
+    } while(itr_oh < out_h);
   }
 
   return ret;

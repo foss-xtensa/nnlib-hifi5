@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -214,6 +214,13 @@ WORD32 xa_nn_maxpool_init(
     WORD32 x_padding,
     WORD32 out_width)
 {
+    (VOID) input_width;
+    (VOID) kernel_height;
+    (VOID) kernel_width;
+    (VOID) x_stride;
+    (VOID) y_stride;
+    (VOID) x_padding;
+    (VOID) out_width;
     pWORD8 p_mem = (pVOID)p_scratch;
     xa_nn_maxpool_state_t *p_state = (xa_nn_maxpool_state_t *)p_mem;
     int state_size;

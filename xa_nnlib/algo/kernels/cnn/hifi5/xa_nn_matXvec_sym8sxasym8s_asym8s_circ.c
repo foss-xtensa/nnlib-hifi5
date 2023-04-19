@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -29,8 +29,6 @@
 #define MAT_VEC_MUL AE_MULAZB8Q8X8
 #endif
 
-#define PACK_32X2(dst1, src1, src2) \
-dst1 = AE_SEL8X8(AE_MOVINT8X8_FROMINT16X4(src1), AE_MOVINT8X8_FROMINT16X4(src2), AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(0x080a0c0e, 0x00020406)));
 
 extern const long long g_sel_pattern[16];
 extern const long long pre_loop_sel_pattern[16];
@@ -1157,7 +1155,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
   ae_int64 biascv1 = AE_MOVINT64_FROMINT32X2(AE_MOVDA32X2(-mat1_offset, 0));
 #endif
  
-  if(cols1 > 8 && cols1 < 16 && (vec_count & 0x3) == 0 && (out_col_offset == 1))
+  if(cols1 > 8 && cols1 < 16 && (vec_count & 0x3) == 0 && (out_col_offset == 1) && ((unsigned int)p_out & 0x3) == 0)
   {
 #ifndef AE_MULAZB8Q8X8
     ae_int32x2 bias_buffer[2];
@@ -1268,6 +1266,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
       ae_int32x2 p_out_mult01, p_out_mult23;
       AE_LA32X2X2_IP(p_out_mult01, p_out_mult23, align_p_out_mult, (ae_int32x4 *)pt_out_mult);
 
+#pragma concurrent
       for (m_itr = 0; m_itr < rows; m_itr++)
       {
         ae_int32x2 acc_row0_vec0, acc_row1_vec0;
@@ -1297,7 +1296,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
       }
     }
   }
-  else if(cols1 == 27 && (vec_count & 0x3) == 0 && (out_col_offset == 1))
+  else if(cols1 == 27 && (vec_count & 0x3) == 0 && (out_col_offset == 1) && ((unsigned int)p_out & 0x3) == 0)
   {
 #ifndef AE_MULAZB8Q8X8
     ae_int32x2 bias_buffer[2];
@@ -1417,6 +1416,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
       ae_int32x4 *pae_bias = (ae_int32x4 *)bias_buffer;
 #pragma no_unroll
 #pragma loop_count min=1
+#pragma concurrent
       for (m_itr = 0; m_itr < rows; m_itr++)
       {
         ae_int32x2 acc_row0_vec0, acc_row1_vec0;
@@ -1449,7 +1449,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
       }
     }
   }
-  else if((cols1 == 40) && (vec_count & 0x3) == 0 && (out_col_offset == 1))
+  else if((cols1 == 40) && (vec_count & 0x3) == 0 && (out_col_offset == 1) && ((unsigned int)p_out & 0x3) == 0)
   {
     ae_int32x2 bias_buffer[2];
 #ifdef AE_MULAZB8Q8X8
@@ -1564,6 +1564,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
       p_out_mult32 = AE_MOVDA32X2(p_out_multiplier[vec_itr + 3], p_out_multiplier[vec_itr + 2]);
       p_out_mult10 = AE_MOVDA32X2(p_out_multiplier[vec_itr + 1], p_out_multiplier[vec_itr + 0]);
 
+#pragma concurrent
       for (m_itr = 0; m_itr < (rows & ~(2 - 1)); m_itr += 2)
       {
         ae_int32x2 acc_row0_vec0, acc_row0_vec1;
@@ -1635,7 +1636,8 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
       }
 
       //remaining rows
-      for (; m_itr < rows; m_itr++)
+#pragma loop_count max=1
+      for (m_itr = (rows & ~(2-1)); m_itr < rows; m_itr++)
       {
         ae_int32x2 acc_row0_vec0, acc_row1_vec0;
         AE_L32X2X2_I(acc_row0_vec0, acc_row1_vec0, (ae_int32x4*)bias_buffer, 0);

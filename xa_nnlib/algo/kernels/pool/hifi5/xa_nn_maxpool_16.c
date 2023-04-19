@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -36,15 +36,7 @@
             height--; \
         }
 
-#define CIRC_INCR_N_ROW(ptr, n) \
-    AE_ADDCIRC16X4_XC((ae_int16x4 *)ptr, (n * input_width) * sizeof(WORD16));
 
-#define CIRC_INCR_ROW_IF_HEIGHT(ptr, height) \
-        if(height) \
-        { \
-            CIRC_INCR_N_ROW(ptr, 1); \
-            height--; \
-        }
 
 #define INC_1_IF_WIDTH(ptr, width) \
         if(width) \
@@ -53,9 +45,6 @@
             width--; \
         }
 
-#define MAX_16X4(id1, id0) \
-        b0 = AE_LT16(id1, id0); \
-        AE_MOVT16X4(id1, id0, b0); \
 
 /* Max pooling without using extra copy of input data
  * Works with unaligned input, output.

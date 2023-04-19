@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -42,9 +42,6 @@
             width--; \
         }
 
-#define MAX_16X4(id1, id0) \
-        b0 = AE_LT16(id1, id0); \
-        AE_MOVT16X4(id1, id0, b0); \
 
 
 /* Max pooling without using extra copy of input data

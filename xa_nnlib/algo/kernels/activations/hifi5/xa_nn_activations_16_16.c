@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -175,6 +175,7 @@ WORD32 xa_nn_vec_relu_std_16_16(
   return 0;
 }
 
+#if !((defined(AE_TANH16X4X2) || defined(AE_SIGMOID16X4X2)) && defined(USE_HIFI_ACT_TIE))
 #define ROUNDING_HALF_SUM_16X4(s0, s1, a, b){\
   AE_ADDW16(s0, s1, a, b);\
   AE_MULF2P32X4RS(s0, s1, s0, s1, AE_MOVDA32(1<<(31-1)), AE_MOVDA32(1<<(31-1)));\
@@ -215,6 +216,18 @@ WORD32 xa_nn_vec_relu_std_16_16(
   AE_MOVT16X4(out_1, out1, bit_set);\
 }
 
+#define CONSTANT_TERM             (0x70f6)
+#define CONSTANT_1_OVER_3         (0x2aab)
+#define CONSTANT_1_OVER_8         (0x1000)
+#define ONE_QUATER_Q12            (0x400) // Q3.12
+#define Q15_ONE                   (0x7fff)
+#define CONSTANT_48_OVER_17       (23130)
+#define CONSTANT_NEG_32_OVER_17   (-15420)
+#define F2_ONE                    (0x2000)
+
+#endif /* #if !((defined(AE_TANH16X4X2) || defined(AE_SIGMOID16X4X2)) && defined(USE_HIFI_ACT_TIE)) */
+
+#if !(defined(AE_SIGMOID16X4X2) && defined(USE_HIFI_ACT_TIE))
 #define EXP_INP16_Q12_X4(y1, inp1)\
 {\
   /*xtbool4 b; */\
@@ -275,16 +288,7 @@ WORD32 xa_nn_vec_relu_std_16_16(
   y1 = AE_SLAI16S(x1, 1);\
 \
 }
-
-
-#define CONSTANT_TERM             (0x70f6)
-#define CONSTANT_1_OVER_3         (0x2aab)
-#define CONSTANT_1_OVER_8         (0x1000)
-#define ONE_QUATER_Q12            (0x400) // Q3.12
-#define Q15_ONE                   (0x7fff)
-#define CONSTANT_48_OVER_17       (23130)
-#define CONSTANT_NEG_32_OVER_17   (-15420)
-#define F2_ONE                    (0x2000)
+#endif /* #if !(defined(AE_SIGMOID16X4X2) && defined(USE_HIFI_ACT_TIE)) */
 
 WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
                                const WORD16 *p_vec,   /* input data, Q3.12 */
@@ -446,6 +450,7 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
   return 0;
 }
 
+#if !(defined(AE_TANH16X4X2) && defined(USE_HIFI_ACT_TIE))
 #define EXP_2X_INP16X4(y1, fract_bits, inp1)\
 {\
   /* exp(2x) so calculation happens in Q(fract_bits-1) format */ \
@@ -517,6 +522,7 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
   y1 = AE_SLAI16S(x1, 2);\
 \
 }
+#endif /* #if !(defined(AE_TANH16X4X2) && defined(USE_HIFI_ACT_TIE)) */
 
 WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
                             const WORD16 *p_vec,

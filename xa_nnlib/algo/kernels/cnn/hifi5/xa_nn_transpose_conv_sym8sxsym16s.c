@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2022 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -22,124 +22,8 @@
 #include "common_fpu.h"
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
-#include "xa_nn_conv2d_std_state.h"
+#include "xa_nn_transpose_conv_state.h"
 #include <string.h>
-
-WORD32 xa_nn_transpose_conv_getsize
-(
-  WORD32 input_height 
- ,WORD32 input_width 
- ,WORD32 input_channels
- ,WORD32 kernel_height 
- ,WORD32 kernel_width 
- ,WORD32 x_stride
- ,WORD32 y_stride
- ,WORD32 output_height
- ,WORD32 output_width
- ,WORD32 output_channels
- ,WORD32 kernel_precision
- ,WORD32 output_precision
- )
-{
-    XA_NNLIB_CHK_COND((input_height <= 0), -1);
-    XA_NNLIB_CHK_COND((input_width <= 0), -1);
-    XA_NNLIB_CHK_COND((input_channels <= 0), -1);
-    XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
-    XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
-    XA_NNLIB_CHK_COND((x_stride <= 0), -1);
-    XA_NNLIB_CHK_COND((y_stride <= 0), -1);
-    XA_NNLIB_CHK_COND((output_height <= 0), -1);
-    XA_NNLIB_CHK_COND((output_width <= 0), -1);
-    XA_NNLIB_CHK_COND((output_channels <= 0), -1);
-
-    WORD32 scratch_bytewidth = 0;
-    WORD32 input_size;
-    WORD32 kernel_size;
-    WORD32 total_size = 0;
-
-    switch (output_precision)
-    {
-        case -8: /* For sym16s */
-            input_size = sizeof(WORD16);
-            scratch_bytewidth = 8; /* 64b scratch */
-            break;
-        default:
-            return -1; /* Returning due to invalid input */
-            break;
-    }
-
-    switch (kernel_precision)
-    {
-        case -5: /* For sym8s */
-            kernel_size = sizeof(WORD8);
-            break;
-        default:
-            return -1; /* Returning due to invalid prec */
-            break;
-    }
-
-    int ker_grt_inp = (kernel_width > input_width || kernel_height > input_height);
-    int str_leq_ker = (x_stride <= kernel_width && y_stride <= kernel_height);
-    if(!ker_grt_inp && str_leq_ker)
-    {
-      total_size += ALIGNED_SIZE(sizeof(xa_nn_conv_state_t), ALIGNMENT_16);
-      int subkerX_max = (kernel_width + x_stride - 1) / x_stride;
-      int subkerY_max = (kernel_height + y_stride - 1) / y_stride;
-      int n_subker = x_stride * y_stride;
-      WORD32 kernel_bytes = PADDED_SIZE(subkerX_max * subkerY_max * input_channels * output_channels * n_subker * kernel_size, ALIGNMENT_16);
-      WORD32 cir_buf_size_bytes = (2*(subkerY_max-1) + input_height) * subkerX_max * input_channels * input_size;
-      while(cir_buf_size_bytes%16 !=0)
-      {
-          cir_buf_size_bytes+= subkerX_max*input_channels*input_size;
-      }
-      total_size += kernel_bytes + cir_buf_size_bytes; 
-      total_size += BUS_WIDTH;
-      total_size = PADDED_SIZE(total_size, ALIGNMENT_16);
-    }
-    else
-    {
-      total_size = (output_height) * (output_width) * (output_channels) * (scratch_bytewidth);
-    }
-    return total_size;
-}
-
-#define MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(out0, inp0, inp1, mult01, l_shift01) \
-{ \
-  ae_int32x2 d_red_mult01 = AE_SEXT32X2D16_10(AE_ROUND16X4F32SASYM(mult01, mult01)); \
-  ae_int32x2 d_red_mult01_l16 = AE_CVT32X2F16_10(AE_ROUND16X4F32SASYM(mult01, mult01)); \
-  ae_int32x2 d_inp01_h = AE_ROUND32X2F64SASYM(inp0, inp1); \
-  ae_int64 q0_l, q1_l; \
-  AE_MUL32X2S_HH_LL(q0_l, q1_l, d_red_mult01, AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(inp0), AE_MOVINT32X2_FROMINT64(inp1))); \
-  AE_MULAFP32X2S_HH_LL(q0_l, q1_l, d_red_mult01_l16, AE_SLAI32(d_inp01_h, 15)); \
-  q0_l = AE_SLAA64(q0_l, (AE_MOVAD32_H(l_shift01)+17)); \
-  q1_l = AE_SLAA64(q1_l, (AE_MOVAD32_L(l_shift01)+17)); \
-  out0 = AE_ROUND32X2F64SASYM(q0_l, q1_l); \
-}
-
-#define MPY_BY_QUANT_MULT_ACC64_X2_OUT32(out0, inp0, inp1, mult, l_shift) \
-{ \
-  ae_int32x2 d_red_mult = AE_SEXT32X2D16_10(AE_ROUND16X4F32SASYM(AE_MOVDA32(mult), AE_MOVDA32(mult))); \
-  ae_int32x2 d_red_mult_l16 = AE_CVT32X2F16_10(AE_ROUND16X4F32SASYM(AE_MOVDA32(mult), AE_MOVDA32(mult)));  \
-  ae_int32x2 d_inp01_h = AE_ROUND32X2F64SASYM(inp0, inp1); \
-  ae_int64 q0_l, q1_l; \
-  AE_MUL32X2S_HH_LL(q0_l, q1_l, d_red_mult, AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(inp0), AE_MOVINT32X2_FROMINT64(inp1))); \
-  AE_MULAFP32X2S_HH_LL(q0_l, q1_l, d_red_mult_l16, AE_SLAI32(d_inp01_h, 15)); \
-  q0_l = AE_SLAA64(q0_l, (l_shift + 17)); \
-  q1_l = AE_SLAA64(q1_l, (l_shift + 17)); \
-  out0 = AE_ROUND32X2F64SASYM(q0_l, q1_l); \
-}
-
-#define MPY_BY_QUANT_MULT_ACC64_OUT32(out0, inp0, mult, l_shift) \
-{ \
-  ae_int32x2 d_red_mult = AE_SEXT32X2D16_10(AE_ROUND16X4F32SASYM(AE_MOVDA32(mult), AE_MOVDA32(mult))); \
-  ae_int32x2 d_red_mult_l16 = AE_CVT32X2F16_10(AE_ROUND16X4F32SASYM(AE_MOVDA32(mult), AE_MOVDA32(mult)));  \
-  ae_int32x2 d_inp0_h = AE_ROUND32F64SASYM(inp0); \
-  ae_int64 q0_l; \
-  q0_l = AE_MUL32S_HH(d_red_mult, AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(inp0), AE_MOVINT32X2_FROMINT64(inp0))); \
-  AE_MULAF32S_HH(q0_l, d_red_mult_l16, AE_SLAI32(d_inp0_h, 15)); \
-  q0_l = AE_SLAA64(q0_l, (l_shift + 17)); \
-  out0 = AE_ROUND32F64SASYM(q0_l); \
-}
 
 static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
 		const WORD16* input_data,
@@ -392,7 +276,7 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
 
   int out_channel = 0;
 
-  int loop_cnt = (output_depth & 1) ? 0 : output_depth;
+  int loop_cnt = ((output_depth & 1) || ((unsigned int)output_data & 3)) ? 0 : output_depth;
   for (out_channel = 0; out_channel < loop_cnt; out_channel+=2)
   {
     int shift0 = output_shift[out_channel];
@@ -481,6 +365,7 @@ static inline void tconv2d_std_reorder_kernel_sym8s
      ,WORD32 n_subker
     )
 {
+  (VOID) n_subker;
   WORD32 kIdx, kIdy;
   WORD32 kernelIdx;
 
@@ -588,6 +473,7 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
 		int *output_shift, int *output_multiplier,
 		pVOID scratch_buffer)
 {
+ (VOID) num_elements;
   /* Transpose and Reorder the kernel into sub-kernels */
   WORD32 subkerX_max = (filter_width + stride_width - 1) / stride_width;
   WORD32 subkerY_max = (filter_height + stride_height - 1) / stride_height;
@@ -634,6 +520,12 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
     tconv_pad(output_width, output_height, output_depth, final_out_channels_offset, final_out_width_offset, final_out_height_offset, bias_data, output_data, output_multiplier, output_shift, XT_MAX(0,orig_valid_out_w), 0);
   }
 
+  if((out_h_per_subker < 0))
+  {
+    tconv_pad(output_width, output_height, output_depth, final_out_channels_offset, final_out_width_offset, final_out_height_offset, bias_data, output_data, output_multiplier, output_shift, 0, 0);
+  return;
+  }
+
   WORD32 j;
   WORD32 input_bytewidth = 2;
   VOID *pp_inp = (VOID *)(input_data);
@@ -644,7 +536,7 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
    * x_pad and y_pad depend on kernel dimension and the padding.
   */
   xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_scr_cnv;
-  xa_nn_trans_conv2d_std_init_state((void*)p_state
+  xa_nn_transpose_conv_init_state((void*)p_state
       ,(void*)p_trp_ker
       ,input_height
       ,input_depth
