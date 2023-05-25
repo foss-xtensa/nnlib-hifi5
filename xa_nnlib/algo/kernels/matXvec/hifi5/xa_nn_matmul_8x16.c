@@ -77,8 +77,10 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_unaligned
     ae_valignx2 align_vec_batch_2 = AE_LA128_PP(p_vec3);  
     ae_valignx2 align_vec_batch_3 = AE_LA128_PP(p_vec4);  
 
-    ae_int8x8 mat1_0_0 = 0, mat1_0_1 = 0, mat1_1_0 = 0, mat1_1_1 = 0;
-    ae_int8x8 align_mat1_0_0 = 0, align_mat1_0_1 = 0, align_mat1_1_0 = 0, align_mat1_1_1 = 0;
+    ae_int8x8 mat1_0_0, mat1_0_1, mat1_1_0, mat1_1_1;
+    mat1_0_0 = mat1_0_1 = mat1_1_0 = mat1_1_1 = AE_MOVDA8(0);
+    ae_int8x8 align_mat1_0_0, align_mat1_0_1, align_mat1_1_0, align_mat1_1_1;
+    align_mat1_0_0 = align_mat1_0_1 = align_mat1_1_0 = align_mat1_1_1 = AE_MOVDA8(0);
 
     AE_SW_PRIME_64(p_mat1, align_mat1_0_0);
     AE_SW_PRIME_64(p_mat2, align_mat1_0_1);
@@ -224,7 +226,8 @@ static inline void _xa_nn_dot_product_4_rows_1_vec_unaligned
 
     ae_int16x4 vec_batch_0_0  = 0, vec_batch_0_1 = 0;
     ae_valignx2 align_vec0 = AE_LA128_PP(p_vec1);
-    ae_int8x8 mat0_1 = 0,  mat0_2 = 0, mat0_3 = 0,  mat0_4 = 0;
+    ae_int8x8 mat0_1, mat0_2, mat0_3, mat0_4;
+    mat0_1 = mat0_2 = mat0_3 = mat0_4 = AE_MOVDA8(0);
     ae_valign align_mat0_1 = AE_LA64_PP(p_mat1), align_mat0_2 = AE_LA64_PP(p_mat2), align_mat0_3 = AE_LA64_PP(p_mat3), align_mat0_4 = AE_LA64_PP(p_mat4);
 
     int cols1_count = cols1 - cols1%8;
@@ -330,7 +333,8 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_aligned
     ae_int16x4 vec_batch_0_0_0 = 0, vec_batch_0_0_1 = 0, vec_batch_0_1_0 = 0, vec_batch_0_1_1 = 0;
     ae_int16x4 vec_batch_1_0_0 = 0, vec_batch_1_0_1 = 0, vec_batch_1_1_0 = 0, vec_batch_1_1_1 = 0;
 
-    ae_int8x8 mat1_0_0 = 0, mat1_0_1 = 0, mat1_1_0 = 0, mat1_1_1 = 0;
+    ae_int8x8 mat1_0_0, mat1_0_1, mat1_1_0, mat1_1_1;
+    mat1_0_0 = mat1_0_1 = mat1_1_0 = mat1_1_1 = AE_MOVDA8(0);
 
     int c_itr;
     for(c_itr = 0; c_itr < (cols1 >> 3); c_itr++)
@@ -350,7 +354,8 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_aligned
         AE_MULA8QW8X16(acc_8, acc_9, acc_10, acc_11, mat1_0_0, mat1_0_1, mat1_1_0, mat1_1_1, vec_batch_1_0_0, vec_batch_1_0_1);
         AE_MULA8QW8X16(acc_12, acc_13, acc_14, acc_15, mat1_0_0, mat1_0_1, mat1_1_0, mat1_1_1, vec_batch_1_1_0, vec_batch_1_1_1);
     }
-    ae_int8x8 align_mat1_0_0 = 0, align_mat1_0_1 = 0, align_mat1_1_0 = 0, align_mat1_1_1 = 0;
+    ae_int8x8 align_mat1_0_0, align_mat1_0_1, align_mat1_1_0, align_mat1_1_1;
+    align_mat1_0_0 = align_mat1_0_1 = align_mat1_1_0 = align_mat1_1_1 = AE_MOVDA8(0);
     ae_valignx2 align_vec_batch_0 = AE_LA128_PP(p_vec1);                
     ae_valignx2 align_vec_batch_1 = AE_LA128_PP(p_vec2);  
     ae_valignx2 align_vec_batch_2 = AE_LA128_PP(p_vec3);  
@@ -481,7 +486,8 @@ static inline void _xa_nn_dot_product_4_rows_1_vec_aligned
     ae_int64 acc_3 = *out_3;
 
     ae_int16x4 vec_batch_0_0  = 0, vec_batch_0_1 = 0;
-    ae_int8x8 mat0_1 = 0,  mat0_2 = 0, mat0_3 = 0,  mat0_4 = 0;
+    ae_int8x8 mat0_1, mat0_2, mat0_3, mat0_4;
+    mat0_1 = mat0_2 = mat0_3 = mat0_4 = AE_MOVDA8(0);
 
     int cols1_count = cols1 - cols1%8;
     int c_itr;

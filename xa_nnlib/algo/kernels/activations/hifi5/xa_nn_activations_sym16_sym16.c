@@ -69,6 +69,51 @@ WORD32 xa_nn_vec_sigmoid_sym16s_sym16s(WORD16 *p_out,
   XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((input_left_shift < 0), -1);
 
+  ae_int16x8 *in_ptr_align  = (ae_int16x8 *)p_vec;
+  ae_int16x8 *out_ptr = (ae_int16x8 *)p_out;
+
+  ae_valignx2 inp_align = AE_LA128_PP(in_ptr_align);
+  ae_valignx2 out_align = AE_ZALIGN128();
+
+  ae_int16x4 inp0, inp1;
+  int i;
+
+#if (defined(USE_HIFI_ACT_TIE) && defined(AE_SIGMOID16X4X2))
+  int sar_reg_val = AE_MOVASAR();
+  int sar_reg_low_half = sar_reg_val & 0x7F;
+  sar_reg_val = sar_reg_val >> 7;
+  int sar_reg_up_half = sar_reg_val & 0x7F;
+  WUR_AE_SAR(4);
+
+  if(input_multiplier == 0 && input_left_shift == 0)
+  {
+#pragma concurrent
+    for (i = 0; i < vec_length >> 3; i++)
+    {
+      AE_LA16X4X2_IP(inp0, inp1, inp_align, in_ptr_align);
+
+      ae_int16x4 out0, out1;
+      AE_SIGMOID16X4X2(out0, out1, inp0, inp1);
+      out0 = AE_SRLI16(out0, 1);
+      out1 = AE_SRLI16(out1, 1);
+      AE_SA16X4X2_IP(out0, out1, out_align, out_ptr);
+    }
+    if(vec_length & 7)
+    {
+      AE_LAV16X4X2_XP(inp0, inp1, inp_align, in_ptr_align, (vec_length & 7) << 1);
+
+      ae_int16x4 out0, out1;
+      AE_SIGMOID16X4X2(out0, out1, inp0, inp1);
+      out0 = AE_SRLI16(out0, 1);
+      out1 = AE_SRLI16(out1, 1);
+      AE_SAV16X4X2_XP(out0, out1, out_align, out_ptr, (vec_length & 7) << 1);
+    }
+    AE_SA128POS_FP(out_align, out_ptr);
+    AE_MOVSARA7X2(sar_reg_up_half, sar_reg_low_half);
+    return 0;
+  }
+#endif // #if (defined(USE_HIFI_ACT_TIE) && defined(AE_SIGMOID16X4X2))
+
   if (input_multiplier == 0)
   {
 #if (defined(USE_HIFI_ACT_TIE) && defined(AE_SIGMOID16X4X2))    
@@ -80,13 +125,6 @@ WORD32 xa_nn_vec_sigmoid_sym16s_sym16s(WORD16 *p_out,
   }
 
   ae_int16x4 inp_mult = input_multiplier;
-  ae_int16x8 *in_ptr_align  = (ae_int16x8 *)p_vec;
-  ae_int16x8 *out_ptr = (ae_int16x8 *)p_out;
-
-  ae_valignx2 inp_align = AE_LA128_PP(in_ptr_align);
-  ae_valignx2 out_align = AE_ZALIGN128();
-
-  ae_int16x4 inp0, inp1;
   ae_int32x2 inp_x_inp_mul0, inp_x_inp_mul1;
   ae_int32x2 inp_x_inp_mul2, inp_x_inp_mul3;
 #if !(defined(USE_HIFI_ACT_TIE) && defined(AE_SIGMOID16X4X2))
@@ -105,11 +143,6 @@ WORD32 xa_nn_vec_sigmoid_sym16s_sym16s(WORD16 *p_out,
   xtbool2 x0, x1, x2, x3;
 #else
   ae_int16x4 sigmoid_in0, sigmoid_in1;
-  int sar_reg_val = AE_MOVASAR();
-  int sar_reg_low_half = sar_reg_val & 0x7F;
-  sar_reg_val = sar_reg_val >> 7;
-  int sar_reg_up_half = sar_reg_val & 0x7F;
-  WUR_AE_SAR(4);
 
   ae_int32x2 ALIGN(16) round_val[2];
   round_val[0] = AE_MOVDA32(0x40000000);
@@ -117,7 +150,6 @@ WORD32 xa_nn_vec_sigmoid_sym16s_sym16s(WORD16 *p_out,
   round_val[1] = round_val[0];
   ae_int32x4 *p_round_val = (ae_int32x4 *)round_val;
 #endif
-  int i;
 
 #pragma concurrent
   for (i = 0; i < vec_length >> 3; i++)
@@ -342,6 +374,46 @@ WORD32 xa_nn_vec_tanh_sym16s_sym16s(WORD16 *p_out,
   XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((input_left_shift < 0), -1);
 
+  ae_int16x8 *in_ptr_align  = (ae_int16x8 *)p_vec;
+  ae_int16x8 *out_ptr = (ae_int16x8 *)p_out;
+
+  ae_valignx2 inp_align = AE_LA128_PP(in_ptr_align);
+  ae_valignx2 out_align = AE_ZALIGN128();
+
+  ae_int16x4 inp0, inp1;
+  int i;
+
+#if (defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2))
+  int sar_reg_val = AE_MOVASAR();
+  int sar_reg_low_half = sar_reg_val & 0x7F;
+  sar_reg_val = sar_reg_val >> 7;
+  int sar_reg_up_half = sar_reg_val & 0x7F;
+  WUR_AE_SAR(4);
+  if(input_multiplier == 0 && input_left_shift == 0)
+  {
+#pragma concurrent
+    for (i = 0; i < vec_length >> 3; i++)
+    {
+      AE_LA16X4X2_IP(inp0, inp1, inp_align, in_ptr_align);
+
+      ae_int16x4 out0, out1;
+      AE_TANH16X4X2(out0, out1, inp0, inp1);
+      AE_SA16X4X2_IP(out0, out1, out_align, out_ptr);
+    }
+    if(vec_length & 7)
+    {
+      AE_LAV16X4X2_XP(inp0, inp1, inp_align, in_ptr_align, (vec_length & 7) << 1);
+
+      ae_int16x4 out0, out1;
+      AE_TANH16X4X2(out0, out1, inp0, inp1);
+      AE_SAV16X4X2_XP(out0, out1, out_align, out_ptr, (vec_length & 7) << 1);
+    } 
+    AE_SA128POS_FP(out_align, out_ptr);
+    AE_MOVSARA7X2(sar_reg_up_half, sar_reg_low_half);
+    return 0;
+  }
+#endif // #if (defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2))
+
   if (input_multiplier == 0)
   {
 #if (defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2))    
@@ -353,13 +425,6 @@ WORD32 xa_nn_vec_tanh_sym16s_sym16s(WORD16 *p_out,
   }
 
   ae_int16x4 inp_mult = input_multiplier;
-  ae_int16x8 *in_ptr_align  = (ae_int16x8 *)p_vec;
-  ae_int16x8 *out_ptr = (ae_int16x8 *)p_out;
-
-  ae_valignx2 inp_align = AE_LA128_PP(in_ptr_align);
-  ae_valignx2 out_align = AE_ZALIGN128();
-
-  ae_int16x4 inp0, inp1;
   ae_int32x2 inp_x_inp_mul0, inp_x_inp_mul1;
   ae_int32x2 inp_x_inp_mul2, inp_x_inp_mul3;
 #if !(defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2))
@@ -379,11 +444,6 @@ WORD32 xa_nn_vec_tanh_sym16s_sym16s(WORD16 *p_out,
   xtbool2 x0, x1, x2, x3;
 #else
   ae_int16x4 tanh_in0, tanh_in1;
-  int sar_reg_val = AE_MOVASAR();
-  int sar_reg_low_half = sar_reg_val & 0x7F;
-  sar_reg_val = sar_reg_val >> 7;
-  int sar_reg_up_half = sar_reg_val & 0x7F;
-  WUR_AE_SAR(4);
 
   ae_int32x2 ALIGN(16) round_val[2];
   round_val[0] = AE_MOVDA32(0x40000000);
@@ -391,7 +451,6 @@ WORD32 xa_nn_vec_tanh_sym16s_sym16s(WORD16 *p_out,
   round_val[1] = round_val[0];
   ae_int32x4 *p_round_val = (ae_int32x4 *)round_val;
 #endif
-  int i;
 
 #pragma concurrent
   for (i = 0; i < vec_length >> 3; i++)

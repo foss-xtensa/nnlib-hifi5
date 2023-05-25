@@ -25,6 +25,20 @@
 #include "xa_nn_transpose_conv_state.h"
 #include <string.h>
 
+#if !HAVE_VFPU
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_transpose_conv_f32, (FLOAT32* output_data,
+            const FLOAT32* input_data,
+            const FLOAT32* filter_data,
+            const FLOAT32* bias_data,
+            int stride_width, int stride_height,
+            int pad_width, int pad_height,
+            int input_depth, int output_depth,
+            int input_height, int input_width,
+            int filter_height, int filter_width,
+            int output_height, int output_width,
+            int num_elements,
+            FLOAT32* scratch_buffer))
+#else
 static inline void tconv2d_f32(FLOAT32* output_data,
     const FLOAT32* input_data,
     const FLOAT32* filter_data,
@@ -559,7 +573,7 @@ static inline void transpose_conv2d_std_f32(FLOAT32* output_data,
     idx_beg_inp_width_pad += 1;
 
     int kernelIdx;
-    for (int kIdx = 0; kIdx < rem_val_out_w; kIdx++)
+    for (int kIdx = 0; kIdx < rem_val_out_w; kIdx++, pad_w--)
     {
       WORD32 rem_val_out_h = (valid_out_h - pad_height) % stride_height;
       WORD32 is_pad_w = (pad_w > 0);
@@ -601,20 +615,6 @@ static inline void transpose_conv2d_std_f32(FLOAT32* output_data,
   }
 }
 
-#if !HAVE_VFPU
-DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_transpose_conv_f32, (FLOAT32* output_data,
-            const FLOAT32* input_data,
-            const FLOAT32* filter_data,
-            const FLOAT32* bias_data,
-            int stride_width, int stride_height,
-            int pad_width, int pad_height,
-            int input_depth, int output_depth,
-            int input_height, int input_width,
-            int filter_height, int filter_width,
-            int output_height, int output_width,
-            int num_elements,
-            FLOAT32* scratch_buffer))
-#else
 int xa_nn_transpose_conv_f32(FLOAT32* output_data,
     const FLOAT32* input_data,
     const FLOAT32* filter_data,

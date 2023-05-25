@@ -29,17 +29,17 @@
 /* Identification Strings */
 #ifdef hifi5
 #define LIBNAME "HiFi5 Neural Network Library"
-#define LIBVERSION "2.1.0"
+#define LIBVERSION "2.2.0"
 
 #define LIB_APIVERSION_MAJOR 1
-#define LIB_APIVERSION_MINOR 4
+#define LIB_APIVERSION_MINOR 5
 
 #else /* #ifdef hifi5 */
 #define LIBNAME "HiFi Neural Network Library"
-#define LIBVERSION "2.1.0"
+#define LIBVERSION "2.2.0"
 
 #define LIB_APIVERSION_MAJOR 1
-#define LIB_APIVERSION_MINOR 4
+#define LIB_APIVERSION_MINOR 5
 
 #endif /* #ifdef hifi5 */
 

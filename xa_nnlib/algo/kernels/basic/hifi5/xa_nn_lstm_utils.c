@@ -110,8 +110,8 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
   XA_NNLIB_ARG_CHK_ALIGN(p_cell_gate, sizeof(WORD16), -1);
   XA_NNLIB_ARG_CHK_ALIGN(p_input_gate, sizeof(WORD16), -1);
   /* Basic Parameter checks */
-  XA_NNLIB_ARG_CHK_COND((cell_to_forget_shift < -31 || cell_to_forget_shift > -15), -1);
-  XA_NNLIB_ARG_CHK_COND((cell_to_input_shift < -31 || cell_to_input_shift > -15), -1);
+  XA_NNLIB_ARG_CHK_COND((cell_to_forget_shift < -31 || cell_to_forget_shift > -1), -1);
+  XA_NNLIB_ARG_CHK_COND((cell_to_input_shift < -31 || cell_to_input_shift > -1), -1);
   XA_NNLIB_ARG_CHK_COND((num_elms < 0), -1);
 
   WORD32 ctof_right_shift, ctoi_right_shift;
@@ -119,9 +119,12 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
 #if TFLITE_SINGLE_ROUNDING
   ctof_right_shift = -cell_to_forget_shift;
   ctoi_right_shift = -cell_to_input_shift;
+  ae_int32x2 d_ctof_rs = AE_MOVDA32(1 << (31 - ctof_right_shift));
+  ae_int32x2 d_ctoi_rs = AE_MOVDA32(1 << (31 - ctoi_right_shift));
 #else
   ctof_right_shift = -cell_to_forget_shift - 1;
   ctoi_right_shift = -cell_to_input_shift - 1;
+  ae_int32x2 d_1_rs = AE_MOVDA32(1 << 30);
 #endif
 
   const ae_int16x8 *p16x8_cs_r, *p16x8_fg_r;
@@ -180,17 +183,13 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
     AE_MUL16X4(d_mul_2, d_mul_3, d_cs_r_1, d_fg_1);
 
 #if TFLITE_SINGLE_ROUNDING
-    d_mul_0 = AE_SRAA32RS(d_mul_0, ctof_right_shift);
-    d_mul_1 = AE_SRAA32RS(d_mul_1, ctof_right_shift);
-    d_mul_2 = AE_SRAA32RS(d_mul_2, ctof_right_shift);
-    d_mul_3 = AE_SRAA32RS(d_mul_3, ctof_right_shift);
+    AE_MULF2P32X4RAS(d_mul_0, d_mul_1, d_mul_0, d_mul_1, d_ctof_rs, d_ctof_rs);
+    AE_MULF2P32X4RAS(d_mul_2, d_mul_3, d_mul_2, d_mul_3, d_ctof_rs, d_ctof_rs);
     d_cs_w_0 = AE_SAT16X4(d_mul_0, d_mul_1);
     d_cs_w_1 = AE_SAT16X4(d_mul_2, d_mul_3);
 #else
-    d_mul_0 = AE_SRAA32RS(d_mul_0, 1);
-    d_mul_1 = AE_SRAA32RS(d_mul_1, 1);
-    d_mul_2 = AE_SRAA32RS(d_mul_2, 1);
-    d_mul_3 = AE_SRAA32RS(d_mul_3, 1);
+    AE_MULF2P32X4RAS(d_mul_0, d_mul_1, d_mul_0, d_mul_1, d_1_rs, d_1_rs);
+    AE_MULF2P32X4RAS(d_mul_2, d_mul_3, d_mul_2, d_mul_3, d_1_rs, d_1_rs);
     d_mul_0 = AE_SRAA32SYMS(d_mul_0, ctof_right_shift);
     d_mul_1 = AE_SRAA32SYMS(d_mul_1, ctof_right_shift);
     d_mul_2 = AE_SRAA32SYMS(d_mul_2, ctof_right_shift);
@@ -203,17 +202,13 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
     AE_MUL16X4(d_mul_6, d_mul_7, d_cg_1, d_ig_1);
 
 #if TFLITE_SINGLE_ROUNDING
-    d_mul_4 = AE_SRAA32RS(d_mul_4, ctoi_right_shift);
-    d_mul_5 = AE_SRAA32RS(d_mul_5, ctoi_right_shift);
-    d_mul_6 = AE_SRAA32RS(d_mul_6, ctoi_right_shift);
-    d_mul_7 = AE_SRAA32RS(d_mul_7, ctoi_right_shift);
+    AE_MULF2P32X4RAS(d_mul_4, d_mul_5, d_mul_4, d_mul_5, d_ctoi_rs, d_ctoi_rs);
+    AE_MULF2P32X4RAS(d_mul_6, d_mul_7, d_mul_6, d_mul_7, d_ctoi_rs, d_ctoi_rs);
     d_cg_0 = AE_SAT16X4(d_mul_4, d_mul_5);
     d_cg_1 = AE_SAT16X4(d_mul_6, d_mul_7);
 #else
-    d_mul_4 = AE_SRAA32RS(d_mul_4, 1);
-    d_mul_5 = AE_SRAA32RS(d_mul_5, 1);
-    d_mul_6 = AE_SRAA32RS(d_mul_6, 1);
-    d_mul_7 = AE_SRAA32RS(d_mul_7, 1);
+    AE_MULF2P32X4RAS(d_mul_4, d_mul_5, d_mul_4, d_mul_5, d_1_rs, d_1_rs);
+    AE_MULF2P32X4RAS(d_mul_6, d_mul_7, d_mul_6, d_mul_7, d_1_rs, d_1_rs);
     d_mul_4 = AE_SRAA32SYMS(d_mul_4, ctoi_right_shift);
     d_mul_5 = AE_SRAA32SYMS(d_mul_5, ctoi_right_shift);
     d_mul_6 = AE_SRAA32SYMS(d_mul_6, ctoi_right_shift);
@@ -233,6 +228,7 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
     AE_SA128POS_FP(align_cs_w, p16x8_cs_w);
   }
 
+#pragma concurrent
   for (i = 0; i < (core_loop_count >> 3); i++)
   {
     AE_L16X4X2_IP(d_cs_r_0, d_cs_r_1, p16x8_cs_r, 16);
@@ -244,17 +240,13 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
     AE_MUL16X4(d_mul_2, d_mul_3, d_cs_r_1, d_fg_1);
 
 #if TFLITE_SINGLE_ROUNDING
-    d_mul_0 = AE_SRAA32RS(d_mul_0, ctof_right_shift);
-    d_mul_1 = AE_SRAA32RS(d_mul_1, ctof_right_shift);
-    d_mul_2 = AE_SRAA32RS(d_mul_2, ctof_right_shift);
-    d_mul_3 = AE_SRAA32RS(d_mul_3, ctof_right_shift);
+    AE_MULF2P32X4RAS(d_mul_0, d_mul_1, d_mul_0, d_mul_1, d_ctof_rs, d_ctof_rs);
+    AE_MULF2P32X4RAS(d_mul_2, d_mul_3, d_mul_2, d_mul_3, d_ctof_rs, d_ctof_rs);
     d_cs_w_0 = AE_SAT16X4(d_mul_0, d_mul_1);
     d_cs_w_1 = AE_SAT16X4(d_mul_2, d_mul_3);
 #else
-    d_mul_0 = AE_SRAA32RS(d_mul_0, 1);
-    d_mul_1 = AE_SRAA32RS(d_mul_1, 1);
-    d_mul_2 = AE_SRAA32RS(d_mul_2, 1);
-    d_mul_3 = AE_SRAA32RS(d_mul_3, 1);
+    AE_MULF2P32X4RAS(d_mul_0, d_mul_1, d_mul_0, d_mul_1, d_1_rs, d_1_rs);
+    AE_MULF2P32X4RAS(d_mul_2, d_mul_3, d_mul_2, d_mul_3, d_1_rs, d_1_rs);
     d_mul_0 = AE_SRAA32SYMS(d_mul_0, ctof_right_shift);
     d_mul_1 = AE_SRAA32SYMS(d_mul_1, ctof_right_shift);
     d_mul_2 = AE_SRAA32SYMS(d_mul_2, ctof_right_shift);
@@ -267,17 +259,13 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
     AE_MUL16X4(d_mul_6, d_mul_7, d_cg_1, d_ig_1);
 
 #if TFLITE_SINGLE_ROUNDING
-    d_mul_4 = AE_SRAA32RS(d_mul_4, ctoi_right_shift);
-    d_mul_5 = AE_SRAA32RS(d_mul_5, ctoi_right_shift);
-    d_mul_6 = AE_SRAA32RS(d_mul_6, ctoi_right_shift);
-    d_mul_7 = AE_SRAA32RS(d_mul_7, ctoi_right_shift);
+    AE_MULF2P32X4RAS(d_mul_4, d_mul_5, d_mul_4, d_mul_5, d_ctoi_rs, d_ctoi_rs);
+    AE_MULF2P32X4RAS(d_mul_6, d_mul_7, d_mul_6, d_mul_7, d_ctoi_rs, d_ctoi_rs);
     d_cg_0 = AE_SAT16X4(d_mul_4, d_mul_5);
     d_cg_1 = AE_SAT16X4(d_mul_6, d_mul_7);
 #else
-    d_mul_4 = AE_SRAA32RS(d_mul_4, 1);
-    d_mul_5 = AE_SRAA32RS(d_mul_5, 1);
-    d_mul_6 = AE_SRAA32RS(d_mul_6, 1);
-    d_mul_7 = AE_SRAA32RS(d_mul_7, 1);
+    AE_MULF2P32X4RAS(d_mul_4, d_mul_5, d_mul_4, d_mul_5, d_1_rs, d_1_rs);
+    AE_MULF2P32X4RAS(d_mul_6, d_mul_7, d_mul_6, d_mul_7, d_1_rs, d_1_rs);
     d_mul_4 = AE_SRAA32SYMS(d_mul_4, ctoi_right_shift);
     d_mul_5 = AE_SRAA32SYMS(d_mul_5, ctoi_right_shift);
     d_mul_6 = AE_SRAA32SYMS(d_mul_6, ctoi_right_shift);
@@ -308,17 +296,13 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
     AE_MUL16X4(d_mul_2, d_mul_3, d_cs_r_1, d_fg_1);
 
 #if TFLITE_SINGLE_ROUNDING
-    d_mul_0 = AE_SRAA32RS(d_mul_0, ctof_right_shift);
-    d_mul_1 = AE_SRAA32RS(d_mul_1, ctof_right_shift);
-    d_mul_2 = AE_SRAA32RS(d_mul_2, ctof_right_shift);
-    d_mul_3 = AE_SRAA32RS(d_mul_3, ctof_right_shift);
+    AE_MULF2P32X4RAS(d_mul_0, d_mul_1, d_mul_0, d_mul_1, d_ctof_rs, d_ctof_rs);
+    AE_MULF2P32X4RAS(d_mul_2, d_mul_3, d_mul_2, d_mul_3, d_ctof_rs, d_ctof_rs);
     d_cs_w_0 = AE_SAT16X4(d_mul_0, d_mul_1);
     d_cs_w_1 = AE_SAT16X4(d_mul_2, d_mul_3);
 #else
-    d_mul_0 = AE_SRAA32RS(d_mul_0, 1);
-    d_mul_1 = AE_SRAA32RS(d_mul_1, 1);
-    d_mul_2 = AE_SRAA32RS(d_mul_2, 1);
-    d_mul_3 = AE_SRAA32RS(d_mul_3, 1);
+    AE_MULF2P32X4RAS(d_mul_0, d_mul_1, d_mul_0, d_mul_1, d_1_rs, d_1_rs);
+    AE_MULF2P32X4RAS(d_mul_2, d_mul_3, d_mul_2, d_mul_3, d_1_rs, d_1_rs);
     d_mul_0 = AE_SRAA32SYMS(d_mul_0, ctof_right_shift);
     d_mul_1 = AE_SRAA32SYMS(d_mul_1, ctof_right_shift);
     d_mul_2 = AE_SRAA32SYMS(d_mul_2, ctof_right_shift);
@@ -331,17 +315,13 @@ WORD32 xa_nn_lstm_cell_state_update_16(WORD16* p_cell_state,
     AE_MUL16X4(d_mul_6, d_mul_7, d_cg_1, d_ig_1);
 
 #if TFLITE_SINGLE_ROUNDING
-    d_mul_4 = AE_SRAA32RS(d_mul_4, ctoi_right_shift);
-    d_mul_5 = AE_SRAA32RS(d_mul_5, ctoi_right_shift);
-    d_mul_6 = AE_SRAA32RS(d_mul_6, ctoi_right_shift);
-    d_mul_7 = AE_SRAA32RS(d_mul_7, ctoi_right_shift);
+    AE_MULF2P32X4RAS(d_mul_4, d_mul_5, d_mul_4, d_mul_5, d_ctoi_rs, d_ctoi_rs);
+    AE_MULF2P32X4RAS(d_mul_6, d_mul_7, d_mul_6, d_mul_7, d_ctoi_rs, d_ctoi_rs);
     d_cg_0 = AE_SAT16X4(d_mul_4, d_mul_5);
     d_cg_1 = AE_SAT16X4(d_mul_6, d_mul_7);
 #else
-    d_mul_4 = AE_SRAA32RS(d_mul_4, 1);
-    d_mul_5 = AE_SRAA32RS(d_mul_5, 1);
-    d_mul_6 = AE_SRAA32RS(d_mul_6, 1);
-    d_mul_7 = AE_SRAA32RS(d_mul_7, 1);
+    AE_MULF2P32X4RAS(d_mul_4, d_mul_5, d_mul_4, d_mul_5, d_1_rs, d_1_rs);
+    AE_MULF2P32X4RAS(d_mul_6, d_mul_7, d_mul_6, d_mul_7, d_1_rs, d_1_rs);
     d_mul_4 = AE_SRAA32SYMS(d_mul_4, ctoi_right_shift);
     d_mul_5 = AE_SRAA32SYMS(d_mul_5, ctoi_right_shift);
     d_mul_6 = AE_SRAA32SYMS(d_mul_6, ctoi_right_shift);

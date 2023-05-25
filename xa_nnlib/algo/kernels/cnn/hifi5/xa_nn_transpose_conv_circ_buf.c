@@ -60,6 +60,10 @@ WORD32 xa_nn_transpose_conv_getsize
             input_size = sizeof(WORD16);
             scratch_bytewidth = 8; /* 64b scratch */
             break;
+        case -4: /* For asym8s */
+            input_size = sizeof(WORD8);
+            scratch_bytewidth = 4; /* 32b scratch */
+            break;
         case -1: /* For float32 */
             input_size = sizeof(FLOAT32);
             scratch_bytewidth = 8; /* 32bx2 scratch */
@@ -124,6 +128,9 @@ VOID xa_nn_transpose_conv_init_state(
   {
     case -8:
       input_size = sizeof(WORD16);
+      break;
+    case -4:
+      input_size = sizeof(WORD8);
       break;
     case -1:
       input_size = sizeof(FLOAT32);

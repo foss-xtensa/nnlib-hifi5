@@ -143,6 +143,16 @@ WORD32 xa_nn_memmove_8_8( void *pdst,
 #endif
 }
 
+WORD32 xa_nn_memmove_16( void *pdst,
+    const void *psrc,
+    WORD32 n)
+{
+  WORD32 ret = xa_nn_memmove_8_8(pdst,
+                    psrc,
+                   (n << 1));  
+  return ret;
+}
+
 void *xa_nn_memcpy(void * dest1,const void *src1, size_t n1)
 {
   int itr;

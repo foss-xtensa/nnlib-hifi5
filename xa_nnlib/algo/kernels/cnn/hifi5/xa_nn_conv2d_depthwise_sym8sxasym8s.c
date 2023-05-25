@@ -644,7 +644,7 @@ static void xa_nn_conv2d_depthwise_nchw_per_chan_sym8sxasym8s
 
 #ifndef AE_MULZB3X3O8X8
 /* 2D Convolution implementation */
-static inline void conv2d_nhwc_per_chan_sym8sxasym8s
+static inline void __attribute__((always_inline)) conv2d_nhwc_per_chan_sym8sxasym8s
   (pWORD8 __restrict__ p_out
   ,const WORD8 *__restrict__ p_ker
   ,const WORD8 *__restrict__ p_inp
@@ -834,7 +834,7 @@ static inline void conv2d_nhwc_per_chan_sym8sxasym8s
 #else /*RI6 core*/
 
 /* 2D Convolution implementation */
-static inline void conv2d_nhwc_per_chan_sym8sxasym8s
+static inline void __attribute__((always_inline)) conv2d_nhwc_per_chan_sym8sxasym8s
   (pWORD8 __restrict__ p_out
   ,const WORD8 *__restrict__ p_ker
   ,const WORD8 *__restrict__ p_inp

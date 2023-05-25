@@ -27,6 +27,25 @@ Cadence HiFi 5 Neural Network (NN) Library
 Revision History
 ===============================================================================
 
+Version 2.2.0 API 1.5: May 25, 2023
+
++ Intermediate Release of HiFi5 NN Library
++ Tested using RI.9 tools, xt-clang/xt-clang++ compiler
++ Adds support for TRANSPOSE_CONV TFLM operator for quantized int8 data-type
++ Adds support for quantized int16 data-type for TFLM operators:
+  ReduceMax
+  ReduceMean
+  SQUARED_DIFF (with 4D broadcast)
++ Adds support for memmove kernel for int16 data
++ Improves performance for LSTM special case for sigmoid/tanh (tie-based) sym16s kernels
++ Fixes known issues to improve stability
+
+Note
+> Processor Configuration must be built with SP-VFPU option in order to compile 
+  floating point variants of the kernels.
+
+----------------------------------------------------------------------
+
 Version 2.1.0 API 1.4: April 19, 2023
 
 + Intermediate Release of HiFi5 NN Library

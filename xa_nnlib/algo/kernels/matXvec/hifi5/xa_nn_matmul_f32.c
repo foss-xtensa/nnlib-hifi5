@@ -23,6 +23,21 @@
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
+#if !HAVE_VFPU
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matmul_f32xf32_f32,(
+    FLOAT32 * __restrict__ p_out,        
+    const FLOAT32 * __restrict__ p_mat1, 
+    const FLOAT32 * __restrict__ p_vec1, 
+    const FLOAT32 * __restrict__ p_bias, 
+    WORD32 rows,
+    WORD32 cols1,
+    WORD32 row_stride1,                   
+    WORD32 vec_count,                     
+    WORD32 vec_offset,
+    WORD32 out_offset,
+    WORD32 out_stride))                      
+
+#else
 /* Using the 4 row 1 vec function defined in xa_nn_matXvec_f32.c for xa_nn_matXvec_f32() kernel */
 extern void _xa_nn_dot_product_4_rows_1_vecs_offset_aligned
     (xtfloatx2* out_0_0
@@ -744,21 +759,6 @@ static inline void _xa_nn_dot_product_1_row_4_vecs_unaligned
   *out_1_0 = z1;
 }
 
-#if !HAVE_VFPU
-DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matmul_f32xf32_f32,(
-    FLOAT32 * __restrict__ p_out,        
-    const FLOAT32 * __restrict__ p_mat1, 
-    const FLOAT32 * __restrict__ p_vec1, 
-    const FLOAT32 * __restrict__ p_bias, 
-    WORD32 rows,
-    WORD32 cols1,
-    WORD32 row_stride1,                   
-    WORD32 vec_count,                     
-    WORD32 vec_offset,
-    WORD32 out_offset,
-    WORD32 out_stride))                      
-
-#else
 WORD32 xa_nn_matmul_f32xf32_f32(
     FLOAT32 * __restrict__ p_out,          
     const FLOAT32 * __restrict__ p_mat1,   

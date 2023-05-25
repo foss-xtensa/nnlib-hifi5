@@ -163,6 +163,7 @@ CONVO2OBJS = \
 	xa_nn_matXvec_sym8sxsym16s_sym16s_circ.o \
   xa_nn_conv2d_pointwise_sym8sxsym16s.o \
   xa_nn_transpose_conv_circ_buf.o \
+  xa_nn_transpose_conv_sym8sxasym8s.o \
   xa_nn_transpose_conv_sym8sxsym16s.o \
   xa_nn_transpose_conv_f32.o
 
@@ -238,7 +239,9 @@ BASICOBJS = \
     xa_nn_elm_sub_quant16.o \
     xa_nn_elm_add_quant16.o \
 	xa_nn_elm_squared_diff_quant8.o \
-	xa_nn_lstm_utils.o
+	xa_nn_elm_squared_diff_quant16.o \
+	xa_nn_lstm_utils.o \
+    xa_nn_reduce_asym16s_asym16s.o
 
 
 NORMO2OBJS = \
