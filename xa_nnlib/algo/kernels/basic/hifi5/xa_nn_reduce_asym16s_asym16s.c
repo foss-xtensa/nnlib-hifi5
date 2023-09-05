@@ -1152,8 +1152,6 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
   XA_NNLIB_ARG_CHK_COND((out_shift < -31 || out_shift > 31), -1);
   XA_NNLIB_ARG_CHK_COND((out_multiplier < 0), -1);
 
-  extern const unsigned int inv_256_tbl[1025];
-  ae_int32x2 inv_mult;
   int axis_itr = 0, inp_itr = 0, out_itr = 0;
   int num_elm_in_axis = 1;
   int current, past = -1;
@@ -1169,14 +1167,6 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
       num_elm_in_axis *= p_inp_shape[current];
       past = current;
     }
-  }
-  if(num_elm_in_axis <= 1024)
-  {
-    inv_mult = AE_MOVDA32(inv_256_tbl[num_elm_in_axis]);
-  }
-  else
-  {
-    inv_mult = AE_MOVDA32(((0x80000000UL) / (unsigned)num_elm_in_axis));
   }
 
   for(inp_itr=0; inp_itr < num_inp_dims; inp_itr++)
@@ -1280,14 +1270,11 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
       {
         for(itr = 0; itr < (out_length >> 3); itr++)
         {
-          ae_int32x2 wout1, wout2, wout3, wout4;
           ae_int16x4 d0_out16, d1_out16;
           ae_int32x2 temp1, temp2, temp3, temp4;
 
-          AE_L32X2X2_I(wout3, wout4, p_src1, 16);
-          AE_L32X2X2_IP(wout1, wout2, p_src1, 32);
-          AE_MULF2P32X4RS(temp1, temp2, inv_mult, inv_mult, wout1, wout2);
-          AE_MULF2P32X4RS(temp3, temp4, inv_mult, inv_mult, wout3, wout4);
+          AE_L32X2X2_I(temp3, temp4, p_src1, 16);
+          AE_L32X2X2_IP(temp1, temp2, p_src1, 32);
           d0_out16 = AE_SAT16X4(temp1, temp2);
           d1_out16 = AE_SAT16X4(temp3, temp4);
           AE_SA16X4X2_IP(d0_out16, d1_out16, align_dst, (ae_int16x8 *)p_out);
@@ -1295,12 +1282,10 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
         AE_SA128POS_FP(align_dst, p_out); // finalize the stream
         for(itr = 0; itr < (out_length & 7); itr++)
         {
-          ae_int32x2 wout1;
           ae_int16x4 d0_out16;
           ae_int32x2 temp1;
 
-          AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-          temp1 = AE_MULFP32X2RS(inv_mult, wout1);
+          AE_L32_IP(temp1, (ae_int32 *)p_src1, 4);
           d0_out16 = AE_SAT16X4(temp1, temp1);
           AE_S16_0_IP(d0_out16, (ae_int16 *)p_out, 2);
         }
@@ -1322,12 +1307,10 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
           wout4 = AE_ADD32S(wout4, total_bias);
 
           MPY_BY_QUANT_MULT_SLS_X2X2_OUT32(wout1, wout2, wout1, wout2, out_multiplier, left_shift, right_shift);
-          AE_MULF2P32X4RS(wout1, wout2, inv_mult, inv_mult, wout1, wout2);
           wout1 = AE_ADD32S(AE_MOVDA32(out_zero_bias), wout1);
           wout2 = AE_ADD32S(AE_MOVDA32(out_zero_bias), wout2);
           d0_out16 = AE_SAT16X4(wout1, wout2);
           MPY_BY_QUANT_MULT_SLS_X2X2_OUT32(wout3, wout4, wout3, wout4, out_multiplier, left_shift, right_shift);
-          AE_MULF2P32X4RS(wout3, wout4, inv_mult, inv_mult, wout3, wout4);
           wout3 = AE_ADD32S(AE_MOVDA32(out_zero_bias), wout3);
           wout4 = AE_ADD32S(AE_MOVDA32(out_zero_bias), wout4);
           d1_out16 = AE_SAT16X4(wout3, wout4);
@@ -1344,7 +1327,6 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
           wout1 = AE_ADD32S(wout1, total_bias);
 
           MPY_BY_QUANT_MULT_SLS_X2_OUT32(wout1, wout1, out_multiplier, left_shift, right_shift);
-          wout1 = AE_MULFP32X2RS(inv_mult, wout1);
           wout1 = AE_ADD32S(AE_MOVDA32(out_zero_bias), wout1);
           d0_out16 = AE_SAT16X4(wout1, wout1);
 

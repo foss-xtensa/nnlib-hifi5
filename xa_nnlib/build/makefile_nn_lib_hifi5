@@ -64,6 +64,7 @@ MATXVECO2OBJS = \
   xa_nn_matXvec_16x16.o \
   xa_nn_matXvec_asym8xasym8.o \
   xa_nn_matXvec_sym8sxasym8s.o \
+  xa_nn_matXvec_asym4sxasym8s.o \
   xa_nn_matXvec_sym8sxsym16s.o \
   xa_nn_matXvec_asym8sxasym8s.o \
   xa_nn_matXvec_asym8xasym8_batch.o \
@@ -71,11 +72,13 @@ MATXVECO2OBJS = \
   xa_nn_matXvec_8x16_batch.o \
   xa_nn_matXvec_16x16_batch.o \
   xa_nn_matXvec_f32.o \
+  xa_nn_matXvec_f16.o \
   xa_nn_matXvec_f32_batch.o \
   xa_nn_matmul_8x8.o \
   xa_nn_matmul_8x16.o \
   xa_nn_matmul_16x16.o \
   xa_nn_matmul_f32.o \
+  xa_nn_matmul_f16.o \
   xa_nn_matmul_asym8xasym8.o \
   xa_nn_matmul_sym8sxasym8s.o \
   xa_nn_matmul_asym8sxasym8s.o \
@@ -136,14 +139,19 @@ CONVO2OBJS = \
   xa_nn_conv2d_std_16x16.o \
   xa_nn_conv2d_std_asym8xasym8.o \
   xa_nn_conv2d_std_sym8sxasym8s.o \
+  xa_nn_conv2d_group_sym8sxasym8s.o \
+  xa_nn_conv2d_std_sym4sxasym8s.o \
   xa_nn_conv2d_std_f32.o \
+  xa_nn_conv2d_std_f16.o \
   xa_nn_conv2d_std_circ_buf.o \
   xa_nn_matXvec_8x16_16_circ.o \
   xa_nn_matXvec_8x8_8_circ.o \
   xa_nn_matXvec_16x16_16_circ.o \
   xa_nn_matXvec_asym8xasym8_asym8_circ.o \
   xa_nn_matXvec_sym8sxasym8s_asym8s_circ.o \
+  xa_nn_matXvec_sym4sxasym8s_asym8s_circ.o \
   xa_nn_matXvec_f32_circ.o \
+  xa_nn_matXvec_f16_circ.o \
   xa_nn_circ_buf.o \
   xa_nn_conv2d_depthwise.o \
   xa_nn_conv2d_depthwise_16x16.o \
@@ -158,7 +166,9 @@ CONVO2OBJS = \
   xa_nn_conv2d_pointwise_sym8sxasym8s.o \
   xa_nn_conv2d_depthwise_sym8sxsym16s.o \
   xa_nn_conv2d_depthwise_f32.o \
+  xa_nn_conv2d_depthwise_f16.o \
   xa_nn_conv2d_pointwise_f32.o \
+  xa_nn_conv2d_pointwise_f16.o \
   xa_nn_conv2d_std_sym8sxsym16s.o \
 	xa_nn_matXvec_sym8sxsym16s_sym16s_circ.o \
   xa_nn_conv2d_pointwise_sym8sxsym16s.o \

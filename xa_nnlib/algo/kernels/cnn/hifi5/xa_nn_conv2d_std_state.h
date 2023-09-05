@@ -60,6 +60,7 @@ typedef struct _circular_buf_t{
 typedef struct _xa_nn_conv_state_t{
   circular_buf_t cir_buf;
   VOID* p_inp_base;
+  void* p_kernel_padded;
 } xa_nn_conv_state_t;
 
 VOID xa_nn_conv2d_dilation_init_state(
@@ -78,6 +79,20 @@ VOID xa_nn_conv2d_std_init_state(
     WORD32 y_stride,
     WORD32 y_padding,
     WORD32 out_height,
+    WORD32 input_precision);
+
+VOID xa_nn_conv2d_std_init_state_sym4s(
+    VOID *p_handle,
+    VOID *p_kernel,
+    WORD32 input_height,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    WORD32 y_stride,
+    WORD32 y_padding,
+    WORD32 out_height,
+    WORD32 out_channels,
     WORD32 input_precision);
 
 VOID xa_nn_dilated_conv2d_std_init_circ_buf(
@@ -153,6 +168,22 @@ WORD32 xa_nn_matXvec_f32_circ(
     WORD32 out_col_offset,
     WORD32 out_row_offset);
 
+#if HAVE_HP_VFPU
+typedef xthalf FLOAT16;
+WORD32 xa_nn_matXvec_f16_circ(
+    FLOAT16 * __restrict__ p_out,
+    FLOAT16 * __restrict__ p_mat,
+    FLOAT16 * __restrict__ p_vec,
+    FLOAT16 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols,
+    WORD32 row_offset,
+    WORD32 vec_count,
+    WORD32 vec_offset,
+    WORD32 out_col_offset,
+    WORD32 out_row_offset);
+#endif
+
 WORD32 xa_nn_matXvec_asym8xasym8_asym8_circ(
     UWORD8 * __restrict__ p_out,
     UWORD8 * __restrict__ p_mat1,
@@ -172,6 +203,23 @@ WORD32 xa_nn_matXvec_asym8xasym8_asym8_circ(
     WORD32 out_offset);
 
 WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
+    WORD8 * __restrict__ p_out,
+    WORD8 * __restrict__ p_mat1,
+    const WORD8 * __restrict__ p_vec1,
+    const WORD32 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols1,
+    WORD32 row_stride1,
+    WORD32 vec_count,
+    WORD32 vec_stride,
+    WORD32 out_col_offset,
+    WORD32 out_row_offset,
+    WORD32 mat1_offset,
+    WORD32 * p_out_multiplier,
+    WORD32 * p_out_shift,
+    WORD32 out_offset);
+
+WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
     WORD8 * __restrict__ p_out,
     WORD8 * __restrict__ p_mat1,
     const WORD8 * __restrict__ p_vec1,
@@ -218,6 +266,40 @@ VOID conv2d_std_init_cir_buf(
     WORD32 x_stride,
     VOID **pp_inp,
     xa_nn_conv_state_t *p_state);
+
+
+VOID conv2d_group_update_cir_buf_asym8(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 kernel_channels,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    VOID **pp_inp,
+    WORD32 idx_beg_inp_width_pad,
+    xa_nn_conv_state_t *p_state,
+    WORD32 pad_val);
+
+VOID conv2d_group_init_cir_buf_asym8(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 kernel_channels,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    VOID **pp_inp,
+    xa_nn_conv_state_t *p_state,
+    WORD32 pad_val);   
 
 VOID conv2d_std_update_cir_buf(
     WORD32 input_channels,

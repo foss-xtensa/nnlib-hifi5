@@ -379,7 +379,9 @@ static WORD32 xa_nn_dilated_conv2d_depthwise_getsize_generic
       scratch_bytewidth = 8; /* 64b scratch */
       circ_buf_bytewidth = (circ_buf_precision/8); /* bytewidth as per precision */
       break;
-
+    case -2: /* For f16*/
+      scratch_bytewidth = 2; /* 16b scratch */
+      circ_buf_bytewidth = 2; /* bytewidth as per precision */
     case -8: /* For sym16s */
       scratch_bytewidth = 8; /* 64b scratch */
       circ_buf_bytewidth = 2; /* bytewidth for sym16s */
@@ -572,7 +574,9 @@ VOID xa_nn_dilated_conv2d_depthwise_init
         case 16: /* For 16b */
             circ_buf_bytewidth = (circ_buf_precision/8);
             break;
-
+        case -2: /* For f16 */
+            circ_buf_bytewidth = 2;
+            break;        
         case -1: /* For f32 */
             circ_buf_bytewidth = 4;
             break;

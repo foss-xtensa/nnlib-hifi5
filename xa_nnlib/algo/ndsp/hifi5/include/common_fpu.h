@@ -59,6 +59,12 @@
 #define HAVE_FPU 0
 #endif
 
+#if XCHAL_HAVE_HIFI5_HP_VFPU
+#define HAVE_HP_VFPU 1
+#else
+#define HAVE_HP_VFPU 0
+#endif
+
 #if (!(HAVE_VFPU)&&(HAVE_FPU))
 #include <xtensa/tie/xt_FP.h>
 #endif
