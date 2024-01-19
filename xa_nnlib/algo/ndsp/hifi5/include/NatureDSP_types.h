@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -697,6 +697,7 @@ float32_t STDLIB_MATH(conjf) (complex_float x);
 /*    union data type for writing float32_t/float64_t constants in a bitexact form */
 union ufloat32uint32 {  uint32_t  u;  float32_t f; };
 union ufloat64uint64 {  uint64_t  u;  float64_t f; };
+union ufloat16uint16 {  uint16_t  u;  float16_t f; };
 
 #if defined(__RENAMING__)
 #include "__renaming__.h"

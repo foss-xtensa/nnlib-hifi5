@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -138,7 +138,7 @@ WORD32 xa_nn_matXvec_16x8_16(
     {
       for(m_itr = 0; m_itr < (rows & ~(2-1)); m_itr += 2)
       {
-        SETUP_OUTPUT_STORE_16;
+//        SETUP_OUTPUT_STORE_16;
         UNROLL_SETUP_ACC(0);
         UNROLL_SETUP_ACC(1);
         SETUP_MAT1_16b_UNALIGNED_16x8(0);
@@ -186,7 +186,7 @@ WORD32 xa_nn_matXvec_16x8_16(
     {
       for(; m_itr < rows; m_itr++)
       {
-        SETUP_OUTPUT_STORE_16;
+//        SETUP_OUTPUT_STORE_16;
         UNROLL_SETUP_ACC(0);
         UNROLL_SETUP_ACC(1);
         SETUP_MAT1_16b_UNALIGNED_16x8(0);
@@ -282,7 +282,7 @@ WORD32 xa_nn_matXvec_16x8_16(
     {
       for(m_itr = 0; m_itr < (rows & ~(2-1)); m_itr += 2)
       {
-        SETUP_OUTPUT_STORE_16;
+//        SETUP_OUTPUT_STORE_16;
         UNROLL_SETUP_ACC(0);
         UNROLL_SETUP_ACC(1);
         SETUP_MAT1_16b_UNALIGNED_16x8(0);
@@ -312,7 +312,7 @@ WORD32 xa_nn_matXvec_16x8_16(
     {
       for(; m_itr < rows; m_itr++)
       {
-        SETUP_OUTPUT_STORE_16;
+//        SETUP_OUTPUT_STORE_16;
         UNROLL_SETUP_ACC(0);
         UNROLL_SETUP_ACC(1);
         SETUP_MAT1_16b_UNALIGNED_16x8(0);

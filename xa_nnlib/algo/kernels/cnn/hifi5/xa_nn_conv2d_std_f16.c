@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -21,7 +21,7 @@
 ******************************************************************************/
 #include <string.h>
 #include "xa_type_def.h"
-#include "common_fpu.h"
+#include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_kernels_api.h"
 #include "xa_nn_conv2d_std_state.h"
 #include "xa_nnlib_err_chk.h"
@@ -191,7 +191,7 @@ WORD32 xa_nn_conv2d_std_f16(
   VOID *pp_inp = (VOID *)p_inp;
 
   xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_scratch;
-  xa_nn_conv2d_std_init_state((void*)p_state,(void*)p_kernel,inp_h,input_channels,ker_h,ker_w,x_str,y_str,y_pad,out_h,-1);
+  xa_nn_conv2d_std_init_state((void*)p_state,(void*)p_kernel,inp_h,input_channels,ker_h,ker_w,x_str,y_str,y_pad,out_h,-2);
 
   WORD32 out_channels_offset = out_data_format ? out_h * out_w : 1;
   WORD32 out_height_offset = out_data_format ? out_w : out_w * out_channels;

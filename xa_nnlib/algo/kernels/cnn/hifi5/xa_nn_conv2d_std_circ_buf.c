@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -26,22 +26,43 @@
 
 WORD32 xa_nn_conv2d_std_getsize(
     WORD32 input_height,
+    WORD32 input_width,
     WORD32 input_channels,
     WORD32 kernel_height,
     WORD32 kernel_width,
+    WORD32 kernel_channels,
     WORD32 y_stride,
     WORD32 y_padding,
+    WORD32 x_stride,
+    WORD32 x_padding,
     WORD32 out_height,
+    WORD32 out_width,
     WORD32 output_channels,
-    WORD32 input_precision)
+    WORD32 input_precision,
+    WORD32 kernel_precision,
+    WORD32 dilation_height,
+    WORD32 dilation_width,
+    WORD32 out_data_format)
 {
   XA_NNLIB_CHK_COND((input_height <= 0), -1);
+  XA_NNLIB_CHK_COND((input_width <= 0), -1);
   XA_NNLIB_CHK_COND((input_channels <= 0), -1);
   XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
   XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
+  XA_NNLIB_CHK_COND((kernel_channels <= 0), -1);
   XA_NNLIB_CHK_COND((y_stride <= 0), -1);
   XA_NNLIB_CHK_COND((y_padding < 0), -1);
+  XA_NNLIB_CHK_COND((x_stride <= 0), -1);
+  XA_NNLIB_CHK_COND((x_padding < 0), -1);
   XA_NNLIB_CHK_COND((out_height <= 0), -1);
+  XA_NNLIB_CHK_COND((out_width <= 0), -1);
+  
+    /* Unused variables kept for future use */
+  (void)kernel_precision;
+  (void)dilation_height;
+  (void)dilation_width;
+  (void)out_data_format;
+  (void)output_channels;
 
   /* Unused. HiFi4 API compatibility */
   (void)output_channels;
@@ -50,6 +71,37 @@ WORD32 xa_nn_conv2d_std_getsize(
   WORD32 input_size;
   WORD32 align_size;
   WORD32 input_channels_pad;
+  WORD32 inp_h, inp_w, ker_h, ker_w, x_str, y_str, x_pad, y_pad, out_h, out_w;
+
+  if ((input_height == 1) && (kernel_height == 1) && (out_height == 1))
+  {
+    inp_h = input_width;
+    inp_w = input_height;
+    ker_h = kernel_width;
+    ker_w = kernel_height;
+    x_str = y_stride;
+    y_str = x_stride;
+    x_pad = y_padding;
+    y_pad = x_padding;
+    out_h = out_width;
+    out_w = out_height;
+  }
+  else
+  {
+    inp_h = input_height;
+    inp_w = input_width;
+    ker_h = kernel_height;
+    ker_w = kernel_width;
+    x_str = x_stride;
+    y_str = y_stride;
+    x_pad = x_padding;
+    y_pad = y_padding;
+    out_h = out_height;
+    out_w = out_width;
+  } 
+
+  /* To remove LLVM15 warning */
+  (void)out_w; (void)x_pad; (void)x_str; (void)inp_w;
 
   mem_req += ALIGNED_SIZE(sizeof(xa_nn_conv_state_t), ALIGNMENT_16);
   /* Input precision is checked here */
@@ -84,23 +136,181 @@ WORD32 xa_nn_conv2d_std_getsize(
 
   // Computing circular buffer size
   // Determine y-bottom padding
-  WORD32 y_b_pad = kernel_height + (out_height - 1) * y_stride - (y_padding + input_height);
+  WORD32 y_b_pad = ker_h + (out_h - 1) * y_str - (y_pad + inp_h);
   y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
 
-  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S || input_precision == PREC_F32) //TODO: remove the condition when the padding requirement is removed for other variants.
-    input_channels_pad = input_channels;
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S || input_precision == PREC_F32 || input_precision == PREC_F16) //TODO: remove the condition when the padding requirement is removed for other variants.
+    input_channels_pad = kernel_channels;
   else
-    input_channels_pad = PADDED_SIZE(input_channels, align_size);
+    input_channels_pad = PADDED_SIZE(kernel_channels, align_size);
 
-  WORD32 cir_buf_size_bytes = (y_padding + input_height + y_b_pad) * kernel_width * input_channels_pad * input_size;
+  WORD32 cir_buf_size_bytes = (y_pad + inp_h + y_b_pad) * ker_w * input_channels_pad * input_size;
   while(cir_buf_size_bytes%16 !=0)
   {
-      cir_buf_size_bytes+= kernel_width*input_channels_pad*input_size;
+      cir_buf_size_bytes+= ker_w*input_channels_pad*input_size;
   }
   /* scratch memory for convolution using matrix multiplication */
   mem_req += cir_buf_size_bytes;
   mem_req += BUS_WIDTH;
 
+  return mem_req;
+}
+
+WORD32 xa_nn_conv2d_getsize(
+    WORD32 input_height,
+    WORD32 input_width,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 kernel_channels,
+    WORD32 dilation_height,
+    WORD32 dilation_width,
+    WORD32 y_stride,
+    WORD32 y_padding,
+    WORD32 x_stride,
+    WORD32 x_padding,
+    WORD32 out_height,
+    WORD32 out_width,
+    WORD32 output_channels,
+    WORD32 input_precision,
+    WORD32 kernel_precision,
+    WORD32 out_data_format)
+{
+  XA_NNLIB_CHK_COND((input_height <= 0), -1);
+  XA_NNLIB_CHK_COND((input_width <= 0), -1);
+  XA_NNLIB_CHK_COND((input_channels <= 0), -1);
+  XA_NNLIB_CHK_COND((kernel_height <= 0), -1);
+  XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
+  XA_NNLIB_CHK_COND((kernel_channels <= 0), -1);
+  XA_NNLIB_CHK_COND((y_stride <= 0), -1);
+  XA_NNLIB_CHK_COND((y_padding < 0), -1);
+  XA_NNLIB_CHK_COND((x_stride <= 0), -1);
+  XA_NNLIB_CHK_COND((x_padding < 0), -1);
+  XA_NNLIB_CHK_COND((out_height <= 0), -1);
+  XA_NNLIB_CHK_COND((out_width <= 0), -1);
+  XA_NNLIB_CHK_COND((output_channels <= 0), -1);
+  //XA_NNLIB_CHK_COND((input_precision != 0 && input_precision != 1), -1);
+  
+  const int groups = input_channels/kernel_channels;
+  XA_NNLIB_ARG_CHK_COND((groups<=0), -1);
+  XA_NNLIB_ARG_CHK_COND(((input_channels %kernel_channels)!=0),-1);
+  XA_NNLIB_ARG_CHK_COND(((output_channels%groups)!=0),-1);
+  const int filters_per_group = output_channels / groups;
+  XA_NNLIB_ARG_CHK_COND((filters_per_group<=0),-1);
+
+  /* Unused. HiFi4 API compatibility */
+  (void)kernel_precision;
+  (void)dilation_height;
+  (void)dilation_width;
+
+  WORD32 mem_req = 0;
+  WORD32 input_size;
+  WORD32 align_size;
+  WORD32 input_channels_pad;
+  WORD32 inp_h, inp_w, ker_h, ker_w, x_str, y_str, x_pad, y_pad, out_h, out_w;
+
+  if ((input_height == 1) && (kernel_height == 1) && (out_height == 1))
+  {
+    inp_h = input_width;
+    inp_w = input_height;
+    ker_h = kernel_width;
+    ker_w = kernel_height;
+    x_str = y_stride;
+    y_str = x_stride;
+    x_pad = y_padding;
+    y_pad = x_padding;
+    out_h = out_width;
+    out_w = out_height;
+  }
+  else
+  {
+    inp_h = input_height;
+    inp_w = input_width;
+    ker_h = kernel_height;
+    ker_w = kernel_width;
+    x_str = x_stride;
+    y_str = y_stride;
+    x_pad = x_padding;
+    y_pad = y_padding;
+    out_h = out_height;
+    out_w = out_width;
+  }
+
+  if((groups==input_channels) && (output_channels >=input_channels) && (input_precision==-4)&& (out_data_format==0))
+  {   
+    WORD32 channel_multiplier=output_channels/input_channels;
+    mem_req += ALIGNMENT_16;
+    mem_req += PADDED_SIZE(output_channels*kernel_height*kernel_width, ALIGNMENT_16);
+    mem_req += xa_nn_conv2d_depthwise_getsize(inp_h
+                                              ,inp_w
+                                              ,input_channels
+                                              ,ker_h
+                                              ,ker_w
+                                              ,channel_multiplier
+                                              ,x_str
+                                              ,y_str
+                                              ,x_pad
+                                              ,y_pad
+                                              ,out_h
+                                              ,out_w
+                                              ,input_precision
+                                              ,0
+                                              );
+
+  }
+  else
+  {  
+
+  mem_req += ALIGNED_SIZE(sizeof(xa_nn_conv_state_t), ALIGNMENT_16);
+  /* Input precision is checked here */
+  switch(input_precision)
+  {
+    case 8:
+    case -4:
+      input_size = sizeof(WORD8);
+      align_size = ALIGNMENT>>1;
+      break;
+    case -8:
+    case 16:
+      input_size = sizeof(WORD16);
+      align_size = ALIGNMENT>>1;
+      break;
+    case -2:
+      input_size = sizeof(WORD16);
+      align_size = ALIGNMENT>>1;
+      break;      
+    case -1:
+      input_size = sizeof(WORD32);
+      align_size = ALIGNMENT>>2;
+      break;
+    case -3:
+      input_size = sizeof(UWORD8);
+      align_size = ALIGNMENT>>1;
+      break;
+    default:
+      return -1;
+      break;
+  }
+
+  // Computing circular buffer size
+  // Determine y-bottom padding
+  WORD32 y_b_pad = ker_h + (out_h - 1) * y_str - (y_pad + inp_h);
+  y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
+
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S || input_precision == PREC_F32) //TODO: remove the condition when the padding requirement is removed for other variants.
+    input_channels_pad = kernel_channels;
+  else
+    input_channels_pad = PADDED_SIZE(kernel_channels, align_size);
+
+  WORD32 cir_buf_size_bytes = (y_pad + inp_h + y_b_pad) * ker_w * input_channels_pad * input_size;
+  while(cir_buf_size_bytes%16 !=0)
+  {
+      cir_buf_size_bytes+= ker_w*input_channels_pad*input_size;
+  }
+  /* scratch memory for convolution using matrix multiplication */
+  mem_req += cir_buf_size_bytes;
+  mem_req += BUS_WIDTH;
+  }
   return mem_req;
 }
 
@@ -273,6 +483,8 @@ WORD32 xa_nn_dilated_conv2d_std_getsize(
   return mem_req;
 }
 
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
+
 VOID xa_nn_conv2d_std_init_state(
     VOID *p_scratch,
     VOID *p_kernel,
@@ -302,6 +514,7 @@ VOID xa_nn_conv2d_std_init_state(
       break;
     case -8:
     case 16:
+    case -2:
       input_size = sizeof(WORD16);
       align_size = ALIGNMENT>>1;
       break;
@@ -334,7 +547,7 @@ VOID xa_nn_conv2d_std_init_state(
   WORD32 y_b_pad = kernel_height + (out_height - 1) * y_stride - (y_padding + input_height);
   y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
 
-  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S || input_precision == PREC_F32) //TODO: remove the condition when the padding requirement is removed for other variants.
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S || input_precision == PREC_F32 || input_precision == PREC_F16) //TODO: remove the condition when the padding requirement is removed for other variants.
     input_channels_pad = input_channels;
   else
     input_channels_pad = PADDED_SIZE(input_channels, align_size);
@@ -735,6 +948,145 @@ VOID conv2d_std_init_cir_buf(
   }
 }
 
+VOID conv2d_group_init_cir_buf(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 kernel_channels,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    VOID **pp_inp,
+    xa_nn_conv_state_t *p_state,
+    WORD32 pad_val)
+{
+  WORD32 i,k;
+  WORD8 *p_inp = (WORD8 *)*pp_inp;
+  WORD32 planes_to_add = x_stride > kernel_width ? 0 : kernel_width - x_stride;
+  WORD32 planes_to_keep = kernel_width - planes_to_add;
+  ae_int8x8 pad_v8 = AE_MOVDA8(pad_val);
+  UWORD8 pad_val_u8 = (UWORD8)pad_val;
+  ae_int8x8 inp_val;
+  WORD8 *p_dst = (WORD8 *)p_state->cir_buf.p_curr;
+  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels * input_bytewidth);
+
+  // Initialize circular buffer
+  if(kernel_channels == 1 && input_bytewidth == 1)
+  {
+    // Set first 'y_padding' rows of cir_buf to zero
+    for(i=0;i<y_padding;i++)
+    {
+      for(k=0;k<planes_to_add;k++)
+      {
+        AE_S8_0_XC(pad_v8, (ae_int8 *)p_dst, 1);
+      }
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep);
+    }
+  }
+  else
+  {
+    // Set first 'y_padding' rows of cir_buf to zero
+    for(i=0;i<y_padding;i++)
+    {
+      for(k=0;k<planes_to_add;k++)
+      {
+        memset(p_dst, pad_val_u8, kernel_channels * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels * input_bytewidth);
+      }
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels * input_bytewidth);
+    }
+  }
+
+  // Set next 'input_height' rows of cir_buf with zero and/or input data
+  WORD32 copy_x_pad_width = x_padding;
+  WORD32 copy_inp_width = 0;
+  WORD32 rem_copy_width = 0;
+  if(planes_to_add <= x_padding)
+  {
+    copy_x_pad_width = planes_to_add;
+  }
+  else
+  {
+    copy_inp_width = planes_to_add - x_padding;
+    rem_copy_width = XT_MAX(0, copy_inp_width - input_width);
+    copy_inp_width = XT_MIN(copy_inp_width, input_width);
+  }
+
+  if(kernel_channels == 1 && input_bytewidth == 1)
+  {
+    for(i=0;i<input_height;i++)
+    {
+      for(k=0;k<copy_x_pad_width;k++)
+      {
+        AE_S8_0_XC(pad_v8, (ae_int8 *)p_dst, 1);
+      }
+      for(k=0;k<copy_inp_width;k++)
+      {
+        AE_L8_XP(inp_val, (ae_int8 *)p_inp, input_channels);
+        AE_S8_0_XC(inp_val, (ae_int8 *)p_dst, 1);
+      }
+      for(k=0;k<rem_copy_width;k++)
+      {
+        AE_S8_0_XC(pad_v8, (ae_int8 *)p_dst, 1);
+      }
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep);
+      p_inp += (input_width - copy_inp_width)*input_channels;
+    }
+    // Set last 'y_b_pad' rows of cir_buf to zero
+    for(i=0;i<y_b_pad;i++)
+    {
+      for(k=0;k<planes_to_add;k++)
+      {
+        AE_S8_0_XC(pad_v8, (ae_int8 *)p_dst, 1);
+      }
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep);
+    }
+    p_inp += (-input_height * input_width + copy_inp_width)*input_channels;
+    *pp_inp = (VOID *)p_inp;
+  }
+  else
+  {
+    for(i=0;i<input_height;i++)
+    {
+      for(k=0;k<copy_x_pad_width;k++)
+      {
+        memset(p_dst, pad_val_u8, kernel_channels * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels * input_bytewidth);
+      }
+      for(k=0;k<copy_inp_width;k++)
+      {
+        memcpy(p_dst, p_inp, kernel_channels * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels * input_bytewidth);
+        p_inp += input_channels * input_bytewidth;
+      }
+      for(k=0;k<rem_copy_width;k++)
+      {
+        memset(p_dst, pad_val_u8, kernel_channels * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels * input_bytewidth);
+      }
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels * input_bytewidth);
+      p_inp += (input_width - copy_inp_width) * input_channels * input_bytewidth;
+    }
+
+    // Set last 'y_b_pad' rows of cir_buf to zero
+    for(i=0;i<y_b_pad;i++)
+    {
+      for(k=0;k<planes_to_add;k++)
+      {
+        memset(p_dst, pad_val_u8, kernel_channels * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels * input_bytewidth);
+      }
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels * input_bytewidth);
+    }
+    p_inp += (-input_height * input_width + copy_inp_width) * input_channels * input_bytewidth;
+    *pp_inp = (VOID *)p_inp;
+  }
+}
+
 // Add x_stride (but not more than kernel_width) x (input_height x input_channels) new planes to circular buffer
 VOID conv2d_std_update_cir_buf(
     WORD32 input_channels,
@@ -937,6 +1289,244 @@ VOID conv2d_std_update_cir_buf(
       /* Update the index and destination frame pointer */
       idx_beg_inp_width_pad++;
       AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad * input_bytewidth);
+    }
+  }
+
+  /* Skip required number of input frames */
+  p_inp += to_skip_inp_width * input_channels * input_bytewidth;
+  *pp_inp = (VOID *)p_inp;
+}
+
+VOID conv2d_group_update_cir_buf(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 kernel_channels,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    VOID **pp_inp,
+    WORD32 idx_beg_inp_width_pad,
+    xa_nn_conv_state_t *p_state,
+    WORD32 pad_val)
+{
+  WORD32 i,k;
+  WORD8 *p_inp = (WORD8 *)*pp_inp;
+  WORD32 planes_to_add = x_stride > kernel_width ? kernel_width : x_stride;
+  WORD32 planes_to_keep = kernel_width - planes_to_add;
+  ae_int8x8 pad_v8 = AE_MOVDA8(pad_val);
+  UWORD8 pad_val_8 = (UWORD8) pad_val;
+  ae_int8x8 inp_val;
+  WORD8* __restrict__ p_dst_temp;
+  WORD8* __restrict__ p_inp_temp;
+
+  if(idx_beg_inp_width_pad < 0)
+  {
+    /* x_stride > kernel_width case */
+    idx_beg_inp_width_pad = 0;
+  }
+
+  WORD32 to_skip_inp_width = x_stride - planes_to_add;     // Non-zero for x_stride > kernel_width
+
+  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_state->cir_buf.p_curr, planes_to_add * kernel_channels * input_bytewidth);
+  WORD8 *p_dst = (WORD8 *)p_state->cir_buf.p_curr;
+  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels * input_bytewidth);
+
+  // Copy 'planes_to_add' planes of data to circular buffer
+  if(kernel_channels == 1 && input_bytewidth == 1)
+  {
+    for(k = 0; k < planes_to_add; k++)
+    {
+      p_dst_temp = p_dst;
+      p_inp_temp = p_inp;
+      if((idx_beg_inp_width_pad < x_padding) || (idx_beg_inp_width_pad >= x_padding + input_width))
+      {
+        /* Add a padding frame */
+        for(i = 0; i < y_padding + input_height + y_b_pad; i++)
+        {
+          AE_S8_0_XC(pad_v8, (ae_int8 *)p_dst_temp, kernel_width);
+        }
+      }
+      else
+      {
+        /* Add an input frame */
+        /* Top padding */
+        for(i = 0; i < y_padding; i++)
+        {
+          AE_S8_0_XC(pad_v8, (ae_int8 *)p_dst_temp, kernel_width);
+        }
+
+        /* Input height */
+        for(i = 0; i < input_height; i++)
+        {
+          AE_L8_XP(inp_val, (ae_int8 *)p_inp_temp, input_width*input_channels);
+          AE_S8_0_XC(inp_val, (ae_int8 *)p_dst_temp, kernel_width);
+        }
+
+        /* Bottom padding */
+        for(i = 0; i < y_b_pad; i++)
+        {
+          AE_S8_0_XC(pad_v8, (ae_int8 *)p_dst_temp, kernel_width);
+        }
+        p_inp += input_channels * input_bytewidth;
+      }
+
+      /* Update the index and destination frame pointer */
+      idx_beg_inp_width_pad++;
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels * input_bytewidth);
+    }
+  }
+  else if ((input_channels == input_channels_pad) && kernel_channels <= 16)
+  {
+    for(k = 0; k < planes_to_add; k++)
+    {
+      p_dst_temp = p_dst;
+      p_inp_temp = p_inp;
+      if((idx_beg_inp_width_pad < x_padding) || (idx_beg_inp_width_pad >= x_padding + input_width))
+      {
+        /* Add a padding frame */
+        for(i = 0; i < y_padding + input_height + y_b_pad; i++)
+        {
+          memset(p_dst_temp, pad_val_8, kernel_channels * input_bytewidth);
+          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+        }
+      }
+      else
+      {
+        /* Add an input frame */
+        /* Top padding */
+        for(i = 0; i < y_padding; i++)
+        {
+          memset(p_dst_temp, pad_val_8, kernel_channels * input_bytewidth);
+          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+        }
+
+        if(input_bytewidth==2)
+        {
+
+          int ic_1 = (kernel_channels < 8) ? kernel_channels : 8;
+          int ic_2 = XT_MAX(0, kernel_channels - 8);
+        /* Input height */
+#pragma loop_count min=1
+          for(i = 0; i < input_height; i++)
+          {
+            ae_int16x8 *pae_dst_temp, *pae_inp_temp;
+            ae_valignx2 align_dst, align_inp;
+            pae_dst_temp = (ae_int16x8 *)p_dst_temp;
+            pae_inp_temp = (ae_int16x8 *)p_inp_temp;
+            align_dst = AE_ZALIGN128();
+            align_inp = AE_LA128_PP(pae_inp_temp);
+            ae_int16x4 d0, d1, d2, d3;
+            AE_LAV16X4X2_XP(d0, d1, align_inp, pae_inp_temp, ic_1 << 1);
+            AE_SAV16X4X2_XP(d0, d1, align_dst, pae_dst_temp, ic_1 << 1);
+            AE_LAV16X4X2_XP(d2, d3, align_inp, pae_inp_temp, ic_2 << 1);
+            AE_SAV16X4X2_XP(d2, d3, align_dst, pae_dst_temp, ic_2 << 1);
+            AE_SA128POS_FP(align_dst, pae_dst_temp);
+            p_inp_temp += input_width * input_channels * input_bytewidth;
+            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+          }
+        }
+        else if (input_bytewidth==1)
+        {
+          for(i = 0; i < input_height; i++)
+          {
+            ae_int8x16 *pae_dst_temp, *pae_inp_temp;
+            ae_valignx2 dst_a, inp_a;
+            pae_dst_temp = (ae_int8x16 *)p_dst_temp;
+            pae_inp_temp = (ae_int8x16 *)p_inp_temp;
+            dst_a = AE_ZALIGN128();
+            inp_a = AE_LA128_PP(pae_inp_temp);
+            ae_int8x8 di0, di1;
+            AE_LAV8X8X2_XP(di0, di1, inp_a, pae_inp_temp, kernel_channels);
+            AE_SAV8X8X2_XP(di0, di1, dst_a, pae_dst_temp, kernel_channels);
+            AE_SA128POS_FP(dst_a, pae_dst_temp);
+            p_inp_temp += input_width * input_channels;
+            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
+          }
+
+        }
+        else
+        {
+
+        }
+
+        /* Bottom padding */
+        for(i = 0; i < y_b_pad; i++)
+        {
+          memset(p_dst_temp, pad_val_8, kernel_channels * input_bytewidth);
+          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+        }
+        p_inp += input_channels * input_bytewidth;
+      }
+
+      /* Update the index and destination frame pointer */
+      idx_beg_inp_width_pad++;
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels * input_bytewidth);
+    }
+  }
+  else
+  {
+    for(k = 0; k < planes_to_add; k++)
+    {
+      p_dst_temp = p_dst;
+      p_inp_temp = p_inp;
+      if((idx_beg_inp_width_pad < x_padding) || (idx_beg_inp_width_pad >= x_padding + input_width))
+      {
+        /* Add a padding frame */
+        for(i = 0; i < y_padding + input_height + y_b_pad; i++)
+        {
+          memset(p_dst_temp, pad_val_8, kernel_channels * input_bytewidth);
+          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+        }
+      }
+      else
+      {
+        /* Add an input frame */
+        /* Top padding */
+        for(i = 0; i < y_padding; i++)
+        {
+          memset(p_dst_temp, pad_val_8, kernel_channels * input_bytewidth);
+          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+        }
+
+        /* Input height */
+        if(input_channels == input_channels_pad)
+        {
+//#pragma loop_count min=1
+          for(i = 0; i < input_height; i++)
+          {
+            xa_nn_memcpy(p_dst_temp, p_inp_temp, kernel_channels * input_bytewidth);
+            p_inp_temp += input_width * input_channels * input_bytewidth;
+            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+          }
+        }
+        else
+        {
+#pragma loop_count min=1
+          for(i = 0; i < input_height; i++)
+          {
+            xa_nn_memcpy(p_dst_temp, p_inp_temp, kernel_channels * input_bytewidth);
+            p_inp_temp += input_width * input_channels * input_bytewidth;
+            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+          }
+        }
+
+        /* Bottom padding */
+        for(i = 0; i < y_b_pad; i++)
+        {
+          memset(p_dst_temp, pad_val_8, kernel_channels * input_bytewidth);
+          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels * input_bytewidth);
+        }
+        p_inp += input_channels * input_bytewidth;
+      }
+
+      /* Update the index and destination frame pointer */
+      idx_beg_inp_width_pad++;
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels * input_bytewidth);
     }
   }
 
@@ -1227,354 +1817,6 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
     }
 
   }
-}
-
-VOID conv2d_group_init_cir_buf_asym8(
-    WORD32 input_channels,
-    WORD32 input_channels_pad,
-    WORD32 kernel_channels,
-    WORD32 input_bytewidth,
-    WORD32 input_width,
-    WORD32 input_height,
-    WORD32 y_padding,
-    WORD32 y_b_pad,
-    WORD32 x_padding,
-    WORD32 kernel_width,
-    WORD32 x_stride,
-    VOID **pp_inp,
-    xa_nn_conv_state_t *p_state,
-    WORD32 pad_val)
-{
-  WORD32 i,k;
-  WORD8 *p_inp = (WORD8 *)*pp_inp;
-  WORD32 planes_to_add = x_stride > kernel_width ? 0 : kernel_width - x_stride;
-  WORD32 planes_to_keep = kernel_width - planes_to_add;
-  ae_int8x8 zero_pad = AE_MOVDA8(pad_val);
-  UWORD8 pad_val_u8 = (UWORD8)pad_val;
-  ae_int8x8 inp_val;
-  WORD8 *p_dst = (WORD8 *)p_state->cir_buf.p_curr;
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels);
-  (void) input_bytewidth;
-
-  // Initialize circular buffer
-  if(kernel_channels == 1)
-  {
-    // Set first 'y_padding' rows of cir_buf to zero
-    for(i=0;i<y_padding;i++)
-    {
-      for(k=0;k<planes_to_add;k++)
-      {
-        AE_S8_0_XC(zero_pad, (ae_int8 *)p_dst, 1);
-      }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep);
-    }
-  }
-  else
-  {
-    // Set first 'y_padding' rows of cir_buf to zero
-    for(i=0;i<y_padding;i++)
-    {
-      for(k=0;k<planes_to_add;k++)
-      {
-        memset(p_dst, pad_val_u8, kernel_channels);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels);
-      }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels);
-    }
-  }
-
-  // Set next 'input_height' rows of cir_buf with zero and/or input data
-  WORD32 copy_x_pad_width = x_padding;
-  WORD32 copy_inp_width = 0;
-  WORD32 rem_copy_width = 0;
-  if(planes_to_add <= x_padding)
-  {
-    copy_x_pad_width = planes_to_add;
-  }
-  else
-  {
-    copy_inp_width = planes_to_add - x_padding;
-    rem_copy_width = XT_MAX(0, copy_inp_width - input_width);
-    copy_inp_width = XT_MIN(copy_inp_width, input_width);
-  }
-
-  if(kernel_channels == 1)
-  {
-    for(i=0;i<input_height;i++)
-    {
-      for(k=0;k<copy_x_pad_width;k++)
-      {
-        AE_S8_0_XC(zero_pad, (ae_int8 *)p_dst, 1);
-      }
-      for(k=0;k<copy_inp_width;k++)
-      {
-        AE_L8_XP(inp_val, (ae_int8 *)p_inp, input_channels);
-        AE_S8_0_XC(inp_val, (ae_int8 *)p_dst, 1);
-      }
-      for(k=0;k<rem_copy_width;k++)
-      {
-        AE_S8_0_XC(zero_pad, (ae_int8 *)p_dst, 1);
-      }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep);
-      p_inp += (input_width - copy_inp_width)*input_channels;
-    }
-    // Set last 'y_b_pad' rows of cir_buf to zero
-    for(i=0;i<y_b_pad;i++)
-    {
-      for(k=0;k<planes_to_add;k++)
-      {
-        AE_S8_0_XC(zero_pad, (ae_int8 *)p_dst, 1);
-      }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep);
-    }
-    p_inp += (-input_height * input_width + copy_inp_width)*input_channels;
-    *pp_inp = (VOID *)p_inp;
-  }
-  else
-  {
-    for(i=0;i<input_height;i++)
-    {
-      for(k=0;k<copy_x_pad_width;k++)
-      {
-        memset(p_dst, pad_val_u8, kernel_channels);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels);
-      }
-      for(k=0;k<copy_inp_width;k++)
-      {
-        memcpy(p_dst, p_inp, kernel_channels);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels);
-        p_inp += input_channels;
-      }
-      for(k=0;k<rem_copy_width;k++)
-      {
-        memset(p_dst, pad_val_u8, kernel_channels);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels);
-      }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels);
-      p_inp += (input_width - copy_inp_width) * input_channels;
-    }
-
-    // Set last 'y_b_pad' rows of cir_buf to zero
-    for(i=0;i<y_b_pad;i++)
-    {
-      for(k=0;k<planes_to_add;k++)
-      {
-        memset(p_dst, pad_val_u8, kernel_channels);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels);
-      }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels);
-    }
-    p_inp += (-input_height * input_width + copy_inp_width) * input_channels;
-    *pp_inp = (VOID *)p_inp;
-  }
-}
-
-VOID conv2d_group_update_cir_buf_asym8(
-    WORD32 input_channels,
-    WORD32 input_channels_pad,
-    WORD32 kernel_channels,
-    WORD32 input_bytewidth,
-    WORD32 input_width,
-    WORD32 input_height,
-    WORD32 y_padding,
-    WORD32 y_b_pad,
-    WORD32 x_padding,
-    WORD32 kernel_width,
-    WORD32 x_stride,
-    VOID **pp_inp,
-    WORD32 idx_beg_inp_width_pad,
-    xa_nn_conv_state_t *p_state,
-    WORD32 pad_val)
-{
-  WORD32 i,k;
-  WORD8 *p_inp = (WORD8 *)*pp_inp;
-  WORD32 planes_to_add = x_stride > kernel_width ? kernel_width : x_stride;
-  WORD32 planes_to_keep = kernel_width - planes_to_add;
-  ae_int8x8 zero_pad = AE_MOVDA8(pad_val);
-  UWORD8 pad_val_8 = (UWORD8) pad_val;
-  ae_int8x8 inp_val;
-  WORD8* __restrict__ p_dst_temp;
-  WORD8* __restrict__ p_inp_temp;
-  (void) input_bytewidth;//TODO: remove
-
-  if(idx_beg_inp_width_pad < 0)
-  {
-    /* x_stride > kernel_width case */
-    idx_beg_inp_width_pad = 0;
-  }
-
-  WORD32 to_skip_inp_width = x_stride - planes_to_add;     // Non-zero for x_stride > kernel_width
-
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_state->cir_buf.p_curr, planes_to_add * kernel_channels);
-  WORD8 *p_dst = (WORD8 *)p_state->cir_buf.p_curr;
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * kernel_channels);
-
-  // Copy 'planes_to_add' planes of data to circular buffer
-  if(kernel_channels == 1)
-  {
-    for(k = 0; k < planes_to_add; k++)
-    {
-      p_dst_temp = p_dst;
-      p_inp_temp = p_inp;
-      if((idx_beg_inp_width_pad < x_padding) || (idx_beg_inp_width_pad >= x_padding + input_width))
-      {
-        /* Add a padding frame */
-        for(i = 0; i < y_padding + input_height + y_b_pad; i++)
-        {
-          AE_S8_0_XC(zero_pad, (ae_int8 *)p_dst_temp, kernel_width);
-        }
-      }
-      else
-      {
-        /* Add an input frame */
-        /* Top padding */
-        for(i = 0; i < y_padding; i++)
-        {
-          AE_S8_0_XC(zero_pad, (ae_int8 *)p_dst_temp, kernel_width);
-        }
-
-        /* Input height */
-        for(i = 0; i < input_height; i++)
-        {
-          AE_L8_XP(inp_val, (ae_int8 *)p_inp_temp, input_width*input_channels);
-          AE_S8_0_XC(inp_val, (ae_int8 *)p_dst_temp, kernel_width);
-        }
-
-        /* Bottom padding */
-        for(i = 0; i < y_b_pad; i++)
-        {
-          AE_S8_0_XC(zero_pad, (ae_int8 *)p_dst_temp, kernel_width);
-        }
-        p_inp += input_channels;
-      }
-
-      /* Update the index and destination frame pointer */
-      idx_beg_inp_width_pad++;
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels);
-    }
-  }
-  else if(input_channels == input_channels_pad && kernel_channels <= 16)
-  {
-    for(k = 0; k < planes_to_add; k++)
-    {
-      p_dst_temp = p_dst;
-      p_inp_temp = p_inp;
-      if((idx_beg_inp_width_pad < x_padding) || (idx_beg_inp_width_pad >= x_padding + input_width))
-      {
-        /* Add a padding frame */
-        for(i = 0; i < y_padding + input_height + y_b_pad; i++)
-        {
-          memset(p_dst_temp, pad_val_8, kernel_channels);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-        }
-      }
-      else
-      {
-        /* Add an input frame */
-        /* Top padding */
-        for(i = 0; i < y_padding; i++)
-        {
-          memset(p_dst_temp, pad_val_8, kernel_channels);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-        }
-
-        /* Input height */
-        {
-          for(i = 0; i < input_height; i++)
-          {
-            ae_int8x16 *pae_dst_temp, *pae_inp_temp;
-            ae_valignx2 dst_a, inp_a;
-            pae_dst_temp = (ae_int8x16 *)p_dst_temp;
-            pae_inp_temp = (ae_int8x16 *)p_inp_temp;
-            dst_a = AE_ZALIGN128();
-            inp_a = AE_LA128_PP(pae_inp_temp);
-            ae_int8x8 di0, di1;
-            AE_LAV8X8X2_XP(di0, di1, inp_a, pae_inp_temp, kernel_channels);
-            AE_SAV8X8X2_XP(di0, di1, dst_a, pae_dst_temp, kernel_channels);
-            AE_SA128POS_FP(dst_a, pae_dst_temp);
-            p_inp_temp += input_width * input_channels;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-          }
-        }
-
-        /* Bottom padding */
-        for(i = 0; i < y_b_pad; i++)
-        {
-          memset(p_dst_temp, pad_val_8, kernel_channels);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-        }
-        p_inp += input_channels;
-      }
-
-      /* Update the index and destination frame pointer */
-      idx_beg_inp_width_pad++;
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels);
-    }
-  }
-  else
-  {
-    for(k = 0; k < planes_to_add; k++)
-    {
-      p_dst_temp = p_dst;
-      p_inp_temp = p_inp;
-      if((idx_beg_inp_width_pad < x_padding) || (idx_beg_inp_width_pad >= x_padding + input_width))
-      {
-        /* Add a padding frame */
-        for(i = 0; i < y_padding + input_height + y_b_pad; i++)
-        {
-          memset(p_dst_temp, pad_val_8, kernel_channels);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-        }
-      }
-      else
-      {
-        /* Add an input frame */
-        /* Top padding */
-        for(i = 0; i < y_padding; i++)
-        {
-          memset(p_dst_temp, pad_val_8, kernel_channels);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-        }
-
-        /* Input height */
-        if(input_channels == input_channels_pad)
-        {
-          for(i = 0; i < input_height; i++)
-          {
-            xa_nn_memcpy(p_dst_temp, p_inp_temp, kernel_channels);
-            p_inp_temp += input_width * input_channels;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-          }
-        }
-        else
-        {
-          for(i = 0; i < input_height; i++)
-          {
-            xa_nn_memcpy(p_dst_temp, p_inp_temp, kernel_channels);
-            p_inp_temp += input_width * input_channels;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-          }
-        }
-
-        /* Bottom padding */
-        for(i = 0; i < y_b_pad; i++)
-        {
-          memset(p_dst_temp, pad_val_8, kernel_channels);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst_temp, kernel_width * kernel_channels);
-        }
-        p_inp += input_channels;
-      }
-
-      /* Update the index and destination frame pointer */
-      idx_beg_inp_width_pad++;
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, kernel_channels);
-    }
-  }
-
-  /* Skip required number of input frames */
-  p_inp += to_skip_inp_width * input_channels;
-  *pp_inp = (VOID *)p_inp;
-
 }
 
 VOID conv2d_std_init_cir_buf_asym8(
@@ -1925,3 +2167,5 @@ VOID conv2d_std_update_cir_buf_asym8(
   *pp_inp = (VOID *)p_inp;
 
 }
+
+#endif /* ENABLE_SCRATCH_SIZE_API_ONLY */

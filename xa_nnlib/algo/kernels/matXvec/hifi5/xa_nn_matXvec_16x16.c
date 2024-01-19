@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -363,6 +363,29 @@ WORD32 xa_nn_matXvec_16x16_16(
          WORD32 bias_shift)                       /* bias shift amount */
 
 {
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD16), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+
+  if(p_mat2 != NULL)
+  {
+    XA_NNLIB_ARG_CHK_PTR(p_vec2, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_mat2, sizeof(WORD16), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_vec2, sizeof(WORD16), -1);
+    /* Basic Parameter checks */
+    XA_NNLIB_ARG_CHK_COND((cols2 <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((row_stride2 < cols2), -1);
+  }
 
   if (!p_bias)
   {
@@ -709,6 +732,29 @@ WORD32 xa_nn_matXvec_16x16_32(
          WORD32 acc_shift,                        /* out accumulator shift amount */
          WORD32 bias_shift)                       /* bias shift amount */
 {
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD32), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD16), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+
+  if(p_mat2 != NULL)
+  {
+    XA_NNLIB_ARG_CHK_PTR(p_vec2, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_mat2, sizeof(WORD16), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_vec2, sizeof(WORD16), -1);
+    /* Basic Parameter checks */
+    XA_NNLIB_ARG_CHK_COND((cols2 <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((row_stride2 < cols2), -1);
+  }
 
   if (!p_bias)
   {
@@ -1041,6 +1087,29 @@ WORD32 xa_nn_matXvec_16x16_64(
          WORD32 acc_shift,                        /* out accumulator shift amount */
          WORD32 bias_shift)                       /* bias shift amount */
 {
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD64), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD16), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+
+  if(p_mat2 != NULL)
+  {
+    XA_NNLIB_ARG_CHK_PTR(p_vec2, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_mat2, sizeof(WORD16), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_vec2, sizeof(WORD16), -1);
+    /* Basic Parameter checks */
+    XA_NNLIB_ARG_CHK_COND((cols2 <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((row_stride2 < cols2), -1);
+  }
 
   if (!p_bias)
   {
@@ -1373,6 +1442,31 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
       }
     case 64:
       {
+          /* NULL pointer checks */
+          XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+          XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+          XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+          /* Pointer alignment checks */
+          XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD16), -1);
+          XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(WORD16), -1);
+          XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(WORD16), -1);
+          XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD16), -1);
+          XA_NNLIB_ARG_CHK_ALIGN(p_scratch, sizeof(WORD32), -1);
+          /* Basic Parameter checks */
+          XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+          XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+          XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+  
+          if(p_mat2 != NULL)
+          {
+              XA_NNLIB_ARG_CHK_PTR(p_vec2, -1);
+              XA_NNLIB_ARG_CHK_ALIGN(p_mat2, sizeof(WORD16), -1);
+              XA_NNLIB_ARG_CHK_ALIGN(p_vec2, sizeof(WORD16), -1);
+              /* Basic Parameter checks */
+              XA_NNLIB_ARG_CHK_COND((cols2 <= 0), -1);
+              XA_NNLIB_ARG_CHK_COND((row_stride2 < cols2), -1);
+          }
+
           acc_shift += 32;;
           if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && !((unsigned int)p_mat2 & 15) && !((unsigned int)p_vec2 & 15) && (cols1% 16 ==0) && (cols2% 16 ==0) && row_stride1 % 8 ==0 && row_stride2 %8==0)
           {
@@ -1745,6 +1839,31 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
           }
       case 64:
           {
+              /* NULL pointer checks */
+              XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+              XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+              XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+              /* Pointer alignment checks */
+              XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD16), -1);
+              XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(WORD16), -1);
+              XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(WORD16), -1);
+              XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD16), -1);
+              XA_NNLIB_ARG_CHK_ALIGN(p_scratch, sizeof(WORD32), -1);
+              /* Basic Parameter checks */
+              XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+              XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+              XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+      
+              if(p_mat2 != NULL)
+              {
+                  XA_NNLIB_ARG_CHK_PTR(p_vec2, -1);
+                  XA_NNLIB_ARG_CHK_ALIGN(p_mat2, sizeof(WORD16), -1);
+                  XA_NNLIB_ARG_CHK_ALIGN(p_vec2, sizeof(WORD16), -1);
+                  /* Basic Parameter checks */
+                  XA_NNLIB_ARG_CHK_COND((cols2 <= 0), -1);
+                  XA_NNLIB_ARG_CHK_COND((row_stride2 < cols2), -1);
+              }
+
               ADJUST_ACC_LSH_AND_BIAS_LSH_AxB_C(WORD16, WORD16, WORD32);
               if (p_mat1 && p_vec1 && p_mat2 && p_vec2 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && !((unsigned int)p_mat2 & 15) && !((unsigned int)p_vec2 & 15) && (cols1% 16 ==0) && (cols2% 16 ==0) && row_stride1 % 8 ==0 && row_stride2 %8==0)
               {

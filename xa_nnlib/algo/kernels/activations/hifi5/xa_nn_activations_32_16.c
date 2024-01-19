@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,7 +20,7 @@
 
 ******************************************************************************/
 #include "xa_nnlib_common.h"
-#include "NatureDSP_Signal_math.h"
+#include "../../../ndsp/hifi5/include/NatureDSP_Signal_math.h"
 /*-------------------------------------------------------------------------
   Sigmoid
   The functions compute the sigmoid of input argument. 32-bit fixed-point
@@ -81,6 +81,12 @@ WORD32 xa_nn_vec_sigmoid_32_16(
         % scale to Q15 with rounding
         y=bitshift(y+128,-8);
     */
+
+    XA_NNLIB_ARG_CHK_PTR(y, -1);
+    XA_NNLIB_ARG_CHK_PTR(x, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(y, sizeof(WORD16), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(x, sizeof(WORD32), -1);
+
     static const int32_t polypow2[] = { 14685184, -114217216 , 514075392, -1488269056, 2147483647, 2061584302 };// coefficients in q31 format
     int n;
     ae_int32x2 Xa, Xb, Ea, Eb, Ya, Yb, Za, Zb, Da, Db;
@@ -101,9 +107,9 @@ WORD32 xa_nn_vec_sigmoid_32_16(
     NASSERT(y);
     if (N <= 0) return -1;
 
-    ae_int32x2 U,V;
+    ae_int32x2 U/*,V*/;
     U = AE_MOVDA32X2(774541002, 774541002); // ln computation redundant in the loop
-    V =AE_MOVDA32X2(0x007fffff, 0x007fffff);
+//    V =AE_MOVDA32X2(0x007fffff, 0x007fffff);
 
     t1 = 2061584302;// 0.96 in the accumulator loaded outside from
     t2 = 2061584302;// 0.96 in the accumulator loaded outside from

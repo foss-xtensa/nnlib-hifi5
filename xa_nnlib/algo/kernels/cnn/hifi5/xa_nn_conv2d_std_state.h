@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -267,8 +267,38 @@ VOID conv2d_std_init_cir_buf(
     VOID **pp_inp,
     xa_nn_conv_state_t *p_state);
 
+VOID conv2d_group_init_cir_buf(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 kernel_channels,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    VOID **pp_inp,
+    xa_nn_conv_state_t *p_state,
+    WORD32 pad_val);
+   
+VOID conv2d_std_update_cir_buf(
+    WORD32 input_channels,
+    WORD32 input_channels_pad,
+    WORD32 input_bytewidth,
+    WORD32 input_width,
+    WORD32 input_height,
+    WORD32 y_padding,
+    WORD32 y_b_pad,
+    WORD32 x_padding,
+    WORD32 kernel_width,
+    WORD32 x_stride,
+    VOID **pp_inp,
+    WORD32 idx_beg_inp_width_pad,
+    xa_nn_conv_state_t *p_state);
 
-VOID conv2d_group_update_cir_buf_asym8(
+VOID conv2d_group_update_cir_buf(
     WORD32 input_channels,
     WORD32 input_channels_pad,
     WORD32 kernel_channels,
@@ -284,37 +314,6 @@ VOID conv2d_group_update_cir_buf_asym8(
     WORD32 idx_beg_inp_width_pad,
     xa_nn_conv_state_t *p_state,
     WORD32 pad_val);
-
-VOID conv2d_group_init_cir_buf_asym8(
-    WORD32 input_channels,
-    WORD32 input_channels_pad,
-    WORD32 kernel_channels,
-    WORD32 input_bytewidth,
-    WORD32 input_width,
-    WORD32 input_height,
-    WORD32 y_padding,
-    WORD32 y_b_pad,
-    WORD32 x_padding,
-    WORD32 kernel_width,
-    WORD32 x_stride,
-    VOID **pp_inp,
-    xa_nn_conv_state_t *p_state,
-    WORD32 pad_val);   
-
-VOID conv2d_std_update_cir_buf(
-    WORD32 input_channels,
-    WORD32 input_channels_pad,
-    WORD32 input_bytewidth,
-    WORD32 input_width,
-    WORD32 input_height,
-    WORD32 y_padding,
-    WORD32 y_b_pad,
-    WORD32 x_padding,
-    WORD32 kernel_width,
-    WORD32 x_stride,
-    VOID **pp_inp,
-    WORD32 idx_beg_inp_width_pad,
-    xa_nn_conv_state_t *p_state);
 
 VOID conv2d_std_init_cir_buf_asym8(
     WORD32 input_channels,

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,7 +20,7 @@
 
 ******************************************************************************/
 #include "xa_type_def.h"
-#include "common.h"
+#include "xa_nn_common.h"
 #include <string.h>
 #include "xa_nn_circ_buf.h"
 #include "xa_nnlib_common_macros_hifi5.h"
@@ -71,6 +71,7 @@ int xa_nn_circ_buf_nchw_getsize(
   }
 }
 
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 VOID xa_nn_circ_buf_nchw_init(
     xa_nn_circ_buf_t *p_circ_buf,
     pVOID p_mem,
@@ -330,6 +331,7 @@ void xa_nn_circ_buf_nchw_add_rows_with_pad_val(
         p_circ_buf->p_curr = (pVOID)p_dst;
     }
 }
+#endif /* ENABLE_SCRATCH_SIZE_API_ONLY */
 
 int xa_nn_circ_buf_nhwc_getsize(
     WORD32 bytewidth,
@@ -378,6 +380,7 @@ int xa_nn_circ_buf_nhwc_getsize(
   }
 }
 
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 VOID xa_nn_circ_buf_nhwc_init(
     xa_nn_circ_buf_t *p_circ_buf,
     pVOID p_mem,
@@ -1505,3 +1508,5 @@ void xa_nn_dilated_circ_buf_nhwc_add_cols_with_pad_val(
     AE_ADDCIRC16X4_XC((ae_int16x4 *)p_circ_buf->p_curr, (-circ_buf_width)*p_circ_buf->row_offset);
 }
 #endif
+#endif /* ENABLE_SCRATCH_SIZE_API_ONLY */
+

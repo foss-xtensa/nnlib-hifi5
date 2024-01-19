@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,7 +19,7 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "common_fpu.h"
+#include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_common.h"
 
 #if !HAVE_HP_VFPU
@@ -93,9 +93,9 @@ WORD32 xa_nn_matXvec_f16_circ(
         xthalfx4 y0, y1, y2, y3,y01,y02,y23,y13;
 
         xthalfx4 z0, z1, z2, z3;
-        xthalfx4 z4, z5, z6, z7;
+        //xthalfx4 z4, z5, z6, z7;
         z0 = z1 = z2 = z3 = ZERO_HX4();
-        z4 = z5 = z6 = z7 = ZERO_HX4();
+        //z4 = z5 = z6 = z7 = ZERO_HX4();
         if(p_bias != NULL)
         {
           z0 = AE_MOVHALFX4_FROMF16X4(AE_MOVDA16(p_bias[vec_itr]));
@@ -332,6 +332,9 @@ WORD32 xa_nn_matXvec_f16_circ(
         AE_LAHX4X2POS_PC(align_mat_1, p_mat1_1);
 
         int cols1_count = cols- cols%8;
+        int rem_shift_1 = (cols%8) >= 4 ? (64 - (4 * 16)) : 64 - ((cols%8) * 16);
+        int rem_shift_2 = (cols%8) >= 4 ? (64 - (((cols%8) - 4) * 16)) : 64;
+
         for(c_itr = 0; c_itr < (cols1_count >> 3); c_itr++)
         {
           AE_LAHX4X2_IP(vec_batch_0_0, vec_batch_0_1, align_vec0, p_vec_batch_0);
@@ -350,6 +353,10 @@ WORD32 xa_nn_matXvec_f16_circ(
           AE_LAVHX4X2_XP(vec_batch_1_0, vec_batch_1_1, align_vec1, p_vec_batch_1, (cols%8)*2);
           AE_LAHX4X2_IC(mat1_0_0, mat1_0_1, align_mat_0, p_mat1_0);
           AE_LAHX4X2_IC(mat1_1_0, mat1_1_1, align_mat_1, p_mat1_1);
+          mat1_0_0 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_0_0)), rem_shift_1), rem_shift_1)));
+          mat1_0_1 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_0_1)), rem_shift_2), rem_shift_2)));
+          mat1_1_0 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_1_0)), rem_shift_1), rem_shift_1)));
+          mat1_1_1 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_1_1)), rem_shift_2), rem_shift_2)));        
           MADDQ_H(acc_0_0, acc_1_0, mat1_0_0, mat1_1_0, vec_batch_0_0);
           MADDQ_H(acc_0_0_s, acc_1_0_s, mat1_0_1, mat1_1_1, vec_batch_0_1);
           MADDQ_H(acc_0_1, acc_1_1, mat1_0_0, mat1_1_0, vec_batch_1_0);
@@ -415,6 +422,8 @@ WORD32 xa_nn_matXvec_f16_circ(
         AE_LAHX4X2POS_PC(align_mat_0, p_mat1_0);
 
         int cols1_count = cols- cols%8;
+        int rem_shift_1 = (cols%8) >= 4 ? (64 - (4 * 16)) : 64 - ((cols%8) * 16);
+        int rem_shift_2 = (cols%8) >= 4 ? (64 - (((cols%8) - 4) * 16)) : 64;
 
         for(c_itr = 0; c_itr < (cols1_count >> 3); c_itr++)
         {
@@ -430,6 +439,8 @@ WORD32 xa_nn_matXvec_f16_circ(
           AE_LAVHX4X2_XP(vec_batch_0_0, vec_batch_0_1, align_vec0, p_vec_batch_0, (cols%8 *2));
           AE_LAVHX4X2_XP(vec_batch_1_0, vec_batch_1_1, align_vec1, p_vec_batch_1, (cols%8 *2));
           AE_LAHX4X2_IC(mat1_0_0, mat1_0_1, align_mat_0, p_mat1_0);
+          mat1_0_0 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_0_0)), rem_shift_1), rem_shift_1)));
+          mat1_0_1 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_0_1)), rem_shift_2), rem_shift_2)));
           MADDQ_H(acc_0_0, acc_0_1,vec_batch_0_0, vec_batch_1_0,mat1_0_0);
           MADDQ_H(acc_0_0, acc_0_1,vec_batch_0_1, vec_batch_1_1,mat1_0_1);
         }
@@ -491,6 +502,8 @@ WORD32 xa_nn_matXvec_f16_circ(
       AE_LAHX4X2POS_PC(align_mat_1, p_mat1_1);
 
       int cols1_count = cols - cols%8;
+      int rem_shift_1 = (cols%8) >= 4 ? (64 - (4 * 16)) : 64 - ((cols%8) * 16);
+      int rem_shift_2 = (cols%8) >= 4 ? (64 - (((cols%8) - 4) * 16)) : 64;
 
       for(c_itr = 0; c_itr < (cols1_count >> 3); c_itr++)
       {
@@ -505,6 +518,10 @@ WORD32 xa_nn_matXvec_f16_circ(
         AE_LAVHX4X2_XP(vec_batch_0_0, vec_batch_0_1, align_vec0, p_vec_batch_0, (cols%8) * 2);
         AE_LAHX4X2_IC(mat1_0_0, mat1_0_1, align_mat_0, p_mat1_0);
         AE_LAHX4X2_IC(mat1_1_0, mat1_1_1, align_mat_1, p_mat1_1);
+        mat1_0_0 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_0_0)), rem_shift_1), rem_shift_1)));
+        mat1_0_1 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_0_1)), rem_shift_2), rem_shift_2)));
+        mat1_1_0 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_1_0)), rem_shift_1), rem_shift_1)));
+        mat1_1_1 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_1_1)), rem_shift_2), rem_shift_2)));        
         MADDQ_H(acc_0_0, acc_1_0, mat1_0_0, mat1_1_0, vec_batch_0_0);
         MADDQ_H(acc_0_0, acc_1_0, mat1_0_1, mat1_1_1, vec_batch_0_1);
       }
@@ -549,7 +566,8 @@ WORD32 xa_nn_matXvec_f16_circ(
       AE_LAHX4X2POS_PC(align_mat_0, p_mat1_0);
 
       int cols1_count = cols - cols%8;
-
+      int rem_shift_1 = (cols%8) >= 4 ? (64 - (4 * 16)) : 64 - ((cols%8) * 16);
+      int rem_shift_2 = (cols%8) >= 4 ? (64 - (((cols%8) - 4) * 16)) : 64;
       for(c_itr = 0; c_itr < (cols1_count >> 3); c_itr++)
       {
         AE_LAHX4X2_IP(vec_batch_0_0, vec_batch_0_1, align_vec0, p_vec_batch_0);
@@ -563,6 +581,8 @@ WORD32 xa_nn_matXvec_f16_circ(
       {
         AE_LAVHX4X2_XP(vec_batch_0_0, vec_batch_0_1, align_vec0, p_vec_batch_0, (cols%8 * 2));
         AE_LAHX4X2_IC(mat1_0_0, mat1_0_1, align_mat_0, p_mat1_0);
+        mat1_0_0 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_0_0)), rem_shift_1), rem_shift_1)));
+        mat1_0_1 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMF16X4(AE_MOVINT16X4_FROMXTHALFX4(mat1_0_1)), rem_shift_2), rem_shift_2)));
         MADDQ_H(acc_0_0, acc_dummy_0_0, mat1_0_0, mat1_0_0, vec_batch_0_0);
         MADDQ_H(acc_0_0, acc_dummy_0_0, mat1_0_1, mat1_0_1, vec_batch_0_1);
       }

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -38,19 +38,19 @@
 /* DSP Library API */
 /*    Code optimized for HiFi5 core */
 
-#include "NatureDSP_Signal_math.h"
+#include "../include/NatureDSP_Signal_math.h"
 /* Common helper macros. */
-#include "common_fpu.h"
+#include "xa_nnlib_common_fpu.h"
 /* Tables */
-#include "lognf_tbl.h"
-#include "sqrt2f_tbl.h"
+#include "../include/lognf_tbl.h"
+#include "../include/sqrt2f_tbl.h"
 /* +/-Infinity, single precision */
-#include "inff_tbl.h"
+#include "../include/inff_tbl.h"
 /* sNaN/qNaN, single precision. */
-#include "nanf_tbl.h"
+#include "../include/nanf_tbl.h"
 
 #if !HAVE_VFPU && !HAVE_FPU
-DISCARD_FUN(void,vec_lognf,( float32_t * restrict y, const float32_t * restrict x, int N ))
+DISCARD_FUN(void,xa_nnlib_vec_lognf,( float32_t * restrict y, const float32_t * restrict x, int N ))
 #elif HAVE_VFPU
 #define sz_i32  (int)sizeof(int32_t)
 #define sz_f32  (int)sizeof(float32_t)
@@ -107,7 +107,7 @@ DISCARD_FUN(void,vec_lognf,( float32_t * restrict y, const float32_t * restrict 
   return result in Q25 or floating point
 -------------------------------------------------------------------------*/
 static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N );
-void vec_lognf( float32_t * restrict y,const float32_t * restrict x, int N )
+void xa_nnlib_vec_lognf( float32_t * restrict y,const float32_t * restrict x, int N )
 {
     xtfloatx4 * restrict pX;
     xtfloatx4 * restrict pY;
@@ -149,26 +149,26 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
    *   float32_t y;
    *   int e;
    *   
-   *   if ( x<0           ) return ( qNaNf.f     );
-   *   if ( x==0          ) return ( minusInff.f );
-   *   if ( x==plusInff.f ) return ( x           );
+   *   if ( x<0           ) return ( xa_nnlib_qNaNf.f     );
+   *   if ( x==0          ) return ( xa_nnlib_minusInff.f );
+   *   if ( x==xa_nnlib_plusInff.f ) return ( x           );
    *   
    *   x = frexpf(x, &e);
-   *   if (x<sqrt0_5f.f) { x = x * 2; e--; }
+   *   if (x<xa_nnlib_sqrt0_5f.f) { x = x * 2; e--; }
    *   
    *   x = x - 1.0f;
-   *   y = lognf_tbl[0].f;
-   *   y = lognf_tbl[1].f - x*y;
-   *   y = lognf_tbl[2].f - x*y;
-   *   y = lognf_tbl[3].f - x*y;
-   *   y = lognf_tbl[4].f - x*y;
-   *   y = lognf_tbl[5].f - x*y;
-   *   y = lognf_tbl[6].f - x*y;
-   *   y = lognf_tbl[7].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[0].f;
+   *   y = xa_nnlib_lognf_tbl[1].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[2].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[3].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[4].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[5].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[6].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[7].f - x*y;
    *   y = x*y + 1.0f;
    *   y = x*y;
    *   
-   *   y = y + e*ln2.f;
+   *   y = y + e*xa_nnlib_ln2.f;
    *   return y;
    */
 #if VEC_LOGNF_ERRH != 0
@@ -215,7 +215,7 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
         *     for ( n=0; n<blkLen; n++ )
         *     {
         *       fr = frexpf( x[blkIx*blkSize+n], &ex );
-        *       if ( fr < sqrt0_5f.f ) { fr *= 2.f; ex--; };
+        *       if ( fr < xa_nnlib_sqrt0_5f.f ) { fr *= 2.f; ex--; };
         *       y[blkIx*blkSize+n] = 1.f - fr;
         *       scr[n] = ex;
         *     }
@@ -249,8 +249,8 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
             FREXP_SX2(fr1,ex1,y1);
             AE_MOVT32X2(ex0, AE_SUB32(ex0,23), b0_subn);
             AE_MOVT32X2(ex1, AE_SUB32(ex1,23), b1_subn);
-            b0_ltsqr = XT_OLT_SX2(fr0, sqrt0_5f.f);
-            b1_ltsqr = XT_OLT_SX2(fr1, sqrt0_5f.f);
+            b0_ltsqr = XT_OLT_SX2(fr0, xa_nnlib_sqrt0_5f.f);
+            b1_ltsqr = XT_OLT_SX2(fr1, xa_nnlib_sqrt0_5f.f);
             MULQ_S(tfr0, tfr1, fr0, fr1, XT_CONST_S(2));
             tex0 = AE_SUB32(ex0, AE_MOVI(1));
             tex1 = AE_SUB32(ex1, AE_MOVI(1));
@@ -277,9 +277,9 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
     *       xn = x[blkIx*blkSize+n];
     *   
     *            if ( isnan(xn)      ) yn = xn;
-    *       else if ( xn<0.f         ) yn = qNaNf.f;
-    *       else if ( xn==0.f        ) yn = minusInff.f;
-    *       else if ( xn==plusInff.f ) yn = plusInff.f;
+    *       else if ( xn<0.f         ) yn = xa_nnlib_qNaNf.f;
+    *       else if ( xn==0.f        ) yn = xa_nnlib_minusInff.f;
+    *       else if ( xn==xa_nnlib_plusInff.f ) yn = xa_nnlib_plusInff.f;
     *       else
     *       {
     *         fr = y[blkIx*blkSize+n];
@@ -289,10 +289,10 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
     *         // evaluate the polynomial.                                     
     *         //                                                               
     *   
-    *         cf0 = lognf_tbl[1].f - fr*lognf_tbl[0].f;
-    *         cf1 = lognf_tbl[3].f - fr*lognf_tbl[2].f;
-    *         cf2 = lognf_tbl[5].f - fr*lognf_tbl[4].f;
-    *         cf3 = lognf_tbl[7].f - fr*lognf_tbl[6].f;
+    *         cf0 = xa_nnlib_lognf_tbl[1].f - fr*xa_nnlib_lognf_tbl[0].f;
+    *         cf1 = xa_nnlib_lognf_tbl[3].f - fr*xa_nnlib_lognf_tbl[2].f;
+    *         cf2 = xa_nnlib_lognf_tbl[5].f - fr*xa_nnlib_lognf_tbl[4].f;
+    *         cf3 = xa_nnlib_lognf_tbl[7].f - fr*xa_nnlib_lognf_tbl[6].f;
     *   
     *         fr2 = fr*fr;
     *   
@@ -302,7 +302,7 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
     *         gn = cf3 + fr2*gn;
     *   
     *         gn = fr*gn + 1.f;
-    *         yn = fr*gn + scr[n]*ln2.f;
+    *         yn = fr*gn + scr[n]*xa_nnlib_ln2.f;
     *   
     *       }
     *   
@@ -311,7 +311,7 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
     *   }
     */
         SCR_rd = (ae_int32x4*)scr0;
-        LOG_TBL_Rd = (const xtfloat *)(lognf_tbl);
+        LOG_TBL_Rd = (const xtfloat *)(xa_nnlib_lognf_tbl);
 
         X_rd = (xtfloatx4*)(x );
         Y_rd = (xtfloatx4*)scr1;
@@ -368,7 +368,7 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
             y0 = XT_FLOAT_SX2(ex0, 0);
             y1 = XT_FLOAT_SX2(ex1, 0);
 
-            MUL_SX2X2(y0, y1, y0, y1, ln2.f, ln2.f);
+            MUL_SX2X2(y0, y1, y0, y1, xa_nnlib_ln2.f, xa_nnlib_ln2.f);
 
             CONST_SX2X2(t0,t1,1);
             MADD_SX2X2(t0, t1, x0, x1, fr0, fr1); x0 = t0; x1 = t1;
@@ -401,7 +401,7 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
         }
         AE_SA128POS_FP(Y_wr_va, Y_wr);
     }
-} /* vec_lognf() */
+} /* xa_nnlib_vec_lognf() */
 #elif HAVE_FPU
 #define sz_i32  (int)sizeof(int32_t)
 #define sz_f32  (int)sizeof(float32_t)
@@ -453,7 +453,7 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
   return result in Q25 or floating point
 -------------------------------------------------------------------------*/
 
-void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
+void xa_nnlib_vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
 {
   /*
    * Reference C code for a scalar variant:
@@ -461,26 +461,26 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
    *   float32_t y;
    *   int e;
    *   
-   *   if ( x<0           ) return ( qNaNf.f     );
-   *   if ( x==0          ) return ( minusInff.f );
-   *   if ( x==plusInff.f ) return ( x           );
+   *   if ( x<0           ) return ( xa_nnlib_qNaNf.f     );
+   *   if ( x==0          ) return ( xa_nnlib_minusInff.f );
+   *   if ( x==xa_nnlib_plusInff.f ) return ( x           );
    *   
    *   x = frexpf(x, &e);
-   *   if (x<sqrt0_5f.f) { x = x * 2; e--; }
+   *   if (x<xa_nnlib_sqrt0_5f.f) { x = x * 2; e--; }
    *   
    *   x = x - 1.0f;
-   *   y = lognf_tbl[0].f;
-   *   y = lognf_tbl[1].f - x*y;
-   *   y = lognf_tbl[2].f - x*y;
-   *   y = lognf_tbl[3].f - x*y;
-   *   y = lognf_tbl[4].f - x*y;
-   *   y = lognf_tbl[5].f - x*y;
-   *   y = lognf_tbl[6].f - x*y;
-   *   y = lognf_tbl[7].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[0].f;
+   *   y = xa_nnlib_lognf_tbl[1].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[2].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[3].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[4].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[5].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[6].f - x*y;
+   *   y = xa_nnlib_lognf_tbl[7].f - x*y;
    *   y = x*y + 1.0f;
    *   y = x*y;
    *   
-   *   y = y + e*ln2.f;
+   *   y = y + e*xa_nnlib_ln2.f;
    *   return y;
    */
 
@@ -516,7 +516,7 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
    * few loops of managable size.
    */
 
-  POLY_TBL = (xtfloat*)lognf_tbl;
+  POLY_TBL = (xtfloat*)xa_nnlib_lognf_tbl;
 
   blkNum = (N + blkSize-1)/blkSize;
 
@@ -534,7 +534,7 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
      *     for ( n=0; n<blkLen; n++ )
      *     {
      *       fr = frexpf( x[blkIx*blkSize+n], &ex );
-     *       if ( fr < sqrt0_5f.f ) { fr *= 2.f; ex--; };
+     *       if ( fr < xa_nnlib_sqrt0_5f.f ) { fr *= 2.f; ex--; };
      *       y[blkIx*blkSize+n] = fr - 1.f;
      *       scr[n] = ex;
      *     }
@@ -585,7 +585,7 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
         fr1 = XT_MUL_S( fr0, 2.0f );
         ex1 = XT_SUB( ex0, XT_MOVI(1) );
 
-        b_ltsqr = XT_OLT_S( fr0, sqrt0_5f.f );
+        b_ltsqr = XT_OLT_S( fr0, xa_nnlib_sqrt0_5f.f );
         XT_MOVT_S( fr0, fr1, b_ltsqr );
         XT_MOVT( ex0, ex1, b_ltsqr );
 
@@ -611,9 +611,9 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
      *       xn = x[blkIx*blkSize+n];
      *   
      *            if ( isnan(xn)      ) yn = xn;
-     *       else if ( xn<0.f         ) yn = qNaNf.f;
-     *       else if ( xn==0.f        ) yn = minusInff.f;
-     *       else if ( xn==plusInff.f ) yn = plusInff.f;
+     *       else if ( xn<0.f         ) yn = xa_nnlib_qNaNf.f;
+     *       else if ( xn==0.f        ) yn = xa_nnlib_minusInff.f;
+     *       else if ( xn==xa_nnlib_plusInff.f ) yn = xa_nnlib_plusInff.f;
      *       else
      *       {
      *         fr = y[blkIx*blkSize+n];
@@ -623,10 +623,10 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
      *         // evaluate the polynomial.                                     
      *         //                                                               
      *   
-     *         cf0 = lognf_tbl[1].f - fr*lognf_tbl[0].f;
-     *         cf1 = lognf_tbl[3].f - fr*lognf_tbl[2].f;
-     *         cf2 = lognf_tbl[5].f - fr*lognf_tbl[4].f;
-     *         cf3 = lognf_tbl[7].f - fr*lognf_tbl[6].f;
+     *         cf0 = xa_nnlib_lognf_tbl[1].f - fr*xa_nnlib_lognf_tbl[0].f;
+     *         cf1 = xa_nnlib_lognf_tbl[3].f - fr*xa_nnlib_lognf_tbl[2].f;
+     *         cf2 = xa_nnlib_lognf_tbl[5].f - fr*xa_nnlib_lognf_tbl[4].f;
+     *         cf3 = xa_nnlib_lognf_tbl[7].f - fr*xa_nnlib_lognf_tbl[6].f;
      *   
      *         fr2 = fr*fr;
      *   
@@ -636,7 +636,7 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
      *         gn = cf3 + fr2*gn;
      *   
      *         gn = fr*gn + 1.f;
-     *         yn = fr*gn + scr[n]*ln2.f;
+     *         yn = fr*gn + scr[n]*xa_nnlib_ln2.f;
      *   
      *       }
      *   
@@ -697,7 +697,7 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
 		y0 = 1.0f;
 		XT_MADD_S( y0, g, fr );
 		g = y0;
-		y0 = XT_MUL_S( XT_FLOAT_S( ex, 0 ), ln2.f );
+		y0 = XT_MUL_S( XT_FLOAT_S( ex, 0 ), xa_nnlib_ln2.f );
 		XT_MADD_S( y0, g, fr );
 
         /*
@@ -708,15 +708,15 @@ void vec_lognf( float32_t * restrict y, const float32_t * restrict x, int N )
 
         b_ultz = XT_ULT_S( x0, 0.0f );
         b_eqz  = XT_OEQ_S( x0, 0.0f );
-        b_inf  = XT_OEQ_S( x0, plusInff.f );
+        b_inf  = XT_OEQ_S( x0, xa_nnlib_plusInff.f );
 
-        XT_MOVT_S( y0, qNaNf.f, b_ultz );
-        XT_MOVT_S( y0, minusInff.f, b_eqz );
-        XT_MOVT_S( y0, plusInff.f, b_inf );
+        XT_MOVT_S( y0, xa_nnlib_qNaNf.f, b_ultz );
+        XT_MOVT_S( y0, xa_nnlib_minusInff.f, b_eqz );
+        XT_MOVT_S( y0, xa_nnlib_plusInff.f, b_inf );
 
 		XT_SSIP(y0, Y_wr, sz_f32);
       }
     }
   } /* for ( blkIx=0; blkIx<blkNum; blkIx++ ) */
-} /* vec_lognf() */
+} /* xa_nnlib_vec_lognf() */
 #endif

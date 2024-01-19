@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -40,10 +40,10 @@
     Code optimized for HiFi5 core
   IntegrIT, 2006-2019
 */
-#include "NatureDSP_Signal_math.h"
+#include "../include/NatureDSP_Signal_math.h"
 #include "NatureDSP_types.h"
-#include "common.h"
-#include "common_fpu.h"
+#include "xa_nn_common.h"
+#include "xa_nnlib_common_fpu.h"
 
 /*-------------------------------------------------------------------------
   Rectifier function
@@ -70,9 +70,9 @@
   return result, Q16.15 or floating point
 -------------------------------------------------------------------------*/
 #if !HAVE_VFPU && !HAVE_FPU
-DISCARD_FUN(void,vec_reluf,(float32_t * restrict y, const float32_t * restrict x, float32_t K, int N))
+DISCARD_FUN(void,xa_nnlib_vec_reluf,(float32_t * restrict y, const float32_t * restrict x, float32_t K, int N))
 #elif HAVE_VFPU
-void vec_reluf     (float32_t * y, const float32_t * x, float32_t K, int N)
+void xa_nnlib_vec_reluf     (float32_t * y, const float32_t * x, float32_t K, int N)
 {
     int n,N0;
     xtfloatx2 x0,x1,x2,x3;
@@ -123,10 +123,10 @@ void vec_reluf     (float32_t * y, const float32_t * x, float32_t K, int N)
         AE_SASX2X2_IP(x2,x3,aY,pY);
     }
     AE_SA128POS_FP(aY,pY);
-} /* vec_reluf() */
+} /* xa_nnlib_vec_reluf() */
 #else
 // code for scalar FPU
-void vec_reluf     (float32_t * y, const float32_t * x, float32_t K, int N)
+void xa_nnlib_vec_reluf     (float32_t * y, const float32_t * x, float32_t K, int N)
 {
     const xtfloat* restrict pX=(const xtfloat*)x;
           xtfloat* restrict pY=(      xtfloat*)y;
@@ -142,5 +142,5 @@ void vec_reluf     (float32_t * y, const float32_t * x, float32_t K, int N)
         XT_MOVT_S(t,zero,bneg);
         XT_SSIP(t,pY,sizeof(float32_t));
     }
-} /* vec_reluf() */
+} /* xa_nnlib_vec_reluf() */
 #endif

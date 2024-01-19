@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -740,8 +740,8 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
   {
     mem_req = tile_height * out_w * out_channels + ker_h * ker_w * input_channels;
     mem_req += ((tile_height - 1)*y_str + ker_h) * inp_w * input_channels;
-    mem_req += xa_nn_conv2d_std_getsize(((tile_height - 1)*y_str + ker_h), input_channels,
-                    ker_h, ker_w, y_str, y_pad, tile_height, out_channels, -4);
+    mem_req += xa_nn_conv2d_std_getsize(((tile_height - 1)*y_str + ker_h),inp_w, input_channels,
+                    ker_h, ker_w, input_channels, y_str, y_pad, x_str, x_pad, tile_height, out_w, out_channels, PREC_ASYM8S, PREC_SYM8S,1,1,out_data_format);
     mem_req += tile_height * 3 * sizeof(WORD32);
     if(mem_req < XCHAL_DCACHE_SIZE || tile_height <= 0)
       break;

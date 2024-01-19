@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,7 +20,7 @@
 
 ******************************************************************************/
 #include "xa_type_def.h"
-#include "common.h"
+#include "xa_nn_common.h"
 #include "xa_nnlib_kernels_api.h"
 #include "xa_nn_conv2d_depthwise_state.h"
 #include "xa_nnlib_common_macros_hifi5.h"
@@ -689,7 +689,7 @@ static inline void conv2d_nhwc_16x16
     ae_int32x2 d32_ker0, d32_ker1;
     const ae_int16 *pt_bias;
     ae_valign ker_a;
-    ae_valign bias_a;
+    //ae_valign bias_a;
     ae_int32x2 d_acc0, d_acc1;
     ae_int32x2 d_acc2, d_acc3;
     ae_int64 d64_bias0, d64_bias1, d64_bias2, d64_bias3;
@@ -806,7 +806,7 @@ static inline void conv2d_nhwc_16x16
     {
         out_ptr0 = (WORD16 *)(&p_out[itr_oh*out_channels*out_width]);
         pt_bias = (const ae_int16 *)p_bias;
-        bias_a = AE_LA64_PP(pt_bias);
+       // bias_a = AE_LA64_PP(pt_bias);
         for(itr_ch = 0; itr_ch < out_channels; itr_ch+=4)
         {
             pt_inp0 = (ae_int16x4 *)p_inp;

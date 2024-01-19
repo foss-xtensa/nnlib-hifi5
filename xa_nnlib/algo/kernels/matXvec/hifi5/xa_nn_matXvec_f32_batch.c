@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,7 +19,7 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "common_fpu.h"
+#include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_common.h"
 #ifdef ROW_UNROLL
   #undef ROW_UNROLL
@@ -117,7 +117,7 @@ WORD32 xa_nn_matXvec_batch_f32xf32_f32(
                     SETUP_ACC_BATCH;
                     SETUP_VEC_BATCH;
                     SETUP_MAT1;
-
+#pragma nounroll
                     for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
                     {
                         LOAD_VEC_BATCH;

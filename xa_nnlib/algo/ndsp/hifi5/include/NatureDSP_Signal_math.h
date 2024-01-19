@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -42,39 +42,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Renaming the symbols to avoid multiple definitions */
-//scl_sigmoidf_hifi5.o:
-#define c            xa_ndsp_c
-#define p            xa_ndsp_p
-#define scl_sigmoidf xa_ndsp_scl_sigmoidf
-//scl_tanhf_hifi5.o:
-#define scl_tanhf xa_ndsp_scl_tanhf
-//vec_alognf_hifi5.o:
-#define vec_antilognf xa_ndsp_vec_antilognf
-//vec_relu32x32_hifi5.o:
-#define vec_relu32x32 xa_ndsp_vec_relu32x32
-//vec_reluf_hifi5.o:
-#define vec_reluf xa_ndsp_vec_reluf
-//vec_sigmoid32x32_hifi5.o:
-#define polypow2         xa_ndsp_polypow2
-#define vec_sigmoid32x32 xa_ndsp_vec_sigmoid32x32
-//vec_sigmoidf_hifi5.o:
-#define c          xa_ndsp_c
-#define p          xa_ndsp_p
-#define __sigmoidf xa_ndsp___sigmoidf
-#define vec_sigmoidf xa_ndsp_vec_sigmoidf
-//vec_softmax32x32_hifi5.o:
-#define vec_softmax32x32 xa_ndsp_vec_softmax32x32
-//vec_softmaxf_hifi5.o:
-#define seq          xa_ndsp_seq
-#define vec_softmaxf xa_ndsp_vec_softmaxf
-//vec_tanh32x32_hifi5.o:
-#define polypow2      xa_ndsp_polypow2
-#define vec_tanh32x32 xa_ndsp_vec_tanh32x32
-//vec_tanhf_hifi5.o:
-#define __tanhf   xa_ndsp___tanhf
-#define vec_tanhf xa_ndsp_vec_tanhf
   
 
 /*===========================================================================
@@ -296,7 +263,7 @@ void vec_log2_32x32 (int32_t *  y,const int32_t   * x, int N);
 void vec_logn_32x32 (int32_t *  y,const int32_t   * x, int N);
 void vec_log10_32x32(int32_t *  y,const int32_t   * x, int N);
 void vec_log2f     (float32_t * y,const float32_t * x, int N);
-void vec_lognf     (float32_t * y,const float32_t * x, int N);
+void xa_nnlib_vec_lognf     (float32_t * y,const float32_t * x, int N);
 void vec_log10f    (float32_t * y,const float32_t * x, int N);
 int32_t scl_log2_32x32 (int32_t x);
 int32_t scl_logn_32x32 (int32_t x);
@@ -343,7 +310,7 @@ void vec_antilog2_32x32 (int32_t * y, const int32_t*   x, int N);
 void vec_antilogn_32x32 (int32_t * y, const int32_t*   x, int N);
 void vec_antilog10_32x32(int32_t * y, const int32_t*   x, int N);
 void vec_antilog2f    (float32_t * y, const float32_t* x, int N);
-void vec_antilognf    (float32_t * y, const float32_t* x, int N);
+void xa_nnlib_vec_antilognf    (float32_t * y, const float32_t* x, int N);
 void vec_antilog10f   (float32_t * y, const float32_t* x, int N);
 int32_t scl_antilog2_32x32 (int32_t x);
 int32_t scl_antilogn_32x32 (int32_t x);
@@ -509,11 +476,11 @@ int32_t scl_sqrt64x32(int64_t x);
   ----------------
   Returned packed value:
   scl_rsqrt32x32():
-  bits 23…0 fractional part
-  bits 31…24 exponent
+  bits 23Â…0 fractional part
+  bits 31Â…24 exponent
   scl_rsqrt16x16():
-  bits 15…0 fractional part
-  bits 31…16 exponent
+  bits 15Â…0 fractional part
+  bits 31Â…16 exponent
 
 -------------------------------------------------------------------------*/
 void vec_rsqrt32x32 ( int32_t * frac, int16_t * exp, const int32_t * x, int N);
@@ -527,7 +494,7 @@ uint32_t scl_rsqrt16x16(int16_t x);
   in Q31 or Q15 format. Return results in the same format.
   Floating point functions compute sin(x) or cos(x)
   Two versions of functions available: regular version (vec_sine32x32,
-  vec_cosine32x32, , vec_sinef, vec_cosinef)
+  vec_cosine32x32, , xa_nnlib_vec_sinef, xa_nnlib_vec_cosinef)
   with arbitrary arguments and faster version (vec_sine32x32_fast,
   vec_cosine32x32_fast) that apply some restrictions.
   NOTE:
@@ -548,8 +515,8 @@ uint32_t scl_rsqrt16x16(int16_t x);
   y[N]  output data,Q31 or floating point
 
   Restriction:
-  Regular versions (vec_sine32x32, vec_cosine32x32, vec_sinef,
-  vec_cosinef):
+  Regular versions (vec_sine32x32, vec_cosine32x32, xa_nnlib_vec_sinef,
+  xa_nnlib_vec_cosinef):
   x,y - should not overlap
 
   Faster versions (vec_sine32x32_fast, vec_cosine32x32_fast):
@@ -565,8 +532,8 @@ void vec_sine32x32        (int32_t * y, const int32_t *   x, int N);
 void vec_sine32x32_fast   (int32_t * y, const int32_t *   x, int N);
 void vec_cosine32x32      (int32_t * y, const int32_t *   x, int N);
 void vec_cosine32x32_fast (int32_t * y, const int32_t *   x, int N);
-void vec_sinef         ( float32_t * y, const float32_t * x, int N);
-void vec_cosinef       ( float32_t * y, const float32_t * x, int N);
+void xa_nnlib_vec_sinef         ( float32_t * y, const float32_t * x, int N);
+void xa_nnlib_vec_cosinef       ( float32_t * y, const float32_t * x, int N);
 int32_t scl_sine32x32   (int32_t x);
 int32_t scl_cosine32x32 (int32_t x);
 float32_t scl_sinef   (float32_t x);
@@ -718,10 +685,12 @@ float32_t scl_atan2f (float32_t y, float32_t x);
   ----------------
   return result, Q16.15 or floating point
 -------------------------------------------------------------------------*/
-void vec_tanh32x32(int32_t   * y, const int32_t   * x, int N);
-void vec_tanhf    (float32_t * y, const float32_t * x,int N);
+void xa_nnlib_vec_tanhf    (float32_t * y, const float32_t * x,int N);
+void xa_nnlib_vec_tanh_fp16(float16_t * y, const float16_t * x,int N);
 int32_t scl_tanh32x32(int32_t x);
-float32_t scl_tanhf  (float32_t x);
+#if 0 /* This function is unused in Hifi5 NNLIB*/
+float32_t xa_nnlib_scl_tanhf  (float32_t x);
+#endif
 /*-------------------------------------------------------------------------
   Sigmoid
   The functions compute the sigmoid of input argument. 32-bit fixed-point
@@ -743,10 +712,12 @@ float32_t scl_tanhf  (float32_t x);
   ----------------
   return result, Q16.15 or floating point
 -------------------------------------------------------------------------*/
-void vec_sigmoid32x32(int32_t   * y, const int32_t   * x, int N);
-void vec_sigmoidf    (float32_t * y, const float32_t * x, int N);
+void xa_nnlib_vec_sigmoidf    (float32_t * y, const float32_t * x, int N);
+void xa_nnlib_vec_sigmoid_fp16(float16_t * y, const float16_t * x, int N);
 int32_t   scl_sigmoid32x32(int32_t x);
-float32_t scl_sigmoidf    (float32_t x);
+#if 0 /* This function is unused in Hifi5 NNLIB*/
+float32_t xa_nnlib_scl_sigmoidf    (float32_t x);
+#endif
 /*-------------------------------------------------------------------------
   Rectifier function
   The functions compute the rectifier linear unit function of input argument.
@@ -771,8 +742,8 @@ float32_t scl_sigmoidf    (float32_t x);
   ----------------
   return result, Q16.15 or floating point
 -------------------------------------------------------------------------*/
-void vec_relu32x32 (int32_t   * y, const int32_t   * x, int32_t   K, int N);
-void vec_reluf     (float32_t * y, const float32_t * x, float32_t K, int N);
+
+void xa_nnlib_vec_reluf     (float32_t * y, const float32_t * x, float32_t K, int N);
 int32_t   scl_relu32x32 (int32_t   x, int32_t   K);
 float32_t scl_reluf     (float32_t x, float32_t K);
 
@@ -800,8 +771,7 @@ float32_t scl_reluf     (float32_t x, float32_t K);
   x,y should not overlap
 
 -------------------------------------------------------------------------*/
-void vec_softmax32x32(int32_t   * y, const int32_t   * x,int N);
-void vec_softmaxf    (float32_t * y, const float32_t * x,int N);
+void xa_nnlib_vec_softmaxf    (float32_t * y, const float32_t * x,int N);
 /*-------------------------------------------------------------------------
   Integer to float conversion
   Routines convert integer to float and scale result up by 2^t.

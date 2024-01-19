@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,7 +20,7 @@
 
 ******************************************************************************/
 #include "xa_type_def.h"
-#include "common.h"
+#include "xa_nn_common.h"
 #include "xa_nnlib_err_chk.h"
 //#include "xa_nn_basic_state.h"
 #include "xa_type_def.h"
@@ -33,6 +33,8 @@
 #define ALIGNMENT   16   /* 16 bytes alignment */
 #define ALIGNED_SIZE(x, bytes)  (((x)+(bytes-1))&(~(bytes-1)))
 #define ALIGN_PTR(x, bytes)     ((((unsigned)(x))+(bytes-1))&(~(bytes-1)))
+
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 
 #define SUB_128(inp){\
         ae_int64 temp;\
@@ -528,7 +530,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
     XA_NNLIB_ARG_CHK_ALIGN(p_vec, sizeof(WORD8), -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
-    XA_NNLIB_ARG_CHK_COND(((input_beta_left_shift < -31) || (input_beta_left_shift > 31)), -1);
+    XA_NNLIB_ARG_CHK_COND(((input_beta_left_shift < 0) || (input_beta_left_shift > 31)), -1);
     XA_NNLIB_ARG_CHK_COND((input_beta_multiplier < 0), -1);
 
     int i;
@@ -536,7 +538,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
     xtbool4 g3210;
     WORD8 *p_in = (WORD8 *)p_vec;
     WORD32 *p_exp = (WORD32 *)ALIGN_PTR(p_scratch, ALIGNMENT);
-    ae_int32x2 x32, x10, diff_min;
+    ae_int32x2 x32, x10/*, diff_min*/;
     ae_int32x2 dequantized_x32, dequantized_x10;
     ae_int32x2 unsat_out76, unsat_out54, unsat_out32, unsat_out10, ONE;
     ae_int32x2 exp_x76, exp_x54, exp_x32, exp_x10, sum_exp, recip_sum_exp;
@@ -606,7 +608,7 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
         }
     }
 
-    diff_min = AE_MOVDA32(diffmin);
+//    diff_min = AE_MOVDA32(diffmin);
     ae_int16x4 diff_min16 = AE_MOVDA16(diffmin);
     sum_exp = z; // setting to zero
 
@@ -723,7 +725,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
     XA_NNLIB_ARG_CHK_ALIGN(p_vec, sizeof(WORD8), -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
-    XA_NNLIB_ARG_CHK_COND(((input_beta_left_shift < -31) || (input_beta_left_shift > 31)), -1);
+    XA_NNLIB_ARG_CHK_COND(((input_beta_left_shift < 0) || (input_beta_left_shift > 31)), -1);
     XA_NNLIB_ARG_CHK_COND((input_beta_multiplier < 0), -1);
 
     int i;
@@ -738,7 +740,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
     ae_int16x4 z76, z54, z32, z10;
 
     ae_int64 sum_exp_64;
-    ae_valign align_src, align_dst;
+    ae_valign align_src/*, align_dst*/;
     
     ae_int8x8 m0, m1, m2, max;
     ae_int16x4 n0, n1, n2, max_16;
@@ -812,7 +814,7 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
 
     p_in = (WORD8 *)p_vec;
 
-    align_dst = AE_ZALIGN64(); // zero alignment reg
+//    align_dst = AE_ZALIGN64(); // zero alignment reg
 
     align_src = AE_LA64_PP((ae_int8x8 *)p_in);
 
@@ -945,8 +947,12 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
 
     return 0;
 }
+
+#endif /* ENABLE_SCRATCH_SIZE_API_ONLY */
+
 int get_softmax_scratch_size(int inp_precision, int out_precision, int length)
 {
+    XA_NNLIB_ARG_CHK_COND((length <= 0), -1);
     int size_of_one_elm_in_bytes, total_bytes;
     (void) out_precision;
 
@@ -973,6 +979,8 @@ int get_softmax_scratch_size(int inp_precision, int out_precision, int length)
         case -4:
             size_of_one_elm_in_bytes = 4;
             break;
+        default:
+            return -1;
     }
 
     total_bytes = size_of_one_elm_in_bytes*length;

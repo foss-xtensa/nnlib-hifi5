@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,7 +20,7 @@
 
 ******************************************************************************/
 #include "xa_nnlib_err_chk.h"
-#include "common_fpu.h"
+#include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
@@ -850,9 +850,9 @@ for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
   
       /* Init out registers with bias */
       xthalfx4 z0, z1, z2, z3;
-      xthalfx4 z4, z5, z6, z7;
+//      xthalfx4 z4, z5, z6, z7;
       z0 = z1 = z2 = z3 = (xthalfx4)ZERO_HX4();
-      z4 = z5 = z6 = z7 = (xthalfx4)ZERO_HX4();
+//      z4 = z5 = z6 = z7 = (xthalfx4)ZERO_HX4();
       if(p_bias != NULL)
       {
          ae_int16x4 z0_int,z1_int,z2_int,z3_int;
@@ -1078,9 +1078,9 @@ static inline void spfunc_aligned_cols_mul4_out_offset1
   
       /* Init out registers with bias */
       xthalfx4 z0, z1, z2, z3;
-      xthalfx4 z4, z5, z6, z7;
+      //xthalfx4 z4, z5, z6, z7;
       z0 = z1 = z2 = z3 = (xthalfx4)ZERO_HX4();
-      z4 = z5 = z6 = z7 = (xthalfx4)ZERO_HX4();
+      //z4 = z5 = z6 = z7 = (xthalfx4)ZERO_HX4();
       if(p_bias != NULL)
       {
          ae_int16x4 z0_int,z1_int,z2_int,z3_int;
@@ -1092,7 +1092,6 @@ static inline void spfunc_aligned_cols_mul4_out_offset1
          z2=AE_MOVHALFX4_FROMF16X4(z2_int);
          z3_int=AE_L16_I((ae_int16 *)&p_bias[m_itr+3],0);
          z3=AE_MOVHALFX4_FROMF16X4(z3_int);
-
       }
               
       xthalfx4 acc_row0_vec0, acc_row0_vec1;
@@ -1108,7 +1107,6 @@ static inline void spfunc_aligned_cols_mul4_out_offset1
       acc_row0_vec2 = acc_row1_vec2 = acc_row2_vec2 = acc_row3_vec2 = ZERO_HX4();
       acc_row0_vec3 = acc_row1_vec3 = acc_row2_vec3 = acc_row3_vec3 = ZERO_HX4();
           
-//#pragma loop_count min=1
       for(c_itr = 0; c_itr < (cols1 >> 3); c_itr++, p_vec+=8, px+=8)
       {
         xthalfx4 x00, x01, x10, x11;

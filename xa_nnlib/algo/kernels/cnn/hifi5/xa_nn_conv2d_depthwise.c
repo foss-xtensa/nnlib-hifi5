@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -111,6 +111,7 @@ static WORD32 xa_nn_dilated_conv2d_depthwise_nchw_getsize
   }
 }
 
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 static VOID xa_nn_dilated_conv2d_depthwise_nchw_init
   (pVOID p_scratch
    ,WORD32 input_width
@@ -159,6 +160,7 @@ static VOID xa_nn_dilated_conv2d_depthwise_nchw_init
     p_mem = (pWORD8)ALIGN_PTR(p_mem, ALIGNMENT_16);
     p_state->p_scratch = (pVOID)p_mem;
 }
+#endif /* ENABLE_SCRATCH_SIZE_API_ONLY */
 
 static WORD32 gcd(WORD32 a, WORD32 b)
 {
@@ -298,6 +300,7 @@ static WORD32 xa_nn_conv2d_depthwise_getsize_k3x3
 }
 #endif /* DISABLE_DEPTHWISE_CONV2D_K3X3_SPECIAL_CASE */
 
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 static VOID xa_nn_dilated_conv2d_depthwise_nhwc_init
 (pVOID p_scratch
  ,WORD32 input_height
@@ -347,7 +350,7 @@ static VOID xa_nn_dilated_conv2d_depthwise_nhwc_init
             ,output_height_dh
             );
 }
-
+#endif /* ENABLE_SCRATCH_SIZE_API_ONLY */
 
 static WORD32 xa_nn_dilated_conv2d_depthwise_getsize_generic
 (WORD32 input_height
@@ -482,14 +485,23 @@ WORD32 xa_nn_conv2d_depthwise_getsize
 
     total_size_generic_case += xa_nn_conv2d_std_getsize
        (input_height
+       ,input_width
        ,input_channels
        ,kernel_height
        ,kernel_width
+       ,input_channels
        ,y_stride
        ,y_padding
+       ,x_stride
+       ,x_padding
        ,output_height
+       ,output_width
        ,out_channels
        ,circ_buf_precision
+       ,PREC_SYM8S
+       ,1
+       ,1
+       ,0
       );
   }
   else
@@ -545,6 +557,7 @@ WORD32 xa_nn_conv2d_depthwise_getsize
     return total_size_generic_case;
 }
 
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 VOID xa_nn_dilated_conv2d_depthwise_init
 (pVOID p_scratch
  ,WORD32 input_height
@@ -619,6 +632,7 @@ VOID xa_nn_dilated_conv2d_depthwise_init
                 ,p_pad_val);
     }
 }
+#endif /* ENABLE_SCRATCH_SIZE_API_ONLY */
 
 WORD32 xa_nn_dilated_conv2d_depthwise_getsize
 (WORD32 input_height

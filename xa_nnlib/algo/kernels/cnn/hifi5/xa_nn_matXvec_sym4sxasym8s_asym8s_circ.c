@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -63,17 +63,17 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
   for(; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
   {
     int left_shift1, left_shift2, left_shift3, left_shift4;
-    int right_shift1, right_shift2, right_shift3, right_shift4;
 #if TFLITE_SINGLE_ROUNDING
     left_shift1 = p_out_shift[vec_itr];
-    right_shift1 = p_out_shift[vec_itr];
+    //right_shift1 = p_out_shift[vec_itr];
     left_shift2 = p_out_shift[vec_itr+1];
-    right_shift2 = p_out_shift[vec_itr+1];
+    //right_shift2 = p_out_shift[vec_itr+1];
     left_shift3 = p_out_shift[vec_itr+2];
-    right_shift3 = p_out_shift[vec_itr+2];
+    //right_shift3 = p_out_shift[vec_itr+2];
     left_shift4 = p_out_shift[vec_itr+3];
-    right_shift4 = p_out_shift[vec_itr+3];
+    //right_shift4 = p_out_shift[vec_itr+3];
 #else
+    int right_shift1, right_shift2, right_shift3, right_shift4;
     left_shift1 = p_out_shift[vec_itr]<0?0:p_out_shift[vec_itr];
     right_shift1 = p_out_shift[vec_itr]>0?0:-p_out_shift[vec_itr];
     left_shift2 = p_out_shift[vec_itr+1]<0?0:p_out_shift[vec_itr+1];
@@ -822,13 +822,13 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
   for(; vec_itr < (vec_count & ~(2-1)); vec_itr += 2)
   {
     int left_shift1, left_shift2;
-    int right_shift1, right_shift2;
 #if TFLITE_SINGLE_ROUNDING      
     left_shift1 = p_out_shift[vec_itr];
-    right_shift1 = p_out_shift[vec_itr];
+    //right_shift1 = p_out_shift[vec_itr];
     left_shift2 = p_out_shift[vec_itr+1];
-    right_shift2 = p_out_shift[vec_itr+1];
+    //right_shift2 = p_out_shift[vec_itr+1];
 #else
+    int right_shift1, right_shift2;
     left_shift1 = p_out_shift[vec_itr]<0?0:p_out_shift[vec_itr];
     right_shift1 = p_out_shift[vec_itr]>0?0:-p_out_shift[vec_itr];
     left_shift2 = p_out_shift[vec_itr+1]<0?0:p_out_shift[vec_itr+1];
@@ -1117,11 +1117,11 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
   for(; vec_itr < vec_count; vec_itr++)
   {
     int left_shift;
-    int right_shift;
 #if TFLITE_SINGLE_ROUNDING      
     left_shift = p_out_shift[vec_itr];
-    right_shift = p_out_shift[vec_itr];
+    //right_shift = p_out_shift[vec_itr];
 #else
+    int right_shift;
     left_shift = p_out_shift[vec_itr]<0?0:p_out_shift[vec_itr];
     right_shift = p_out_shift[vec_itr]>0?0:-p_out_shift[vec_itr];
 #endif   

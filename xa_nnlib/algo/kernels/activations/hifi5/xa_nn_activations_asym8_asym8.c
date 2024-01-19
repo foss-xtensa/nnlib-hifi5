@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,7 +20,7 @@
 
 ******************************************************************************/
 #include "xa_type_def.h"
-#include "common.h"
+#include "xa_nn_common.h"
 #include "xa_nnlib_err_chk.h"
 #include "xa_nnlib_kernels_api.h"
 #include "xa_nnlib_common_macros_hifi5.h"
@@ -338,7 +338,7 @@ WORD32 xa_nn_vec_sigmoid_asym8_asym8(UWORD8 *p_out,
   int i;
   int rem_length = (vec_length & 15);
   ae_int32x2 x76, x54, x32, x10, y76, y54, y32, y10, l76, l54, l32, l10, m76, m54, m32, m10;
-  ae_int32x2 z, mul, zero;
+  ae_int32x2 mul, zero;
   ae_int32x2 mask_6fs = AE_MOVDA32(MASK);
   ae_int32x2 q_1_by_4 = AE_MOVDA32(ONE_QUATER_Q26);
   ae_int32x2 CT_1_BY_8 = AE_MOVDA32(CONSTANT_1_OVER_8);
@@ -347,7 +347,7 @@ WORD32 xa_nn_vec_sigmoid_asym8_asym8(UWORD8 *p_out,
   ae_int32x2 ONE = AE_MOVDA32(1);
   ae_int16x4 CONST_255_16x4 = AE_MOVDA16(255);
   ae_int16x4 CONST_256_16x4 = AE_MOVDA16(256);
-  ae_int32x2 radius, minus_radius;
+//  ae_int32x2 radius;
   ae_int16x4 radius_16, minus_radius_16;
   xtbool4 a7654, a3210, b7654, b3210, c7654, c3210, d7654, d3210, e7654, e3210, f7654, f3210;
   ae_int32x2 dequantized_y76, dequantized_y54, dequantized_y32, dequantized_y10, dequantized_x76, dequantized_x54, dequantized_x32, dequantized_x10;
@@ -372,13 +372,13 @@ WORD32 xa_nn_vec_sigmoid_asym8_asym8(UWORD8 *p_out,
   align_src_hf5 = AE_LA128_PP((ae_int8x16 *)p_in);
   align_dst_hf5 = AE_ZALIGN128();
 
-  radius = AE_MOVDA32(input_range_radius);
-  minus_radius = AE_NEG32(radius);
+//  radius = AE_MOVDA32(input_range_radius);
+//  minus_radius = AE_NEG32(radius);
 
   radius_16 = AE_MOVDA16(input_range_radius);
   minus_radius_16 = AE_NEG16S(radius_16);
 
-  z = AE_MOVDA32(zero_point);
+  //z = AE_MOVDA32(zero_point);
   z_8x8 = AE_MOVDA8(zero_point);
   mul = AE_MOVDA32(input_multiplier);
   zero = AE_ZERO32();
@@ -629,14 +629,14 @@ WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
   int i;
   int rem_length = (vec_length & 7);
   ae_int32x2 x01, x23, x45, x67;
-  ae_int32x2 z, mul, zero;
+  ae_int32x2 mul /*z, mul, zero*/;
   ae_int16x4 CONST_255_16x4 = AE_MOVDA16(255);
-  ae_int32x2 radius, minus_radius;
+//  ae_int32x2 radius/*, minus_radius*/;
   ae_int16x4 radius_16, minus_radius_16;
   xtbool4 a0123, a4567, b0123, b4567;
   ae_valign align_src_hf5, align_dst_hf5;
   ae_int8x8 m0, z_8x8;
-  ae_int16x4 z0123, z4567, zero_16x4;
+  ae_int16x4 z0123, z4567/*, zero_16x4*/;
 
 #if TFLITE_SINGLE_ROUNDING
   int left_shift  = input_left_shift;
@@ -657,17 +657,17 @@ WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
   align_src_hf5 = AE_LA64_PP((ae_int8x8 *)p_in);
   align_dst_hf5 = AE_ZALIGN64();
 
-  radius = AE_MOVDA32(input_range_radius);
-  minus_radius = AE_NEG32(radius);
+//  radius = AE_MOVDA32(input_range_radius);
+//  minus_radius = AE_NEG32(radius);
 
   radius_16 = AE_MOVDA16(input_range_radius);
   minus_radius_16 = AE_NEG16S(radius_16);
 
-  z = AE_MOVDA32(zero_point);
+//  z = AE_MOVDA32(zero_point);
   z_8x8 = AE_MOVDA8(zero_point);
   mul = AE_MOVDA32(input_multiplier);
-  zero = AE_ZERO32();
-  zero_16x4 = AE_ZERO16();
+//  zero = AE_ZERO32();
+//  zero_16x4 = AE_ZERO16();
   WUR_AE_SAR(4);
 
 #pragma concurrent
@@ -819,6 +819,8 @@ WORD32 xa_nn_vec_sigmoid_asym8s_asym8s(WORD8 *p_out,
   mul = AE_MOVDA32(input_multiplier);
   zero = AE_ZERO32();
   zero_16x4 = AE_ZERO16();
+
+  (void)z; (void)minus_radius; /* To remove LLVM15 warning */
 
   for(i=0; i<(vec_length >> 4); i++)
   {
@@ -1263,10 +1265,14 @@ WORD32 xa_nn_vec_relu_asym8u_asym8u( UWORD8 * __restrict__ p_out,
     AE_MUL16X4(d_w3_0, d_w3_1, d_v1_1, one);
 
     ae_int16x4 out0, out1, out2, out3;
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out0, d_w0_0, d_w0_1, out_multiplier, left_shift, right_shift, out_zero_bias);
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out1, d_w1_0, d_w1_1, out_multiplier, left_shift, right_shift, out_zero_bias);
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out2, d_w2_0, d_w2_1, out_multiplier, left_shift, right_shift, out_zero_bias);
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out3, d_w3_0, d_w3_1, out_multiplier, left_shift, right_shift, out_zero_bias);
+    MPY_BY_QUANT_MULT_X2X2_OUT16(out0, d_w0_0, d_w0_1, out_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16(out1, d_w1_0, d_w1_1, out_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16(out2, d_w2_0, d_w2_1, out_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16(out3, d_w3_0, d_w3_1, out_multiplier, left_shift, right_shift);
+    out0 = AE_ADD16S(out0, AE_MOVDA16(out_zero_bias));
+    out1 = AE_ADD16S(out1, AE_MOVDA16(out_zero_bias));
+    out2 = AE_ADD16S(out2, AE_MOVDA16(out_zero_bias));
+    out3 = AE_ADD16S(out3, AE_MOVDA16(out_zero_bias));
 
     //Clamp the output in the quantized activation range
     AE_MINMAX16(out0, act_min, act_max);
@@ -1300,11 +1306,15 @@ WORD32 xa_nn_vec_relu_asym8u_asym8u( UWORD8 * __restrict__ p_out,
     AE_MUL16X4(d_w3_0, d_w3_1, d_v1_1, one);
 
     ae_int16x4 out0, out1, out2, out3;
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out0, d_w0_0, d_w0_1, out_multiplier, left_shift, right_shift, out_zero_bias);
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out1, d_w1_0, d_w1_1, out_multiplier, left_shift, right_shift, out_zero_bias);
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out2, d_w2_0, d_w2_1, out_multiplier, left_shift, right_shift, out_zero_bias);
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out3, d_w3_0, d_w3_1, out_multiplier, left_shift, right_shift, out_zero_bias);
-
+    MPY_BY_QUANT_MULT_X2X2_OUT16(out0, d_w0_0, d_w0_1, out_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16(out1, d_w1_0, d_w1_1, out_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16(out2, d_w2_0, d_w2_1, out_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16(out3, d_w3_0, d_w3_1, out_multiplier, left_shift, right_shift);
+    out0 = AE_ADD16S(out0, AE_MOVDA16(out_zero_bias));
+    out1 = AE_ADD16S(out1, AE_MOVDA16(out_zero_bias));
+    out2 = AE_ADD16S(out2, AE_MOVDA16(out_zero_bias));
+    out3 = AE_ADD16S(out3, AE_MOVDA16(out_zero_bias));
+    
     //Clamp the output in the quantized activation range
     AE_MINMAX16(out0, act_min, act_max);
     AE_MINMAX16(out1, act_min, act_max);
@@ -2242,15 +2252,15 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
   int i;
   int rem_length = (vec_length & 7);
   ae_int32x2 x01, x23, x45, x67;
-  ae_int32x2 z, mul, zero;
+  ae_int32x2 /*z,*/ mul/*, zero*/;
   ae_int16x4 CONST_127_16x4 = AE_MOVDA16(127);
   ae_int16x4 CONST_MINUS_128_16x4 = AE_MOVDA16(-128);
-  ae_int32x2 radius, minus_radius;
+//  ae_int32x2 radius/*, minus_radius*/;
   ae_int16x4 radius_16, minus_radius_16;
   xtbool4 a0123, a4567, b0123, b4567;
   ae_valign align_src_hf5, align_dst_hf5;
   ae_int8x8 m0, z_8x8;
-  ae_int16x4 z0123, z4567, zero_16x4;
+  ae_int16x4 z0123, z4567/*, zero_16x4*/;
 
 #if TFLITE_SINGLE_ROUNDING
   int left_shift = input_left_shift;
@@ -2268,17 +2278,17 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
   align_src_hf5 = AE_LA64_PP((ae_int8x8 *)p_in);
   align_dst_hf5 = AE_ZALIGN64();
 
-  radius = AE_MOVDA32(input_range_radius);
-  minus_radius = AE_NEG32(radius);
+//  radius = AE_MOVDA32(input_range_radius);
+//  minus_radius = AE_NEG32(radius);
 
   radius_16 = AE_MOVDA16(input_range_radius);
   minus_radius_16 = AE_NEG16S(radius_16);
 
-  z = AE_MOVDA32(zero_point);
+  //z = AE_MOVDA32(zero_point);
   z_8x8 = AE_MOVDA8(zero_point);
   mul = AE_MOVDA32(input_multiplier);
-  zero = AE_ZERO32();
-  zero_16x4 = AE_ZERO16();
+ // zero = AE_ZERO32();
+//  zero_16x4 = AE_ZERO16();
   WUR_AE_SAR(4);
 
 #pragma concurrent
@@ -2425,6 +2435,8 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
   mul = AE_MOVDA32(input_multiplier);
   zero = AE_ZERO32();
   zero_16x4 = AE_ZERO16();
+
+  (void)z; (void)minus_radius; /* To remove LLVM15 warning */
 
   for(i=0; i<(vec_length >> 4); i++)
   {

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,7 +19,7 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
-#include "common_fpu.h"
+#include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
@@ -196,6 +196,7 @@ static inline void spfunc_cols_mul4_out_offset1
       xtfloat *p_vec = (xtfloat *)(p_vec1+(vec_itr*cols1));
   
       /* Init out registers with bias */
+#if 0
       xtfloatx2 z0, z1;
       z0 = z1 = (xtfloatx2)0.0f;
       if(p_bias != NULL)
@@ -203,6 +204,7 @@ static inline void spfunc_cols_mul4_out_offset1
         z0 = XT_SEL32_LL_SX2((xtfloatx2)(p_bias[m_itr+0]), (xtfloatx2)(p_bias[m_itr+1]));
         z1 = XT_SEL32_LL_SX2((xtfloatx2)(p_bias[m_itr+2]), (xtfloatx2)(p_bias[m_itr+3]));
       }
+#endif
               
       xtfloatx2 acc_row0_vec0;
       xtfloatx2 acc_row1_vec0;

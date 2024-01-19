@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -40,10 +40,10 @@
     Code optimized for HiFi5 core
   IntegrIT, 2006-2019
 */
-#include "NatureDSP_Signal_math.h"
+#include "../include/NatureDSP_Signal_math.h"
 #include "NatureDSP_types.h"
-#include "common.h"
-#include "common_fpu.h"
+#include "xa_nn_common.h"
+#include "xa_nnlib_common_fpu.h"
 
 #define sz_f32    (int)sizeof(float32_t)
 
@@ -69,7 +69,7 @@
   return result, Q16.15 or floating point
 -------------------------------------------------------------------------*/
 #if !HAVE_VFPU && !HAVE_FPU
-DISCARD_FUN(void,vec_sigmoidf,(float32_t * y, const float32_t * x, int N))
+DISCARD_FUN(void,xa_nnlib_vec_sigmoidf,(float32_t * y, const float32_t * x, int N))
 #elif HAVE_VFPU
 
 static void __sigmoidf(float32_t * y, const float32_t * x, int N, float32_t* scr)
@@ -106,11 +106,11 @@ static void __sigmoidf(float32_t * y, const float32_t * x, int N, float32_t* scr
     for ( n=0; n<(M>>2); n++ )
     {
         xtfloatx2 x0, x1, p0, p1, y0, y1, d0, d1;
-        xtbool2 s0, s1;
+//        xtbool2 s0, s1;
         ae_int32x2 n0, n1;
         AE_LASX2X2_IP(x0, x1, X_va, X);
-        s0 = XT_OLT_SX2(x0, XT_CONST_S(0));
-        s1 = XT_OLT_SX2(x1, XT_CONST_S(0));
+//        s0 = XT_OLT_SX2(x0, XT_CONST_S(0));
+//        s1 = XT_OLT_SX2(x1, XT_CONST_S(0));
         ABS_SX2X2(p0, p1, x0, x1);
         NEG_SX2X2(x0, x1, p0, p1);
 
@@ -242,7 +242,7 @@ static void __sigmoidf(float32_t * y, const float32_t * x, int N, float32_t* scr
   }
 } /* __sigmoidf() */
 
-void vec_sigmoidf    (float32_t * restrict y, const float32_t * restrict x, int N)
+void xa_nnlib_vec_sigmoidf    (float32_t * restrict y, const float32_t * restrict x, int N)
 {
     xtfloatx4 * restrict pX;
     xtfloatx4 * restrict pY;
@@ -280,10 +280,10 @@ void vec_sigmoidf    (float32_t * restrict y, const float32_t * restrict x, int 
     }
     if (N<=0) return;
     __sigmoidf(y,x,N,scr);
-} /* vec_sigmoidf() */
+} /* xa_nnlib_vec_sigmoidf() */
 #else
 // code for scalar FPU
-void vec_sigmoidf    (float32_t * y, const float32_t * x, int N)
+void xa_nnlib_vec_sigmoidf    (float32_t * y, const float32_t * x, int N)
 {
   static const union ufloat32uint32 ALIGN(32) c[]={{0x3fb8aa3b},{0x32a57060}}; 
   static const union ufloat32uint32 ALIGN(32) p[]={{0x39222a75},{0x3aaf9334},{0x3c1d94fc},{0x3d63578b},{0x3e75fdf0},{0x3f317218},{0x3f800000}};
@@ -344,5 +344,5 @@ void vec_sigmoidf    (float32_t * y, const float32_t * x, int N)
         XT_MOVT_S(y,t,s);
         XT_SSIP(y,pY,sizeof(float32_t));
    }
-} /* vec_sigmoidf() */
+} /* xa_nnlib_vec_sigmoidf() */
 #endif

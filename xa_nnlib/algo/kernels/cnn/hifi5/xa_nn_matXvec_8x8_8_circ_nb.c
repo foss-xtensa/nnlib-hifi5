@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2023 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -128,7 +128,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
   {
       ae_int8x8 temp_src1;
       ae_int8x8 temp_src1_1;
-      ae_int8x8 * output_ptr=(ae_int8x8 *)p_out;
+//      ae_int8x8 * output_ptr=(ae_int8x8 *)p_out;
       if(rows >= 8)
       {
         for (row = 0; row < ( rows & ~(8-1)) ; row+=8)
@@ -227,7 +227,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
       // Handle remaining rows
       for (; row < rows ; row++)
       {
-          output_ptr = (ae_int8x8 *)(&p_out[(row)*out_offset]);
+          //output_ptr = (ae_int8x8 *)(&p_out[(row)*out_offset]);
           ae_int8x8 *p_src1 = (ae_int8x8 *)p_vec;
           ae_int32x2 accu1_01;
           ae_int32x2 accu1_23;
@@ -253,7 +253,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
   else if(cols%8==0)
   {
       ae_int8x8 temp_src1;
-      ae_int8x8 * output_ptr=(ae_int8x8 *)p_out;
+//      ae_int8x8 * output_ptr=(ae_int8x8 *)p_out;
       if(rows >= 8)
       {
         for (row = 0; row < ( rows & ~(8-1)) ; row+=8)
@@ -342,8 +342,7 @@ WORD32 xa_nn_matXvec_8x8_8_circ_nb(
       // Handle remaining rows
       for (; row < rows ; row++)
       {
-
-          output_ptr = (ae_int8x8 *)(&p_out[(row)*out_offset]);
+          //output_ptr = (ae_int8x8 *)(&p_out[(row)*out_offset]);
           ae_int8x8 *p_src1 = (ae_int8x8 *)p_vec;
           ae_int32x2 accu1_01;
           ae_int32x2 accu1_23;
