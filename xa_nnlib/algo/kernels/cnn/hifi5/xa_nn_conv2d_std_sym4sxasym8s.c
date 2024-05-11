@@ -61,12 +61,20 @@ static WORD32 conv_x_left_pad(
       {
 #if TFLITE_SINGLE_ROUNDING
         left_shift = p_out_shift[k];
+#if XCHAL_HAVE_HIFI5S
+        left_shift = 31 - left_shift;
+        left_shift = (left_shift << 16) | left_shift;
+#endif        
 #else /* #if TFLITE_SINGLE_ROUNDING */
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+        MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc, acc, p_out_multiplier[k], left_shift, right_shift);
+#else
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
+#endif        
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
@@ -114,12 +122,20 @@ static WORD32 conv_x_right_pad(
       {
 #if TFLITE_SINGLE_ROUNDING
         left_shift = p_out_shift[k];
+#if XCHAL_HAVE_HIFI5S
+        left_shift = 31 - left_shift;
+        left_shift = (left_shift << 16) | left_shift;
+#endif          
 #else /* #if TFLITE_SINGLE_ROUNDING */
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+        MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc, acc, p_out_multiplier[k], left_shift, right_shift);
+#else        
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
+#endif        
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
@@ -165,12 +181,20 @@ static void conv_y_pad_nhwc_out(
       {
 #if TFLITE_SINGLE_ROUNDING
         left_shift = p_out_shift[k];
+#if XCHAL_HAVE_HIFI5S
+        left_shift = 31 - left_shift;
+        left_shift = (left_shift << 16) | left_shift;
+#endif         
 #else /* #if TFLITE_SINGLE_ROUNDING */
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
         ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+        MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc, acc, p_out_multiplier[k], left_shift, right_shift);
+#else        
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
+#endif        
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (WORD8)AE_MOVAD32_L(acc);

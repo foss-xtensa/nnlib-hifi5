@@ -37,7 +37,7 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_transpose_conv_f32, (FLOAT32* outpu
             int filter_height, int filter_width,
             int output_height, int output_width,
             int num_elements,
-            FLOAT32* scratch_buffer))
+            void* scratch_buffer))
 #else
 static inline void tconv2d_f32(FLOAT32* output_data,
     const FLOAT32* input_data,
@@ -407,7 +407,10 @@ static inline void tconv_pad_f32(
       xtfloat q1;
       for(k = 0; k < out_channels; k++)
       {
-        AE_LSIP(q1, pbias, 4);
+        q1 = 0.0f;
+        if(p_bias!= NULL){
+          AE_LSIP(q1, pbias, 4);
+        }
         AE_SSXP(q1, ptrout, out_channels_offset*sizeof(FLOAT32));
       }
     }
@@ -626,7 +629,7 @@ int xa_nn_transpose_conv_f32(FLOAT32* output_data,
     int filter_height, int filter_width,
     int output_height, int output_width,
     int num_elements,
-    FLOAT32* scratch_buffer)
+    void* scratch_buffer)
 {
   /* NULL pointer checks */
   XA_NNLIB_ARG_CHK_PTR(output_data, -1);

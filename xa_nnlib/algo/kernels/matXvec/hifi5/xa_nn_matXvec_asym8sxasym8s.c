@@ -694,6 +694,10 @@ WORD32 xa_nn_matXvec_asym8sxasym8s_asym8s(
 #if TFLITE_SINGLE_ROUNDING
   left_shift = out_shift;
   right_shift = out_shift;
+#if XCHAL_HAVE_HIFI5S
+  int left_shift_out32 = 31 - left_shift; 
+  left_shift_out32 = (left_shift_out32 << 16) | left_shift_out32;
+#endif // XCHAL_HAVE_HIFI5S
   /* Single rounding macro doesn't need two shifts so this is not used */
   (void)right_shift;
 #else /* #if TFLITE_SINGLE_ROUNDING */
@@ -818,8 +822,11 @@ WORD32 xa_nn_matXvec_asym8sxasym8s_asym8s(
          ,vec2_zero_bias
          ,mat2_zero_bias
         );
-
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift_out32, right_shift);
+#else
       MPY_BY_QUANT_MULT_X2_OUT32(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift, right_shift);
+#endif      
       acc_row0_vec0 = AE_ADD32S(acc_row0_vec0, out_zero_bias);
       AE_MINMAX32(acc_row0_vec0, min_int8, max_int8);
       *p_out++ = (WORD8)AE_MOVAD32_L(acc_row0_vec0);
@@ -921,8 +928,11 @@ WORD32 xa_nn_matXvec_asym8sxasym8s_asym8s(
          ,vec2_zero_bias
          ,mat2_zero_bias
         );
-
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift_out32, right_shift);
+#else
       MPY_BY_QUANT_MULT_X2_OUT32(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift, right_shift);
+#endif      
       acc_row0_vec0 = AE_ADD32S(acc_row0_vec0, out_zero_bias);
       AE_MINMAX32(acc_row0_vec0, min_int8, max_int8);
       out8_0 = AE_MOVINT8X8_FROMINT32X2(acc_row0_vec0);
@@ -1003,8 +1013,11 @@ WORD32 xa_nn_matXvec_asym8sxasym8s_asym8s(
          ,vec1_zero_bias
          ,mat1_zero_bias
         );
-
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift_out32, right_shift);
+#else
       MPY_BY_QUANT_MULT_X2_OUT32(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift, right_shift);
+#endif      
       acc_row0_vec0 = AE_ADD32S(acc_row0_vec0, out_zero_bias);
       AE_MINMAX32(acc_row0_vec0, min_int8, max_int8);
       *p_out++ = (WORD8)AE_MOVAD32_L(acc_row0_vec0);
@@ -1062,9 +1075,13 @@ WORD32 xa_nn_matXvec_asym8sxasym8s_asym8s(
            ,vec1_zero_bias
            ,mat1_zero_bias
           );
-       
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+        MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift_out32, right_shift);
+        MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc_row1_vec0, acc_row1_vec0, out_multiplier, left_shift_out32, right_shift);
+#else       
         MPY_BY_QUANT_MULT_X2_OUT32(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift, right_shift);
         MPY_BY_QUANT_MULT_X2_OUT32(acc_row1_vec0, acc_row1_vec0, out_multiplier, left_shift, right_shift);
+#endif        
         acc_row0_vec0 = AE_ADD32S(acc_row0_vec0, out_zero_bias);
         acc_row1_vec0 = AE_ADD32S(acc_row1_vec0, out_zero_bias);
         AE_MINMAX32(acc_row0_vec0, min_int8, max_int8);
@@ -1143,8 +1160,11 @@ WORD32 xa_nn_matXvec_asym8sxasym8s_asym8s(
          ,vec1_zero_bias
          ,mat1_zero_bias
         );
-
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift_out32, right_shift);
+#else
       MPY_BY_QUANT_MULT_X2_OUT32(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift, right_shift);
+#endif      
       acc_row0_vec0 = AE_ADD32S(acc_row0_vec0, out_zero_bias);
       AE_MINMAX32(acc_row0_vec0, min_int8, max_int8);
       out8_0 = AE_MOVINT8X8_FROMINT32X2(acc_row0_vec0);

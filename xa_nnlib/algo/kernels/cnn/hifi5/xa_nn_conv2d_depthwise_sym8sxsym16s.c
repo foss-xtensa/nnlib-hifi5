@@ -26,6 +26,18 @@
 #include "xa_nnlib_common_macros_hifi5.h"
 #include "xa_nnlib_err_chk.h"
 
+#if XCHAL_HAVE_HIFI5S
+static inline ae_int32x2 MultiplyByQuantizedMultiplier_x2_opt(ae_int64 d_x1, ae_int64 d_x2,
+                                             int32_t qm1, int32_t qm2, int shift) {                                        
+    ae_int32x2 d_q_mulx2 = AE_MOVDA32X2(qm2, qm1);
+    ae_int16x4 d_q_mulx4 =  AE_ROUND16X4F32SASYM(d_q_mulx2, d_q_mulx2);
+    ae_int64 q, q2;
+    AE_MULP48X16X2_L(q, q2, d_x1, d_x2, d_q_mulx4);  
+    ae_int32x2 result = AE_ROUNDAV32X2F64SASYM(q, q2, shift);
+    return result;
+}
+#endif // XCHAL_HAVE_HIFI5S
+
 static inline ae_int32x2 MultiplyByQuantizedMultiplier_ref(ae_int64 d_x,
                                              int32_t quantized_multiplier,
                                              int shift){
@@ -779,6 +791,10 @@ static inline void conv2d_per_chan_nhwc_sym8sxsym16s
             r_shift[2] = p_out_shift[itr_ch+2];
             r_shift[3] = p_out_shift[itr_ch+3];
 
+#if XCHAL_HAVE_HIFI5S
+            int out_shift0 = (15 - r_shift[0]) << 16 | (0x0000FFFF & (15 - r_shift[1]));
+            int out_shift1 = (15 - r_shift[2]) << 16 | (0x0000FFFF & (15 - r_shift[3]));
+#endif
             pt_inp0 = (ae_int16x4 *)p_inp;
             pt_inp1 = (ae_int16x4 *)p_inp;
             AE_ADDCIRC16X4_XC(pt_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(WORD16));
@@ -834,6 +850,10 @@ static inline void conv2d_per_chan_nhwc_sym8sxsym16s
             d64_acc2 = AE_ADD64S(d64_acc2, d64_bias2);
             d64_acc3 = AE_ADD64S(d64_acc3, d64_bias3);
 
+#if XCHAL_HAVE_HIFI5S
+            ae_int32x2 d32_acc0 = MultiplyByQuantizedMultiplier_x2_opt(d64_acc0, d64_acc1, p_out_multiplier[itr_ch + 0], p_out_multiplier[itr_ch + 1], out_shift0);
+            ae_int32x2 d32_acc1 = MultiplyByQuantizedMultiplier_x2_opt(d64_acc2, d64_acc3, p_out_multiplier[itr_ch + 2], p_out_multiplier[itr_ch + 3], out_shift1);
+#else
             ae_int32x2 tmp32_0 = MultiplyByQuantizedMultiplier_ref(d64_acc0, p_out_multiplier[itr_ch + 0], r_shift[0]);
             ae_int32x2 tmp32_1 = MultiplyByQuantizedMultiplier_ref(d64_acc1, p_out_multiplier[itr_ch + 1], r_shift[1]);
             ae_int32x2 tmp32_2 = MultiplyByQuantizedMultiplier_ref(d64_acc2, p_out_multiplier[itr_ch + 2], r_shift[2]); 
@@ -841,7 +861,7 @@ static inline void conv2d_per_chan_nhwc_sym8sxsym16s
 
             ae_int32x2 d32_acc0 = AE_SEL32_LL(tmp32_0, tmp32_1);
             ae_int32x2 d32_acc1 = AE_SEL32_LL(tmp32_2, tmp32_3);
-
+#endif
             d_acc16x4 = AE_SAT16X4(d32_acc0, d32_acc1);
 #pragma no_unroll
             for(i = 0; i < XT_MIN(out_channels-itr_ch, 4); i++)
@@ -855,6 +875,10 @@ static inline void conv2d_per_chan_nhwc_sym8sxsym16s
             d64_acc6 = AE_ADD64S(d64_acc6, d64_bias2);
             d64_acc7 = AE_ADD64S(d64_acc7, d64_bias3);
 
+#if XCHAL_HAVE_HIFI5S
+            ae_int32x2 d32_acc2 = MultiplyByQuantizedMultiplier_x2_opt(d64_acc4, d64_acc5, p_out_multiplier[itr_ch + 0], p_out_multiplier[itr_ch + 1], out_shift0);
+            ae_int32x2 d32_acc3 = MultiplyByQuantizedMultiplier_x2_opt(d64_acc6, d64_acc7, p_out_multiplier[itr_ch + 2], p_out_multiplier[itr_ch + 3], out_shift1);
+#else
             ae_int32x2 tmp32_4 = MultiplyByQuantizedMultiplier_ref(d64_acc4, p_out_multiplier[itr_ch + 0], r_shift[0]);
             ae_int32x2 tmp32_5 = MultiplyByQuantizedMultiplier_ref(d64_acc5, p_out_multiplier[itr_ch + 1], r_shift[1]);
             ae_int32x2 tmp32_6 = MultiplyByQuantizedMultiplier_ref(d64_acc6, p_out_multiplier[itr_ch + 2], r_shift[2]); 
@@ -862,7 +886,7 @@ static inline void conv2d_per_chan_nhwc_sym8sxsym16s
 
             ae_int32x2 d32_acc2 = AE_SEL32_LL(tmp32_4, tmp32_5);
             ae_int32x2 d32_acc3 = AE_SEL32_LL(tmp32_6, tmp32_7);
-
+#endif
             d_acc16x4 = AE_SAT16X4(d32_acc2, d32_acc3);
 #pragma no_unroll
             for(i = 0; i < XT_MIN(out_channels-itr_ch, 4); i++)
@@ -884,6 +908,10 @@ static inline void conv2d_per_chan_nhwc_sym8sxsym16s
             r_shift[2] = p_out_shift[itr_ch+2];
             r_shift[3] = p_out_shift[itr_ch+3];
 
+#if XCHAL_HAVE_HIFI5S
+            int out_shift0 = (15 - r_shift[0]) << 16 | (0x0000FFFF & (15 - r_shift[1]));
+            int out_shift1 = (15 - r_shift[2]) << 16 | (0x0000FFFF & (15 - r_shift[3])); 
+#endif
             pt_inp0 = (ae_int16x4 *)p_inp;
             AE_ADDCIRC16X4_XC(pt_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(WORD16));
             pt_ker = (const WORD8 *)(&p_ker[itr_ch]);
@@ -925,6 +953,10 @@ static inline void conv2d_per_chan_nhwc_sym8sxsym16s
             d64_acc2 = AE_ADD64S(d64_acc2, d64_bias2);
             d64_acc3 = AE_ADD64S(d64_acc3, d64_bias3);
 
+#if XCHAL_HAVE_HIFI5S
+            ae_int32x2 d32_acc0 = MultiplyByQuantizedMultiplier_x2_opt(d64_acc0, d64_acc1, p_out_multiplier[itr_ch + 0], p_out_multiplier[itr_ch + 1], out_shift0);
+            ae_int32x2 d32_acc1 = MultiplyByQuantizedMultiplier_x2_opt(d64_acc2, d64_acc3, p_out_multiplier[itr_ch + 2], p_out_multiplier[itr_ch + 3], out_shift1);
+#else
             ae_int32x2 tmp32_0 = MultiplyByQuantizedMultiplier_ref(d64_acc0, p_out_multiplier[itr_ch + 0], r_shift[0]);
             ae_int32x2 tmp32_1 = MultiplyByQuantizedMultiplier_ref(d64_acc1, p_out_multiplier[itr_ch + 1], r_shift[1]);
             ae_int32x2 tmp32_2 = MultiplyByQuantizedMultiplier_ref(d64_acc2, p_out_multiplier[itr_ch + 2], r_shift[2]); 
@@ -932,7 +964,7 @@ static inline void conv2d_per_chan_nhwc_sym8sxsym16s
 
             ae_int32x2 d32_acc0 = AE_SEL32_LL(tmp32_0, tmp32_1);
             ae_int32x2 d32_acc1 = AE_SEL32_LL(tmp32_2, tmp32_3);
-
+#endif
             d_acc16x4 = AE_SAT16X4(d32_acc0, d32_acc1);
 #pragma no_unroll
             for(i = 0; i < XT_MIN(out_channels-itr_ch, 4); i++)
@@ -1112,7 +1144,7 @@ WORD32 xa_nn_conv2d_depthwise_per_chan_sym8sxsym16s
     XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
     XA_NNLIB_ARG_CHK_COND(input_zero_bias != 0, -1);
     for(i = 0; i < input_channels*channels_multiplier; i++)
-      XA_NNLIB_ARG_CHK_COND((p_out_shift[i] < -31 || p_out_shift[i] > 31), -1);
+      XA_NNLIB_ARG_CHK_COND((p_out_shift[i] < -31 || p_out_shift[i] > 15), -1);
     XA_NNLIB_ARG_CHK_COND((out_zero_bias != 0 ), -1);
     XA_NNLIB_ARG_CHK_COND((inp_data_format != 0 && inp_data_format != 1), -1);
     XA_NNLIB_ARG_CHK_COND((out_data_format != 0), -1);

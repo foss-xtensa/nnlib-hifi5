@@ -629,7 +629,7 @@ WORD32 xa_nn_matXvec_sym8sxsym16s_sym16s(
   XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
-  XA_NNLIB_ARG_CHK_COND((out_shift < -31 || out_shift > 31), -1);
+  XA_NNLIB_ARG_CHK_COND((out_shift < -31 || out_shift > 15), -1);
 
   /* Iterators used in for loops */
   int m_itr, ii;
@@ -704,9 +704,13 @@ WORD32 xa_nn_matXvec_sym8sxsym16s_sym16s(
       }
 
       ae_int16x4 out0, out1;
+#if XCHAL_HAVE_HIFI5S
+      MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out0, acc_row_vec0[0], acc_row_vec0[1], acc_row_vec0[2], acc_row_vec0[3], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+      MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out1, acc_row_vec0[4], acc_row_vec0[5], acc_row_vec0[6], acc_row_vec0[7], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else      
       MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out0, acc_row_vec0[0], acc_row_vec0[1], acc_row_vec0[2], acc_row_vec0[3], out_multiplier, out_shift);
       MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out1, acc_row_vec0[4], acc_row_vec0[5], acc_row_vec0[6], acc_row_vec0[7], out_multiplier, out_shift);
-
+#endif
       AE_S16X4X2_IP(out0, out1, (ae_int16x8 *)p_out, 16);
     }
 
@@ -805,8 +809,11 @@ WORD32 xa_nn_matXvec_sym8sxsym16s_sym16s(
         }
 
         ae_int16x4 out0;
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out0, acc_row0_vec0, acc_row1_vec0, acc_row2_vec0, acc_row3_vec0, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else        
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out0, acc_row0_vec0, acc_row1_vec0, acc_row2_vec0, acc_row3_vec0, out_multiplier, out_shift);
-
+#endif
         *(ae_int16 *)(p_dst_0 + 48) = out0;
         *(ae_int16 *)(p_dst_0 + 32) = AE_SEL16_4321(out0, out0);
         *(ae_int16 *)(p_dst_0 + 16) = AE_SEL16_5432(out0, out0);
@@ -864,8 +871,11 @@ WORD32 xa_nn_matXvec_sym8sxsym16s_sym16s(
         }
 
         ae_int16x4 out0;
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out0, acc_row0_vec0, acc_row1_vec0, acc_row2_vec0, acc_row3_vec0, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else        
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out0, acc_row0_vec0, acc_row1_vec0, acc_row2_vec0, acc_row3_vec0, out_multiplier, out_shift);
-
+#endif
         *(ae_int16 *)p_dst_0++ = AE_SEL16_6543(out0, out0);
         *(ae_int16 *)p_dst_0++ = AE_SEL16_5432(out0, out0);
         *(ae_int16 *)p_dst_0++ = AE_SEL16_4321(out0, out0);

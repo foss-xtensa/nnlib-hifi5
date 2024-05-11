@@ -80,6 +80,7 @@ WORD32 xa_nn_reduce_getsize_nhwc(WORD32 inp_precision
     return 0;
 }
 
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 /*
  * Currently only supports upto 4D input tensors.
  * 1/2/3 D input tensors will be scaled up to 4D.
@@ -1512,3 +1513,4 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
 
   return 0;
 }
+#endif /* #ifndef ENABLE_SCRATCH_SIZE_API_ONLY */

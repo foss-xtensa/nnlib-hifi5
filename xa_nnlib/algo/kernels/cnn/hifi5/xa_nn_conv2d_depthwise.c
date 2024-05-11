@@ -77,7 +77,7 @@ static WORD32 xa_nn_dilated_conv2d_depthwise_nchw_getsize
   circ_buf_size = ALIGNED_SIZE(circ_buf_size, ALIGNMENT_16);
 
   circ_buf_width = dilated_kernel_width + ((output_width - 1) * x_stride);
-  circ_buf_width = XT_MAX(circ_buf_width, x_padding+input_width);
+  circ_buf_width = MAX(circ_buf_width, x_padding+input_width);
   if(circ_buf_bytewidth == 1 || circ_buf_bytewidth == 2)
     circ_buf_width = ALIGNED_SIZE(circ_buf_width, 8);
   else
@@ -385,6 +385,7 @@ static WORD32 xa_nn_dilated_conv2d_depthwise_getsize_generic
     case -2: /* For f16*/
       scratch_bytewidth = 2; /* 16b scratch */
       circ_buf_bytewidth = 2; /* bytewidth as per precision */
+      break;
     case -8: /* For sym16s */
       scratch_bytewidth = 8; /* 64b scratch */
       circ_buf_bytewidth = 2; /* bytewidth for sym16s */

@@ -73,7 +73,8 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_f32_circ,(
     SETUP_BIAS_BATCH_VEC_UNROLL(idx_row);
 
 #define SETUP_BIAS_BATCH_FOR_f32(idx_row,idx_vec) \
-    xtfloat _xtfloat_bias_ ##idx_row ##_ ##idx_vec = p_bias[(vec_itr + idx_vec)]; \
+    xtfloat _xtfloat_bias_ ##idx_row ##_ ##idx_vec = 0.0f; \
+    if(p_bias != NULL) {_xtfloat_bias_ ##idx_row ##_ ##idx_vec = p_bias[(vec_itr + idx_vec)];} \
 
 #define LOAD_VEC_BATCH_f32(idx_vec) \
     AE_LSX2X2_IP(_xtfloatx2_vec_batch_ ##idx_vec,_xtfloatx2_vec_batch_1_ ##idx_vec,_xtfloatx4_p_vec_batch_ ##idx_vec,16);
@@ -328,8 +329,12 @@ WORD32 xa_nn_matXvec_f32_circ(
                 {
                     ae_valignx2 align_mat0, align_mat1;
                     ae_valignx2 align_vec0, align_vec1;
-                    xtfloatx2 _xtfloat_bias_0 = p_bias[vec_itr];
-                    xtfloatx2 _xtfloat_bias_1 = p_bias[vec_itr+1];
+                    xtfloatx2 _xtfloat_bias_0 = 0.0f;
+                    xtfloatx2 _xtfloat_bias_1 = 0.0f;
+                    if(p_bias != NULL){
+                      _xtfloat_bias_0 = p_bias[vec_itr];
+                      _xtfloat_bias_1 = p_bias[vec_itr+1];
+                    }
 
                     xtfloatx2 _xtfloatx2_acc_0_0 = (xtfloatx2)0.0f;
                     xtfloatx2 _xtfloatx2_acc_0_1 = (xtfloatx2)0.0f;
@@ -433,8 +438,13 @@ WORD32 xa_nn_matXvec_f32_circ(
                 }
                 for (; m_itr < rows ; m_itr++)
                 {
-                    xtfloat _xtfloat_bias_0 = p_bias[vec_itr];
-                    xtfloat _xtfloat_bias_1 = p_bias[vec_itr+1];
+
+                    xtfloat _xtfloat_bias_0 = 0.0f;
+                    xtfloat _xtfloat_bias_1 = 0.0f;
+                    if(p_bias != NULL){
+                      _xtfloat_bias_0 = p_bias[vec_itr];
+                      _xtfloat_bias_1 = p_bias[vec_itr+1];
+                    }
                     xtfloat _xtfloatx2_acc_0_0 = (xtfloat)0.0f;
                     xtfloat _xtfloatx2_acc_0_1 = (xtfloat)0.0f;
 
@@ -470,7 +480,10 @@ WORD32 xa_nn_matXvec_f32_circ(
                 vec_itr = vec_count -1;
                 for(m_itr = 0; m_itr < (rows); m_itr ++)
                 {
-                    xtfloat _xtfloat_bias = p_bias[vec_itr];
+                    xtfloat _xtfloat_bias = 0.0f;
+                    if(p_bias != NULL){
+                      _xtfloat_bias = p_bias[vec_itr];
+                    }
                     xtfloat _xtfloatx2_acc_0_0 = (xtfloat)0.0f;
                     xtfloat _xtfloatx2_vec_batch_0  = (xtfloat)0.0f ;
                     xtfloat *_xtfloatx2_p_vec_batch_0  = (xtfloat *)(&p_vec[(vec_itr)*vec_offset]);

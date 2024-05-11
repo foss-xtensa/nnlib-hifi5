@@ -32,6 +32,7 @@
     input = XT_MAX(min, XT_MIN(max, input));
 
 #define MAX_HEIGHT_16_BIT_ACC 127
+#define MAX_HEIGHT_16_BIT_ACC_S8 256
 
 extern const unsigned int inv_256_tbl[257];
 typedef struct _xa_nn_avgpool_state_t

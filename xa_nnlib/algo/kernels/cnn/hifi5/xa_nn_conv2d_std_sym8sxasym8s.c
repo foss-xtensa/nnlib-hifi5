@@ -65,7 +65,10 @@ static WORD32 conv_x_left_pad(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+        ae_int32x2 acc = 0;
+        if(p_bias != NULL){
+          acc = AE_MOVDA32(p_bias[k]);
+        }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
@@ -118,7 +121,10 @@ static WORD32 conv_x_right_pad(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+        ae_int32x2 acc = 0;
+        if(p_bias != NULL){
+          acc = AE_MOVDA32(p_bias[k]);
+        }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
@@ -168,7 +174,10 @@ static void conv_y_pad_nhwc_out(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+        ae_int32x2 acc = 0;
+        if(p_bias != NULL){
+          acc = AE_MOVDA32(p_bias[k]);
+        }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
@@ -320,7 +329,6 @@ WORD32 xa_nn_dilated_conv2d_std_per_chan_sym8sxasym8s(
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
   XA_NNLIB_ARG_CHK_PTR(p_kernel, -1);
   XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
-  XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
   XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
   /* Pointer alignment checks */
   //XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(UWORD8), -1);
@@ -681,7 +689,6 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxasym8s(
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
   XA_NNLIB_ARG_CHK_PTR(p_kernel, -1);
   XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
-  XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
   XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
   /* Pointer alignment checks */
   XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD32), -1);

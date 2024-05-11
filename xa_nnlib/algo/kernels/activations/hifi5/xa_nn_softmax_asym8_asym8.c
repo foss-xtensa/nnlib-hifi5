@@ -292,6 +292,11 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
     XA_NNLIB_ARG_CHK_COND(((input_beta_left_shift < -31) || (input_beta_left_shift > 31)), -1);
     XA_NNLIB_ARG_CHK_COND((input_beta_multiplier < 0), -1);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+    input_beta_left_shift = 31 - input_beta_left_shift;
+    input_beta_left_shift = (input_beta_left_shift << 16) | input_beta_left_shift;
+#endif
+
     int i;
     int shift_bits_reciprocal;
     xtbool2 f76, f54, f32, f10, g76, g54, g32, g10;
@@ -404,7 +409,11 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
       g32 = AE_LE32(diff_min, x32);
       g10 = AE_LE32(diff_min, x10);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_y76, dequantized_y54, y76, y54, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y76, dequantized_y54, y76, y54, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_y76, exp_y54, dequantized_y76, dequantized_y54);
       AE_MOVF32X2(exp_y76, AE_ZERO32(), f76);
 
@@ -413,7 +422,11 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
       exp_y76 = AE_SRAA32RS(exp_y76, (int)12);
       exp_y54 = AE_SRAA32RS(exp_y54, (int)12);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_y32, dequantized_y10, y32, y10, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y32, dequantized_y10, y32, y10, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_y32, exp_y10, dequantized_y32, dequantized_y10);
       AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
 
@@ -422,7 +435,11 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
       exp_y32 = AE_SRAA32RS(exp_y32, (int)12);
       exp_y10 = AE_SRAA32RS(exp_y10, (int)12);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_x76, dequantized_x54, x76, x54, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x76, dequantized_x54, x76, x54, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_x76, exp_x54, dequantized_x76, dequantized_x54);
       AE_MOVF32X2(exp_x76, AE_ZERO32(), g76);
 
@@ -431,7 +448,11 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
       exp_x76 = AE_SRAA32RS(exp_x76, (int)12);
       exp_x54 = AE_SRAA32RS(exp_x54, (int)12);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_x32, exp_x10, dequantized_x32, dequantized_x10);
       AE_MOVF32X2(exp_x32, AE_ZERO32(), g32);
 
@@ -463,7 +484,11 @@ WORD32 xa_nn_vec_softmax_asym8_asym8( UWORD8 * __restrict__ p_out,
         y32 = AE_MOVDA32(rem_x);
         f32 = AE_LE32(diff_min, y32);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+        MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(dequantized_y32, y32, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
         MPY_BY_QUANT_MULT_GT_ONE_X2_OUT32(dequantized_y32, y32, input_beta_multiplier, input_beta_left_shift)
+#endif        
         EXP_Q26(exp_y32, dequantized_y32);
         AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
         AE_S32_L_IP(exp_y32, (ae_int32 *)p_exp, sizeof(WORD32));
@@ -532,6 +557,11 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
     XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
     XA_NNLIB_ARG_CHK_COND(((input_beta_left_shift < 0) || (input_beta_left_shift > 31)), -1);
     XA_NNLIB_ARG_CHK_COND((input_beta_multiplier < 0), -1);
+
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+    input_beta_left_shift = 31 - input_beta_left_shift;
+    input_beta_left_shift = (input_beta_left_shift << 16) | input_beta_left_shift;
+#endif
 
     int i;
     int shift_bits_reciprocal;
@@ -630,7 +660,11 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
       g3210 = AE_LE16(diff_min16, AE_SAT16X4(x32, x10));
       AE_MOVF16X4(diff_min_mask3210, AE_ZERO16(), g3210);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_x32, exp_x10, dequantized_x32, dequantized_x10);
 
       exp_x32 = AE_MULP32X16X2_H(exp_x32, diff_min_mask3210);
@@ -656,7 +690,11 @@ WORD32 xa_nn_vec_softmax_asym8s_asym8s( WORD8 * __restrict__ p_out,
         g3210 = AE_LE16(diff_min16, z32);
         AE_MOVF16X4(diff_min_mask3210, AE_ZERO16(), g3210);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+        MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(dequantized_x32, x32, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
         MPY_BY_QUANT_MULT_GT_ONE_X2_OUT32(dequantized_x32, x32, input_beta_multiplier, input_beta_left_shift)
+#endif        
         EXP_Q26(exp_x32, dequantized_x32);
 
         exp_x32 = AE_MULP32X16X2_H(exp_x32, diff_min_mask3210);
@@ -727,6 +765,11 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
     XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
     XA_NNLIB_ARG_CHK_COND(((input_beta_left_shift < 0) || (input_beta_left_shift > 31)), -1);
     XA_NNLIB_ARG_CHK_COND((input_beta_multiplier < 0), -1);
+
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+    input_beta_left_shift = 31 - input_beta_left_shift;
+    input_beta_left_shift = (input_beta_left_shift << 16) | input_beta_left_shift;
+#endif
 
     int i;
     int shift_bits_reciprocal;
@@ -837,7 +880,11 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
       g32 = AE_LE32(diff_min, x32);
       g10 = AE_LE32(diff_min, x10);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_y76, dequantized_y54, y76, y54, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y76, dequantized_y54, y76, y54, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_y76, exp_y54, dequantized_y76, dequantized_y54);
       AE_MOVF32X2(exp_y76, AE_ZERO32(), f76);
 
@@ -846,7 +893,11 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
       exp_y76 = AE_SRAA32RS(exp_y76, (int)12);
       exp_y54 = AE_SRAA32RS(exp_y54, (int)12);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_y32, dequantized_y10, y32, y10, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_y32, dequantized_y10, y32, y10, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_y32, exp_y10, dequantized_y32, dequantized_y10);
       AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
 
@@ -855,7 +906,11 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
       exp_y32 = AE_SRAA32RS(exp_y32, (int)12);
       exp_y10 = AE_SRAA32RS(exp_y10, (int)12);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_x76, dequantized_x54, x76, x54, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x76, dequantized_x54, x76, x54, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_x76, exp_x54, dequantized_x76, dequantized_x54);
       AE_MOVF32X2(exp_x76, AE_ZERO32(), g76);
 
@@ -864,7 +919,11 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
       exp_x76 = AE_SRAA32RS(exp_x76, (int)12);
       exp_x54 = AE_SRAA32RS(exp_x54, (int)12);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+      MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
       MPY_BY_QUANT_MULT_GT_ONE_X2X2_OUT32(dequantized_x32, dequantized_x10, x32, x10, input_beta_multiplier, input_beta_left_shift)
+#endif      
       EXP_Q26X2(exp_x32, exp_x10, dequantized_x32, dequantized_x10);
       AE_MOVF32X2(exp_x32, AE_ZERO32(), g32);
 
@@ -896,7 +955,11 @@ WORD32 xa_nn_vec_softmax_asym8s_16( WORD16 * __restrict__ p_out,
         y32 = AE_MOVDA32(rem_x);
         f32 = AE_LE32(diff_min, y32);
 
+#if (XCHAL_HAVE_HIFI5S && TFLITE_SINGLE_ROUNDING)
+        MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(dequantized_y32, y32, input_beta_multiplier, input_beta_left_shift, input_beta_left_shift)
+#else
         MPY_BY_QUANT_MULT_GT_ONE_X2_OUT32(dequantized_y32, y32, input_beta_multiplier, input_beta_left_shift)
+#endif        
         EXP_Q26(exp_y32, dequantized_y32);
         AE_MOVF32X2(exp_y32, AE_ZERO32(), f32);
         AE_S32_L_IP(exp_y32, (ae_int32 *)p_exp, sizeof(WORD32));

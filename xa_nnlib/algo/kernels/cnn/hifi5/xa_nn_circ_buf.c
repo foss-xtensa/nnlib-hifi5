@@ -45,7 +45,7 @@ int xa_nn_circ_buf_nchw_getsize(
   }
 
   circ_buf_width = kernel_width + ((output_width - 1) * x_stride);
-  circ_buf_width = XT_MAX(circ_buf_width, x_padding + input_width);
+  circ_buf_width = MAX(circ_buf_width, x_padding + input_width);
 
   /* Align circ_buf_width to 8 for 8-bit and 16-bit inputs to make L8X8 and
   L16X4X2 loads possible */
@@ -349,7 +349,7 @@ int xa_nn_circ_buf_nhwc_getsize(
   int size_in_bytes;
 
   circ_buf_height = kernel_height + ((output_height - 1) * y_stride);
-  circ_buf_height = XT_MAX(circ_buf_height, (y_padding + input_height + dilation_height - 1)/dilation_height);
+  circ_buf_height = MAX(circ_buf_height, (y_padding + input_height + dilation_height - 1)/dilation_height);
 
   if(bytewidth == 4)
   {

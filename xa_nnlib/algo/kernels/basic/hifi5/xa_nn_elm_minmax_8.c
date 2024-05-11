@@ -280,6 +280,7 @@ WORD32 xa_nn_elm_min_4D_Bcast_8x8_8(
             for(dim[2]=0; dim[2]<out_extents[2]; dim[2]++){
                 index[3][in1] = index[2][in1];
                 index[3][in2] = index[2][in2];
+#pragma nounroll
                 for(dim[3]=0; dim[3]<out_extents[3]; dim[3]++){
                 
                     /*
@@ -365,6 +366,7 @@ WORD32 xa_nn_elm_max_4D_Bcast_8x8_8(
             for(dim[2]=0; dim[2]<out_extents[2]; dim[2]++){
                 index[3][in1] = index[2][in1];
                 index[3][in2] = index[2][in2];
+#pragma nounroll
                 for(dim[3]=0; dim[3]<out_extents[3]; dim[3]++){
 
                     /*

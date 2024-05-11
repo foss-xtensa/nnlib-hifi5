@@ -280,8 +280,11 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
   int loop_cnt = ((output_depth & 1) || ((unsigned int)output_data & 3)) ? 0 : output_depth;
   for (out_channel = 0; out_channel < loop_cnt; out_channel+=2)
   {
-    dbias0 = AE_MOVDA32X2(pbias[out_channel], pbias[out_channel+1]);
-    
+    ae_int32x2 dbias0_l, dbias0_h;
+    AE_L32_XP(dbias0_h, pbias, bias_offset);
+    AE_L32_XP(dbias0_l, pbias, bias_offset);
+    dbias0 = AE_SEL32_LL(dbias0_h, dbias0_l);
+
     ae_int32 *pscratch0 = (ae_int32*)&scratch_buffer[out_channel];
     ae_int32 *pscratch1 = pscratch0 + output_depth; 
     ae_int8 *pout0 = (ae_int8*)&output_data[out_channel];
@@ -484,7 +487,10 @@ static inline void tconv_pad(
       ae_int32x2 q1;
       for(k = 0; k < out_channels; k++)
       {
-        AE_L32_IP(q1, pbias, 4);
+        q1 = 0;
+        if(p_bias != NULL){
+          AE_L32_IP(q1, pbias, 4);
+        }
         ae_int32x2 acc;
         int left_shift, right_shift;
 #if TFLITE_SINGLE_ROUNDING
@@ -727,7 +733,7 @@ int xa_nn_transpose_conv_sym8sxasym8s(WORD8* output_data,
 		int num_elements,
 		int input_offset, int output_offset,
 		int *output_shift, int *output_multiplier,
-		int32_t* scratch_buffer)
+		void* scratch_buffer)
 {
 	/* NULL pointer checks */
 	XA_NNLIB_ARG_CHK_PTR(output_data, -1);

@@ -857,10 +857,12 @@ static inline void __attribute__((always_inline)) conv2d_nhwc_per_chan_sym8sxasy
   (VOID) p_scratch;
   WORD32 ker_channels_pad, inp_channels_pad;
   WORD32 itr_oh, itr_ch, itr_kw;
-  ae_int8x16 *pt_inp0, *pt_inp1;
+  ae_int8x16 * __restrict__ pt_inp0;
+  ae_int8x16 * __restrict__ pt_inp1;
   pWORD8 pt_ker;
   pUWORD8 out_ptr0, out_ptr1;
-  ae_int8x16 *ae_out_ptr0, *ae_out_ptr1;
+  ae_int8x16 * __restrict__ ae_out_ptr0;
+  ae_int8x16 * __restrict__ ae_out_ptr1;
   ae_valignx2 out0_a, out1_a;
   const ae_int32x4 *pt_bias;
   const ae_int32x4 *pt_outm;
@@ -890,12 +892,12 @@ static inline void __attribute__((always_inline)) conv2d_nhwc_per_chan_sym8sxasy
   {
     pt_bias = (const ae_int32x4 *)p_bias;
     bias_a = AE_LA128_PP(pt_bias);
-#pragma loop_count min=1
+//#pragma loop_count min=1
     for(itr_ch = 0; itr_ch < out_channels; itr_ch += 8)
     {
       int ysXkwXic = y_stride * kernel_width * inp_channels_pad;
       pt_ker = (WORD8 *)(&p_ker[itr_ch]);
-      ae_int8x8 *pt_inp0 = (ae_int8x8 *)p_inp;
+      ae_int8x8 * __restrict__ pt_inp0 = (ae_int8x8 *)p_inp;
 
       AE_LA32X2X2_IP(d_bias0, d_bias1, bias_a, pt_bias);
       AE_LA32X2X2_IP(d_bias2, d_bias3, bias_a, pt_bias);
@@ -951,8 +953,8 @@ static inline void __attribute__((always_inline)) conv2d_nhwc_per_chan_sym8sxasy
       ae_int32x2 ONE = AE_MOVDA32(1);
       ae_int32x2 M_ONE = AE_MOVDA32(0xFFFFFFFF);
       pt_outs = (const ae_int32x4 *)(&p_out_shift[itr_ch]);
-      ae_int32x4 *p_lmult = (ae_int32x4 *)(&p_left_shift[0]);
-      ae_int32x4 *p_rmult = (ae_int32x4 *)(&p_right_shift[0]);
+      ae_int32x4 * __restrict__ p_lmult = (ae_int32x4 *)(&p_left_shift[0]);
+      ae_int32x4 * __restrict__ p_rmult = (ae_int32x4 *)(&p_right_shift[0]);
       ae_valignx2 outs_a;
       outs_a = AE_LA128_PP(pt_outs);
 

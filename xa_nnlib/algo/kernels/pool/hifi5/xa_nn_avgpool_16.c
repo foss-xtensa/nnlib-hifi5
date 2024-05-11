@@ -426,8 +426,8 @@ const WORD16* __restrict__ p_inp,
     XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_data_format != 0) && (out_data_format != 1), -1);
     /* Implementation dependent checks */
-    XA_NNLIB_ARG_CHK_COND((kernel_height > 256), -1);
-    XA_NNLIB_ARG_CHK_COND((kernel_width > 256), -1);
+    XA_NNLIB_ARG_CHK_COND((kernel_height > 1024), -1);
+    XA_NNLIB_ARG_CHK_COND((kernel_width > 1024), -1);
 
     XA_NNLIB_ARG_CHK_COND((inp_data_format != 0) && (inp_data_format != 1), -1);
     // Different I/O data formats (not supported!)

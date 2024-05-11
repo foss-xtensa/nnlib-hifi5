@@ -20,7 +20,10 @@
 #
 
 .PHONY: all install clean
+
+ifneq ($(BUILD_SCRATCH_SIZE_LIB), 1)
 include detect_core.mk
+endif
 
 all: nnlib
 

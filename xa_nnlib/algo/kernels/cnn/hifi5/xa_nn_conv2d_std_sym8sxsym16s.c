@@ -55,7 +55,10 @@ static WORD32 conv_x_left_pad(
       ae_int64 q1;
       for(k = 0; k < out_channels; k++)
       {
-        AE_L64_IP(q1, pbias, 8);
+        q1 = 0;
+        if(pbias != NULL){
+          AE_L64_IP(q1, pbias, 8);
+        }
         ae_int32x2 acc;
         MPY_BY_QUANT_MULT_ACC64_OUT32(acc, q1, p_out_multiplier[k], p_out_shift[k]);
         d1 = AE_SAT16X4(acc, acc);
@@ -98,7 +101,10 @@ static WORD32 conv_x_right_pad(
       ae_int64 q1;
       for(k = 0; k < out_channels; k++)
       {
-        AE_L64_IP(q1, pbias, 8);
+        q1 = 0;
+        if(pbias != NULL){
+          AE_L64_IP(q1, pbias, 8);
+        }
         ae_int32x2 acc;
         MPY_BY_QUANT_MULT_ACC64_OUT32(acc, q1, p_out_multiplier[k], p_out_shift[k]);
         d1 = AE_SAT16X4(acc, acc);
@@ -137,7 +143,6 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s(
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
   XA_NNLIB_ARG_CHK_PTR(p_kernel, -1);
   XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
-  XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
   XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
   /* Pointer alignment checks */
   XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD64), -1);
@@ -155,7 +160,7 @@ WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s(
 
   int itr;
   for(itr=0;itr<out_channels;itr++){
-    XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 31), -1);
+    XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 15), -1);
   }
 
   /* Interchange height and width dimensions when i_h = k_h = o_h = 1 for better throughput */

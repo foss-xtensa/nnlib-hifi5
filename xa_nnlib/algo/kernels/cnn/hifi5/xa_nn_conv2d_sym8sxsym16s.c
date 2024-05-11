@@ -55,7 +55,10 @@ static WORD32 conv_x_left_pad(
       ae_int64 q1;
       for(k = 0; k < out_channels; k++)
       {
-        AE_L64_IP(q1, pbias, 8);
+        q1 = 0;
+        if(pbias != NULL){
+          AE_L64_IP(q1, pbias, 8);
+        }
         ae_int32x2 acc;
         MPY_BY_QUANT_MULT_ACC64_OUT32(acc, q1, p_out_multiplier[k], p_out_shift[k]);
         d1 = AE_SAT16X4(acc, acc);
@@ -98,7 +101,10 @@ static WORD32 conv_x_right_pad(
       ae_int64 q1;
       for(k = 0; k < out_channels; k++)
       {
-        AE_L64_IP(q1, pbias, 8);
+        q1 = 0;
+        if(pbias != NULL){
+          AE_L64_IP(q1, pbias, 8);
+        }
         ae_int32x2 acc;
         MPY_BY_QUANT_MULT_ACC64_OUT32(acc, q1, p_out_multiplier[k], p_out_shift[k]);
         d1 = AE_SAT16X4(acc, acc);
@@ -141,7 +147,6 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxsym16s(
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
   XA_NNLIB_ARG_CHK_PTR(p_kernel, -1);
   XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
-  XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
   XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
   /* Pointer alignment checks */
   XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD64), -1);
@@ -162,7 +167,7 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxsym16s(
 
   int itr;
   for(itr=0;itr<out_channels;itr++){
-    XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 31), -1);
+    XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 15), -1);
   }
   const int groups = input_channels/kernel_channels;
   XA_NNLIB_ARG_CHK_COND((groups<=0), -1);
@@ -274,11 +279,15 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxsym16s(
       idx_beg_inp_width_pad += x_str;
 
       // Convolution using matXvec with matrix as circular buffer
+      const WORD64 *p_bias_grp = NULL;
+      if(p_bias != NULL){
+        p_bias_grp = p_bias+grp_i*kernels_per_group;
+      }      
       xa_nn_matXvec_sym8sxsym16s_sym16s_circ
         (tmp_out /* output */
         ,p_state->cir_buf.p_curr/* matrix: rows x cols */
         ,(p_kernel+grp_i*kernels_per_group*kernel_channels*kernel_width*kernel_height) /* vec: cols */
-        ,(p_bias+grp_i*kernels_per_group) /* bias */
+        ,p_bias_grp /* bias */
         ,out_h /* rows */
         ,kernel_channels * ker_w * ker_h /* cols */
         ,kernel_channels * ker_w * y_str/* row_offset */

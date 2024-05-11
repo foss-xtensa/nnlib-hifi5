@@ -28,6 +28,8 @@
 #define NULL (void *)0
 #endif /* NULL */
 
+#define MAX(a, b)   (((a) > (b)) ? (a) : (b))
+
 /* Macros for memcpy */
 #define MEMCPY_8b(out, inp, N) \
 { \

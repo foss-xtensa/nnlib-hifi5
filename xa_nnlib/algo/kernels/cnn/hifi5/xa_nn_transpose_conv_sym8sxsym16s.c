@@ -298,8 +298,13 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
       acc2 = AE_ADD64(acc2, dbias1);
       acc3 = AE_ADD64(acc3, dbias1);
       ae_int32x2 scaled_acc0, scaled_acc1;
+#if XCHAL_HAVE_HIFI5S
+      MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(scaled_acc0, acc0, acc1, output_multiplier[out_channel], (((15 - shift0) << 16) | (15 - shift0)));
+      MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(scaled_acc1, acc2, acc3, output_multiplier[out_channel+1], (((15 - shift1) << 16) | (15 - shift1)));
+#else      
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32(scaled_acc0, acc0, acc1, output_multiplier[out_channel], shift0);
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32(scaled_acc1, acc2, acc3, output_multiplier[out_channel+1], shift1);
+#endif      
       ae_int16x4 d1 = AE_SAT16X4(scaled_acc1, scaled_acc0); 
       AE_L64X2_XP(acc0, acc2, (ae_int64x2 *)pscratch0, 2*output_depth*sizeof(WORD64));
       AE_L64X2_XP(acc1, acc3, (ae_int64x2 *)pscratch1, 2*output_depth*sizeof(WORD64));
@@ -311,8 +316,16 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
       acc0 = AE_ADD64(acc0, dbias0);
       acc2 = AE_ADD64(acc2, dbias1);
       ae_int32x2 scaled_acc0;
+#if XCHAL_HAVE_HIFI5S
+      ae_int32x2 out_mul10 = AE_MOVDA32X2(output_multiplier[out_channel], output_multiplier[out_channel+1]);
+      ae_int32x2 shift = AE_MOVDA32X2(shift1, shift0);
+      shift = AE_SUB32(AE_MOVDA32(15), shift);
+      int shift_hifi5s_0 = (AE_MOVAD32_H(shift) << 16) | AE_MOVAD32_L(shift);
+      MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(scaled_acc0, acc2, acc0, out_mul10, shift_hifi5s_0);
+#else
       ae_int32x2 out_mul10 = AE_MOVDA32X2(output_multiplier[out_channel+1], output_multiplier[out_channel]);
       MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(scaled_acc0, acc2, acc0, out_mul10, AE_MOVDA32X2(shift1, shift0));
+#endif
       ae_int16x4 d1 = AE_SAT16X4(scaled_acc0, scaled_acc0);
       AE_S32_H_XP(AE_MOVINT32X2_FROMINT16X4(d1), (ae_int32 *)pout0, 2*output_depth*sizeof(WORD16));
     }
@@ -333,7 +346,11 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
       acc0 = AE_ADD64(acc0, dbias0);
       acc1 = AE_ADD64(acc1, dbias0);
       ae_int32x2 scaled_acc;
+#if XCHAL_HAVE_HIFI5S
+      MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(scaled_acc, acc0, acc1, output_multiplier[out_channel], (((15 - shift0) << 16) | (15 - shift0)));
+#else      
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32(scaled_acc, acc0, acc1, output_multiplier[out_channel], shift0);
+#endif      
       ae_int16x4 d1 = AE_SAT16X4(scaled_acc, scaled_acc);
       AE_L64_XP(acc0, pscratch0, output_depth*sizeof(WORD64));
       AE_L64_XP(acc1, pscratch1, output_depth*sizeof(WORD64));
@@ -344,7 +361,11 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
     {
       acc1 = AE_ADD64(acc1, dbias0);
       ae_int32x2 scaled_acc;
+#if XCHAL_HAVE_HIFI5S
+      MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(scaled_acc, acc1, acc1, output_multiplier[out_channel], (((15 - shift0) << 16) | (15 - shift0)));
+#else      
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32(scaled_acc, acc1, acc1, output_multiplier[out_channel], shift0);
+#endif      
       ae_int16x4 d1 = AE_SAT16X4(scaled_acc, scaled_acc);
       AE_S16_0_I(d1, pout1, 0);
     }
@@ -449,7 +470,10 @@ static inline void tconv_pad(
       ae_int64 q1;
       for(k = 0; k < out_channels; k++)
       {
-        AE_L64_IP(q1, pbias, 8);
+        q1 = 0;
+        if(p_bias != NULL){
+          AE_L64_IP(q1, pbias, 8);
+        }
         ae_int32x2 acc;
         MPY_BY_QUANT_MULT_ACC64_OUT32(acc, q1, p_out_multiplier[k], p_out_shift[k]);
         d1 = AE_SAT16X4(acc, acc);
@@ -681,7 +705,7 @@ int xa_nn_transpose_conv_sym8sxsym16s(WORD16* output_data,
 		int output_height, int output_width,
 		int num_elements,
 		int *output_shift, int *output_multiplier,
-		int64_t* scratch_buffer)
+		void* scratch_buffer)
 {
 	/* NULL pointer checks */
 	XA_NNLIB_ARG_CHK_PTR(output_data, -1);

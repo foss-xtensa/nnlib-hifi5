@@ -111,6 +111,7 @@ WORD32 xa_nn_transpose_conv_getsize
     return total_size;
 }
 
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 VOID xa_nn_transpose_conv_init_state(
     VOID *p_scratch,
     VOID *p_kernel,
@@ -165,3 +166,5 @@ VOID xa_nn_transpose_conv_init_state(
   AE_SETCEND0(p_state->cir_buf.p_end);
 
 }
+#endif /* #ifndef ENABLE_SCRATCH_SIZE_API_ONLY */
+

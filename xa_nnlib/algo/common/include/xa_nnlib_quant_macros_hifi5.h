@@ -24,6 +24,26 @@
 
 #if TFLITE_SINGLE_ROUNDING
 
+#if XCHAL_HAVE_HIFI5S
+
+#define MPY_BY_QUANT_MULT_X2_OUT32_HIFI5S(out, inp, multiplier, left_shift, right_shift) \
+{ \
+  ae_int64 out64_0, out64_1; \
+  AE_MUL32X2S_HH_LL(out64_0, out64_1, inp, AE_MOVDA32(multiplier)); \
+  out = AE_ROUNDAV32X2F64SASYM(out64_0, out64_1, left_shift); \
+}
+
+#define MPY_BY_QUANT_MULT_X2X2_OUT32_HIFI5S(out1, out2, inp1, inp2, multiplier, left_shift, right_shift) \
+{ \
+  ae_int64 out64_0, out64_1, out64_2, out64_3; \
+  AE_MUL32X2S_HH_LL(out64_0, out64_1, inp1, AE_MOVDA32(multiplier)); \
+  AE_MUL32X2S_HH_LL(out64_2, out64_3, inp2, AE_MOVDA32(multiplier)); \
+  out1 = AE_ROUNDAV32X2F64SASYM(out64_0, out64_1, left_shift); \
+  out2 = AE_ROUNDAV32X2F64SASYM(out64_2, out64_3, left_shift); \
+}
+
+#endif // XCHAL_HAVE_HIFI5S
+
 #define MPY_BY_QUANT_MULT_X2_OUT32(out, inp, multiplier, left_shift, right_shift) \
 { \
   ae_int64 out64_0, out64_1; \
@@ -383,6 +403,48 @@
 }
 
 #endif /* #if TFLITE_SINGLE_ROUNDING */
+
+
+#if XCHAL_HAVE_HIFI5S
+#define MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(out0, inp0, inp1, mult01, l_shift01) \
+{ \
+  ae_int16x4 d_red_multx4 = AE_ROUND16X4F32SASYM(mult01, mult01); \
+  ae_int64 q0_l, q1_l; \
+  AE_MULP48X16X2_L(q0_l, q1_l, inp0, inp1, d_red_multx4); \
+  out0 = AE_ROUNDAV32X2F64SASYM(q0_l, q1_l, l_shift01); \
+}
+
+#define MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2X2_OUT16_HIFI5S(out0, inp0, inp1, inp2, inp3, mult01, mult23, l_shift01, l_shift23) \
+{ \
+  ae_int16x4 d_red_mult01x4 = AE_ROUND16X4F32SASYM(mult01, mult01); \
+  ae_int16x4 d_red_mult23x4 = AE_ROUND16X4F32SASYM(mult23, mult23); \
+  ae_int64 q0_l, q1_l, q2_l, q3_l; \
+  AE_MULP48X16X2_L(q0_l, q1_l, inp0, inp1, d_red_mult01x4); \
+  AE_MULP48X16X2_L(q2_l, q3_l, inp2, inp3, d_red_mult23x4); \
+  ae_int32x2 result0 = AE_ROUNDAV32X2F64SASYM(q0_l, q1_l, l_shift01); \
+  ae_int32x2 result1 = AE_ROUNDAV32X2F64SASYM(q2_l, q3_l, l_shift23); \
+  out0 = AE_SAT16X4(result0, result1); \
+}
+
+#define MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(out0, inp0, inp1, mult, l_shift) \
+{ \
+  ae_int16x4 d_red_multx4 = AE_ROUND16X4F32SASYM(AE_MOVDA32(mult), AE_MOVDA32(mult)); \
+  ae_int64 q0_l, q1_l; \
+  AE_MULP48X16X2_L(q0_l, q1_l, inp0, inp1, d_red_multx4); \
+  out0 = AE_ROUNDAV32X2F64SASYM(q0_l, q1_l, l_shift); \
+}
+
+#define MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out0, inp0, inp1, inp2, inp3, mult, l_shift) \
+{ \
+  ae_int16x4 d_red_multx4 = AE_ROUND16X4F32SASYM(mult, mult); \
+  ae_int64 q0_l, q1_l, q2_l, q3_l; \
+  AE_MULP48X16X2_L(q0_l, q1_l, inp0, inp1, d_red_multx4); \
+  AE_MULP48X16X2_L(q2_l, q3_l, inp2, inp3, d_red_multx4); \
+  ae_int32x2 result0 = AE_ROUNDAV32X2F64SASYM(q0_l, q1_l, l_shift); \
+  ae_int32x2 result1 = AE_ROUNDAV32X2F64SASYM(q2_l, q3_l, l_shift); \
+  out0 = AE_SAT16X4(result0, result1); \
+}
+#endif // XCHAL_HAVE_HIFI5S
 
 /* 64-bit accumulator (actual range 48-bit) with 16-bit multiplier macros */
 #define MPY_BY_QUANT_MULT_ACC64_OUT32(out0, inp0, mult, l_shift) \

@@ -90,6 +90,11 @@ static void special_function_for_cols_mul_32
     ae_int32x2 out_multiplier_01, out_multiplier_23;
     ae_int32x4 *pae_out_mult, *pae_out_shift;
     ae_valignx2 align_p_mult, align_p_shift;
+
+#if XCHAL_HAVE_HIFI5S
+    int shift_hifi5s_0 = 0;
+    int shift_hifi5s_1 = 0;
+#endif    
     if(per_channel_quant)
     {
       pae_out_mult = (ae_int32x4 *)&p_out_mult[m_itr];
@@ -99,6 +104,15 @@ static void special_function_for_cols_mul_32
 
       AE_LA32X2X2_IP(out_multiplier_01, out_multiplier_23, align_p_mult, pae_out_mult);
       AE_LA32X2X2_IP(l_mult_01, l_mult_23, align_p_shift, pae_out_shift);
+#if XCHAL_HAVE_HIFI5S
+    ae_int32x2 fifteen = AE_MOVDA32(15);
+    l_mult_01 = AE_SUB32(fifteen, l_mult_01);
+    l_mult_23 = AE_SUB32(fifteen, l_mult_23);
+    shift_hifi5s_0 = (AE_MOVAD32_H(l_mult_01) << 16) | AE_MOVAD32_L(l_mult_01);
+    shift_hifi5s_1 = (AE_MOVAD32_H(l_mult_23) << 16) | AE_MOVAD32_L(l_mult_23);
+    out_multiplier_01 = AE_SEL32_LH(out_multiplier_01, out_multiplier_01);
+    out_multiplier_23 = AE_SEL32_LH(out_multiplier_23, out_multiplier_23);
+#endif      
     }
 
 #pragma loop_count min=1
@@ -194,6 +208,20 @@ static void special_function_for_cols_mul_32
 
       if(per_channel_quant)
       {
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec1, acc64_01, acc64_11, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec1, acc64_21, acc64_31, out_multiplier_23, shift_hifi5s_1);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec2, acc64_02, acc64_12, out_multiplier_01, shift_hifi5s_0);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec3, acc64_03, acc64_13, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec2, acc64_22, acc64_32, out_multiplier_23, shift_hifi5s_1);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec3, acc64_23, acc64_33, out_multiplier_23, shift_hifi5s_1);
+
+#else        
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec1, acc64_01, acc64_11, out_multiplier_01, l_mult_01);
 
@@ -205,7 +233,7 @@ static void special_function_for_cols_mul_32
 
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec2, acc64_22, acc64_32, out_multiplier_23, l_mult_23);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec3, acc64_23, acc64_33, out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
         out_1 = AE_SAT16X4(acc_row0_vec1, acc_row1_vec1);
         out_2 = AE_SAT16X4(acc_row0_vec2, acc_row1_vec2);
@@ -213,10 +241,17 @@ static void special_function_for_cols_mul_32
       }
       else
       {
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_10, acc64_20, acc64_30, p_out_mult[0], (((15 - p_out_shift[0]) << 16) | (15 - p_out_shift[0])));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_1, acc64_01, acc64_11, acc64_21, acc64_31, p_out_mult[0], (((15 - p_out_shift[0]) << 16) | (15 - p_out_shift[0])));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_2, acc64_02, acc64_12, acc64_22, acc64_32, p_out_mult[0], (((15 - p_out_shift[0]) << 16) | (15 - p_out_shift[0])));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_3, acc64_03, acc64_13, acc64_23, acc64_33, p_out_mult[0], (((15 - p_out_shift[0]) << 16) | (15 - p_out_shift[0])));
+#else        
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_10, acc64_20, acc64_30, p_out_mult[0], p_out_shift[0]);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_1, acc64_01, acc64_11, acc64_21, acc64_31, p_out_mult[0], p_out_shift[0]);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_2, acc64_02, acc64_12, acc64_22, acc64_32, p_out_mult[0], p_out_shift[0]);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_3, acc64_03, acc64_13, acc64_23, acc64_33, p_out_mult[0], p_out_shift[0]);
+#endif        
       }
 
       /* Store output */
@@ -1179,7 +1214,7 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
   int itr = 0;
   for(itr=0; itr<rows; itr++)
   {
-    XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 31), -1);
+    XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 15), -1);
   }
 
   ae_int64 acc_buffer[4];
@@ -1254,6 +1289,16 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
       AE_L32X2X2_IP(out_multiplier_01, out_multiplier_23, (ae_int32x4 *)ptr_out_mult, 0);
 
+#if XCHAL_HAVE_HIFI5S
+      ae_int32x2 fifteen = AE_MOVDA32(15);
+      l_mult_01 = AE_SUB32(fifteen, l_mult_01);
+      l_mult_23 = AE_SUB32(fifteen, l_mult_23);
+      int shift_hifi5s_0 = (AE_MOVAD32_H(l_mult_01) << 16) | AE_MOVAD32_L(l_mult_01);
+      int shift_hifi5s_1 = (AE_MOVAD32_H(l_mult_23) << 16) | AE_MOVAD32_L(l_mult_23);      
+      out_multiplier_01 = AE_SEL32_LH(out_multiplier_01, out_multiplier_01);
+      out_multiplier_23 = AE_SEL32_LH(out_multiplier_23, out_multiplier_23);    
+#endif
+
       ae_int16x4 *p_ae_dst_0 = (ae_int16x4 *)((WORD16*)p_out + (m_itr + 0) * out_stride);
       p_vec_0  = (ae_int16 *)(p_vec1);
 
@@ -1279,10 +1324,15 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
         /* Apply quantization */
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+#else
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
 
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
 
         /* Store output */
@@ -1355,6 +1405,16 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
       AE_L32X2X2_IP(out_multiplier_01, out_multiplier_23, (ae_int32x4 *)ptr_out_mult, 0);
 
+#if XCHAL_HAVE_HIFI5S
+      ae_int32x2 fifteen = AE_MOVDA32(15);
+      l_mult_01 = AE_SUB32(fifteen, l_mult_01);
+      l_mult_23 = AE_SUB32(fifteen, l_mult_23);
+      int shift_hifi5s_0 = (AE_MOVAD32_H(l_mult_01) << 16) | AE_MOVAD32_L(l_mult_01);
+      int shift_hifi5s_1 = (AE_MOVAD32_H(l_mult_23) << 16) | AE_MOVAD32_L(l_mult_23);       
+      out_multiplier_01 = AE_SEL32_LH(out_multiplier_01, out_multiplier_01);
+      out_multiplier_23 = AE_SEL32_LH(out_multiplier_23, out_multiplier_23);
+#endif
+
       ae_int16x4 *p_ae_dst_0 = (ae_int16x4 *)((WORD16 *)p_out + (m_itr + 0) * out_stride);
 
       p_vec_0  = (ae_int16 *)(p_vec1);
@@ -1384,10 +1444,15 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
         /* Apply quantization */
         ae_int16x4 out_0; //, out_1, out_2, out_3;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+#else
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
 
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
 
         /* Store output */
@@ -1460,6 +1525,16 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
       AE_L32X2X2_I(out_multiplier_01, out_multiplier_23, (ae_int32x4 *)ptr_out_mult, 0);
 
+#if XCHAL_HAVE_HIFI5S
+      ae_int32x2 fifteen = AE_MOVDA32(15);
+      l_mult_01 = AE_SUB32(fifteen, l_mult_01);
+      l_mult_23 = AE_SUB32(fifteen, l_mult_23);
+      int shift_hifi5s_0 = (AE_MOVAD32_H(l_mult_01) << 16) | AE_MOVAD32_L(l_mult_01);
+      int shift_hifi5s_1 = (AE_MOVAD32_H(l_mult_23) << 16) | AE_MOVAD32_L(l_mult_23);          
+      out_multiplier_01 = AE_SEL32_LH(out_multiplier_01, out_multiplier_01);
+      out_multiplier_23 = AE_SEL32_LH(out_multiplier_23, out_multiplier_23);
+#endif
+
       ae_int16x4 *p_ae_dst_0 = (ae_int16x4 *)((WORD16*)p_out + (m_itr + 0) * out_stride);
 
       p_vec_0  = (ae_int16 *)(p_vec1);
@@ -1494,10 +1569,15 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
         /* Apply quantization */
         ae_int16x4 out_0; //out_1; //, out_2, out_3;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+#else
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
 
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
 
         /* Store output */
@@ -1575,6 +1655,16 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
       AE_L32X2X2_I(out_multiplier_01, out_multiplier_23, (ae_int32x4 *)ptr_out_mult, 0);
 
+#if XCHAL_HAVE_HIFI5S
+      ae_int32x2 fifteen = AE_MOVDA32(15);
+      l_mult_01 = AE_SUB32(fifteen, l_mult_01);
+      l_mult_23 = AE_SUB32(fifteen, l_mult_23);
+      int shift_hifi5s_0 = (AE_MOVAD32_H(l_mult_01) << 16) | AE_MOVAD32_L(l_mult_01);
+      int shift_hifi5s_1 = (AE_MOVAD32_H(l_mult_23) << 16) | AE_MOVAD32_L(l_mult_23);         
+      out_multiplier_01 = AE_SEL32_LH(out_multiplier_01, out_multiplier_01);
+      out_multiplier_23 = AE_SEL32_LH(out_multiplier_23, out_multiplier_23);
+#endif
+
       ae_int16x4 *p_ae_dst_0 = (ae_int16x4 *)((WORD16*)p_out + (m_itr + 0) * out_stride);
 
       ae_int16* p_vec_0  = (ae_int16 *)(p_vec1);
@@ -1612,10 +1702,15 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
         /* Apply quantization */
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+#else
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
 
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
 
         /* Store output */
@@ -1693,6 +1788,16 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
       ae_int32x2 out_multiplier_23 = AE_MOVDA32X2(p_out_multiplier[m_itr + 2], p_out_multiplier[m_itr + 3]);
       ae_int32x2 out_multiplier_01 = AE_MOVDA32X2(p_out_multiplier[m_itr + 0], p_out_multiplier[m_itr + 1]);
 
+#if XCHAL_HAVE_HIFI5S
+      ae_int32x2 fifteen = AE_MOVDA32(15);
+      l_mult_01 = AE_SUB32(fifteen, l_mult_01);
+      l_mult_23 = AE_SUB32(fifteen, l_mult_23);
+      int shift_hifi5s_0 = (AE_MOVAD32_H(l_mult_01) << 16) | AE_MOVAD32_L(l_mult_01);
+      int shift_hifi5s_1 = (AE_MOVAD32_H(l_mult_23) << 16) | AE_MOVAD32_L(l_mult_23);       
+      out_multiplier_01 = AE_SEL32_LH(out_multiplier_01, out_multiplier_01);
+      out_multiplier_23 = AE_SEL32_LH(out_multiplier_23, out_multiplier_23);
+#endif
+
       vec_itr = 0;
 
       for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
@@ -1750,6 +1855,17 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0, out_1, out_2, out_3;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec1, acc64_01, acc64_11, out_multiplier_01, shift_hifi5s_0);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec2, acc64_02, acc64_12, out_multiplier_01, shift_hifi5s_0);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec3, acc64_03, acc64_13, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec1, acc64_21, acc64_31, out_multiplier_23, shift_hifi5s_1);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec2, acc64_22, acc64_32, out_multiplier_23, shift_hifi5s_1);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec3, acc64_23, acc64_33, out_multiplier_23, shift_hifi5s_1);
+#else
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec1, acc64_01, acc64_11, out_multiplier_01, l_mult_01);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec2, acc64_02, acc64_12, out_multiplier_01, l_mult_01);
@@ -1759,7 +1875,7 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec1, acc64_21, acc64_31, out_multiplier_23, l_mult_23);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec2, acc64_22, acc64_32, out_multiplier_23, l_mult_23);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec3, acc64_23, acc64_33, out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
         out_1 = AE_SAT16X4(acc_row0_vec1, acc_row1_vec1);
         out_2 = AE_SAT16X4(acc_row0_vec2, acc_row1_vec2);
@@ -1814,10 +1930,15 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+#else
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
 
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
 
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
@@ -1871,9 +1992,13 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_01, p_out_multiplier[m_itr + 0], ((15 - p_out_shift[m_itr + 0]) << 16 | (15 - p_out_shift[m_itr + 0])));
+        MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(acc_row0_vec1, acc64_02, acc64_03, p_out_multiplier[m_itr + 0], ((15 - p_out_shift[m_itr + 0]) << 16 | (15 - p_out_shift[m_itr + 0])));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_row0_vec0, acc64_00, acc64_01, p_out_multiplier[m_itr + 0], p_out_shift[m_itr + 0]);
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_row0_vec1, acc64_02, acc64_03, p_out_multiplier[m_itr + 0], p_out_shift[m_itr + 0]);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row0_vec1);
 
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
@@ -1907,9 +2032,11 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
           );
 
         ae_int16x4 out_0;
-
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_00, p_out_multiplier[m_itr + 0], ((15 - p_out_shift[m_itr + 0]) << 16 | (15 - p_out_shift[m_itr + 0])));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_row0_vec0, acc64_00, acc64_00, p_out_multiplier[m_itr + 0], p_out_shift[m_itr + 0]);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row0_vec0);
 
         *p_dst_0 = (out_0);   p_dst_0 += out_offset;
@@ -1954,6 +2081,16 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
         ae_int32x2 out_multiplier_23 = AE_MOVDA32X2(p_out_multiplier[m_itr + ii + 16], p_out_multiplier[m_itr + ii + 24]);
         ae_int32x2 out_multiplier_01 = AE_MOVDA32X2(p_out_multiplier[m_itr + ii + 0],  p_out_multiplier[m_itr + ii + 8]);
 
+#if XCHAL_HAVE_HIFI5S
+      ae_int32x2 fifteen = AE_MOVDA32(15);
+      l_mult_01 = AE_SUB32(fifteen, l_mult_01);
+      l_mult_23 = AE_SUB32(fifteen, l_mult_23);
+      int shift_hifi5s_0 = (AE_MOVAD32_H(l_mult_01) << 16) | AE_MOVAD32_L(l_mult_01);
+      int shift_hifi5s_1 = (AE_MOVAD32_H(l_mult_23) << 16) | AE_MOVAD32_L(l_mult_23);       
+      out_multiplier_01 = AE_SEL32_LH(out_multiplier_01, out_multiplier_01);
+      out_multiplier_23 = AE_SEL32_LH(out_multiplier_23, out_multiplier_23);
+#endif
+
         for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
         {
           ae_int32x2 acc_row0_vec0;
@@ -1992,6 +2129,17 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
           ae_int16x4 out_0, out_1, out_2, out_3;
 
+#if XCHAL_HAVE_HIFI5S
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64[0], acc64[1], out_multiplier_01, shift_hifi5s_0);
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec1, acc64[4], acc64[5], out_multiplier_01, shift_hifi5s_0);
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec2, acc64[8], acc64[9], out_multiplier_01, shift_hifi5s_0);
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec3, acc64[12], acc64[13], out_multiplier_01, shift_hifi5s_0);
+
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64[2], acc64[3], out_multiplier_23, shift_hifi5s_1);
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec1, acc64[6], acc64[7], out_multiplier_23, shift_hifi5s_1);
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec2, acc64[10], acc64[11], out_multiplier_23, shift_hifi5s_1);
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec3, acc64[14], acc64[15], out_multiplier_23, shift_hifi5s_1);
+#else
           MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64[0], acc64[1], out_multiplier_01, l_mult_01);
           MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec1, acc64[4], acc64[5], out_multiplier_01, l_mult_01);
           MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec2, acc64[8], acc64[9], out_multiplier_01, l_mult_01);
@@ -2001,7 +2149,7 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
           MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec1, acc64[6], acc64[7], out_multiplier_23, l_mult_23);
           MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec2, acc64[10], acc64[11], out_multiplier_23, l_mult_23);
           MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec3, acc64[14], acc64[15], out_multiplier_23, l_mult_23);
-
+#endif
           out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
           out_1 = AE_SAT16X4(acc_row0_vec1, acc_row1_vec1);
           out_2 = AE_SAT16X4(acc_row0_vec2, acc_row1_vec2);
@@ -2056,10 +2204,15 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
           ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+
+          MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+#else
           MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
 
           MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, l_mult_23);
-
+#endif
           out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
 
           *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
@@ -2106,6 +2259,16 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
       ae_int32x2 out_multiplier_23 = AE_MOVDA32X2(p_out_multiplier[m_itr + 2], p_out_multiplier[m_itr + 3]);
       ae_int32x2 out_multiplier_01 = AE_MOVDA32X2(p_out_multiplier[m_itr + 0], p_out_multiplier[m_itr + 1]);
 
+#if XCHAL_HAVE_HIFI5S
+      ae_int32x2 fifteen = AE_MOVDA32(15);
+      l_mult_01 = AE_SUB32(fifteen, l_mult_01);
+      l_mult_23 = AE_SUB32(fifteen, l_mult_23);
+      int shift_hifi5s_0 = (AE_MOVAD32_H(l_mult_01) << 16) | AE_MOVAD32_L(l_mult_01);
+      int shift_hifi5s_1 = (AE_MOVAD32_H(l_mult_23) << 16) | AE_MOVAD32_L(l_mult_23);         
+      out_multiplier_01 = AE_SEL32_LH(out_multiplier_01, out_multiplier_01);
+      out_multiplier_23 = AE_SEL32_LH(out_multiplier_23, out_multiplier_23);
+#endif
+
       for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
       {
         ae_int32x2 acc_row0_vec0;
@@ -2144,6 +2307,17 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0, out_1, out_2, out_3;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64[0], acc64[1], out_multiplier_01, shift_hifi5s_0);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec1, acc64[4], acc64[5], out_multiplier_01, shift_hifi5s_0);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec2, acc64[8], acc64[9], out_multiplier_01, shift_hifi5s_0);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec3, acc64[12], acc64[13], out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64[2], acc64[3], out_multiplier_23, shift_hifi5s_1);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec1, acc64[6], acc64[7], out_multiplier_23, shift_hifi5s_1);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec2, acc64[10], acc64[11], out_multiplier_23, shift_hifi5s_1);
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec3, acc64[14], acc64[15], out_multiplier_23, shift_hifi5s_1);
+#else
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64[0], acc64[1], out_multiplier_01, l_mult_01);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec1, acc64[4], acc64[5], out_multiplier_01, l_mult_01);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec2, acc64[8], acc64[9], out_multiplier_01, l_mult_01);
@@ -2153,7 +2327,7 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec1, acc64[6], acc64[7], out_multiplier_23, l_mult_23);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec2, acc64[10], acc64[11], out_multiplier_23, l_mult_23);
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec3, acc64[14], acc64[15], out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
         out_1 = AE_SAT16X4(acc_row0_vec1, acc_row1_vec1);
         out_2 = AE_SAT16X4(acc_row0_vec2, acc_row1_vec2);
@@ -2208,10 +2382,15 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, shift_hifi5s_0);
+
+        MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32_HIFI5S(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, shift_hifi5s_1);
+#else
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row0_vec0, acc64_00, acc64_10, out_multiplier_01, l_mult_01);
 
         MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(acc_row1_vec0, acc64_20, acc64_30, out_multiplier_23, l_mult_23);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row1_vec0);
 
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
@@ -2271,9 +2450,13 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_01, p_out_multiplier[m_itr + 0], (((15 - left_shift) << 16) | (15 - left_shift)));
+        MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(acc_row0_vec1, acc64_02, acc64_03, p_out_multiplier[m_itr + 0], (((15 - left_shift) << 16) | (15 - left_shift)));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_row0_vec0, acc64_00, acc64_01, p_out_multiplier[m_itr + 0], left_shift);
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_row0_vec1, acc64_02, acc64_03, p_out_multiplier[m_itr + 0], left_shift);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row0_vec1);
 
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
@@ -2308,8 +2491,11 @@ WORD32 xa_nn_matmul_per_chan_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_00, p_out_multiplier[m_itr + 0], (((15 - left_shift) << 16) | (15 - left_shift)));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_row0_vec0, acc64_00, acc64_00, p_out_multiplier[m_itr + 0], left_shift);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row0_vec0);
 
         *p_dst_0 = (out_0);   p_dst_0 += out_offset;
@@ -2435,9 +2621,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         /* Apply quantization */
         ae_int16x4 out_0;
-
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, out_shift);
-
+#endif
         /* Store output */
         *p_ae_dst_0 = out_0;
         p_ae_dst_0 += (out_offset >> 2);
@@ -2513,9 +2701,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         /* Apply quantization */
         ae_int16x4 out_0;
-
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, out_shift);
-
+#endif
         /* Store output */
         *p_ae_dst_0 = out_0;
         p_ae_dst_0 += (out_offset >> 2);
@@ -2611,8 +2801,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
         /* Apply quantization */
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, out_shift);
-
+#endif
         /* Store output */
         *p_ae_dst_0 = out_0;
         p_ae_dst_0 += (out_offset >> 2);
@@ -2727,11 +2920,17 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0, out_1, out_2, out_3;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_1, acc64_01, acc64_11, acc64_21, acc64_31, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_2, acc64_02, acc64_12, acc64_22, acc64_32, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_3, acc64_03, acc64_13, acc64_23, acc64_33, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, out_shift);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_1, acc64_01, acc64_11, acc64_21, acc64_31, out_multiplier, out_shift);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_2, acc64_02, acc64_12, acc64_22, acc64_32, out_multiplier, out_shift);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_3, acc64_03, acc64_13, acc64_23, acc64_33, out_multiplier, out_shift);
-
+#endif
 
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
         *p_dst_0 = AE_SEL16_6543(out_1, out_1);   p_dst_0 += out_offset;
@@ -2779,8 +2978,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, out_shift);
-
+#endif
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
         *p_dst_1 = AE_SEL16_5432(out_0, out_0);   p_dst_1 += out_offset;
         *p_dst_2 = AE_SEL16_4321(out_0, out_0);   p_dst_2 += out_offset;
@@ -2828,9 +3030,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
           );
 
         ae_int16x4 out_0;
-
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_01, acc64_02, acc64_03, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_01, acc64_02, acc64_03, out_multiplier, out_shift);
-
+#endif
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
 
         *p_dst_0 = AE_SEL16_5432(out_0, out_0);   p_dst_0 += out_offset;
@@ -2863,8 +3067,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_00, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_row0_vec0, acc64_00, acc64_00, out_multiplier, out_shift);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row0_vec0);
 
         *p_dst_0 = (out_0);   p_dst_0 += out_offset;
@@ -2925,11 +3132,17 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
           ae_int16x4 out_0, out_1, out_2, out_3;
 
+#if XCHAL_HAVE_HIFI5S
+          MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64[0], acc64[1], acc64[2], acc64[3], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+          MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_1, acc64[4], acc64[5], acc64[6], acc64[7], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+          MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_2, acc64[8], acc64[9], acc64[10], acc64[11], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+          MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_3, acc64[12], acc64[13], acc64[14], acc64[15], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
           MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64[0], acc64[1], acc64[2], acc64[3], out_multiplier, out_shift);
           MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_1, acc64[4], acc64[5], acc64[6], acc64[7], out_multiplier, out_shift);
           MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_2, acc64[8], acc64[9], acc64[10], acc64[11], out_multiplier, out_shift);
           MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_3, acc64[12], acc64[13], acc64[14], acc64[15], out_multiplier, out_shift);
-
+#endif
           *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
           *p_dst_0 = AE_SEL16_6543(out_1, out_1);   p_dst_0 += out_offset;
           *p_dst_0 = AE_SEL16_6543(out_2, out_2);   p_dst_0 += out_offset;
@@ -2976,8 +3189,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
           ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+          MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
           MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, out_shift);
-
+#endif
           *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
 
           *p_dst_1 = AE_SEL16_5432(out_0, out_0);   p_dst_1 += out_offset;
@@ -3038,11 +3254,17 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0, out_1, out_2, out_3;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64[0], acc64[1], acc64[2], acc64[3], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_1, acc64[4], acc64[5], acc64[6], acc64[7], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_2, acc64[8], acc64[9], acc64[10], acc64[11], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_3, acc64[12], acc64[13], acc64[14], acc64[15], out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64[0], acc64[1], acc64[2], acc64[3], out_multiplier, out_shift);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_1, acc64[4], acc64[5], acc64[6], acc64[7], out_multiplier, out_shift);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_2, acc64[8], acc64[9], acc64[10], acc64[11], out_multiplier, out_shift);
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_3, acc64[12], acc64[13], acc64[14], acc64[15], out_multiplier, out_shift);
-
+#endif
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
         *p_dst_0 = AE_SEL16_6543(out_1, out_1);   p_dst_0 += out_offset;
         *p_dst_0 = AE_SEL16_6543(out_2, out_2);   p_dst_0 += out_offset;
@@ -3089,8 +3311,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_10, acc64_20, acc64_30, out_multiplier, out_shift);
-
+#endif
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
 
         *p_dst_1 = AE_SEL16_5432(out_0, out_0);   p_dst_1 += out_offset;
@@ -3142,8 +3367,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16_HIFI5S(out_0, acc64_00, acc64_01, acc64_02, acc64_03, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2X2_OUT16(out_0, acc64_00, acc64_01, acc64_02, acc64_03, out_multiplier, out_shift);
-
+#endif
         *p_dst_0 = AE_SEL16_6543(out_0, out_0);   p_dst_0 += out_offset;
 
         *p_dst_0 = AE_SEL16_5432(out_0, out_0);   p_dst_0 += out_offset;
@@ -3176,8 +3404,11 @@ WORD32 xa_nn_matmul_sym8sxsym16s_sym16s(
 
         ae_int16x4 out_0;
 
+#if XCHAL_HAVE_HIFI5S
+        MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(acc_row0_vec0, acc64_00, acc64_00, out_multiplier, ((15 - out_shift) << 16) | (15 - out_shift));
+#else
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_row0_vec0, acc64_00, acc64_00, out_multiplier, out_shift);
-
+#endif
         out_0 = AE_SAT16X4(acc_row0_vec0, acc_row0_vec0);
 
         *p_dst_0 = (out_0);   p_dst_0 += out_offset;
