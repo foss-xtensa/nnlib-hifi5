@@ -26,184 +26,54 @@
 #include <string.h>
 
 static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
-		const WORD16* input_data,
-		const WORD8* filter_data,
-		const WORD64* bias_data,
-		int stride_width, int stride_height,
-		int pad_width, int pad_height,
-		int input_depth, int output_depth,
-		int input_height, int input_width,
-		int filter_height, int filter_width,
-		int output_height, int output_width,
-		int num_elements,
-		int *output_shift, int *output_multiplier,
-		int64_t* scratch_buffer)
+    const WORD16* input_data,
+    const WORD8* filter_data,
+    const WORD64* bias_data,
+    int stride_width, int stride_height,
+    int pad_width, int pad_height,
+    int input_depth, int output_depth,
+    int input_height, int input_width,
+    int filter_height, int filter_width,
+    int output_height, int output_width,
+    int num_elements,
+    int *output_shift, int *output_multiplier,
+    int64_t* scratch_buffer,
+    int out_activation_min, int out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
 {
-	ae_int64 *pscratch = (ae_int64*)scratch_buffer;
-	ae_int64 dzero = AE_ZERO64();
-	for(int i=0; i<num_elements; i++)
-		AE_S64_IP(dzero, pscratch, 8);
+  ae_int64 *pscratch = (ae_int64*)scratch_buffer;
+  ae_int64 dzero = AE_ZERO64();
+  for(int i=0; i<num_elements; i++)
+    AE_S64_IP(dzero, pscratch, 8);
 
-	int stride1 = filter_height*filter_width*input_depth;
-	WORD16 *pinp;
+  int stride1 = filter_height*filter_width*input_depth;
+  WORD16 *pinp, *pinp2, *pinp3, *pinp4;
 
-	/*
-	 * SEANet: special case for input_depth multiple of 16
-	 */
+  ae_int16x4 out_min16 = AE_MOVDA16(out_activation_min);
+  ae_int16x4 out_max16 = AE_MOVDA16(out_activation_max);
+
+  /*
+   * SEANet: special case for input_depth multiple of 16
+   */
   if(input_data && filter_data && output_data && scratch_buffer &&
-			(((unsigned int)input_data&0xF)==0) && (((unsigned int)filter_data&0xF)==0) && (((unsigned int)output_data&0x7) == 0) &&
-			(((unsigned int)scratch_buffer&0xF) == 0) && ((input_depth&0xF)==0) && ((output_depth&0x1)==0))
-	{
-		{
-			//tbd : batch = 1, need to handle other values and in_x_min/max= 0 .. need toc heck for other values
-			for (int in_y = 0; in_y < input_height; ++in_y)
-			{
-				for (int in_x = 0; in_x < input_width; ++in_x)
-				{
-					const int out_x_orig = in_x*stride_width - pad_width;
-					const int out_y_orig = in_y*stride_height - pad_height;
-					int filt_x_min = -out_x_orig; 
-					int filt_x_max = output_width - out_x_orig; 
-					int filt_y_min = -out_y_orig; 
-					int filt_y_max = output_height - out_y_orig; 
-					filt_x_min = (filt_x_min < filter_width) ? filt_x_min : filter_width;
-					filt_x_min = (filt_x_min < 0) ? 0 : filt_x_min;
-					filt_x_max = (filt_x_max < filter_width) ? filt_x_max : filter_width;
-					filt_x_max = (filt_x_max < 0) ? 0 : filt_x_max;
-					filt_y_min = (filt_y_min < filter_height) ? filt_y_min : filter_height;
-					filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
-					filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
-					filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
-					pinp =  (WORD16*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
-					for (int in_channel = 0; in_channel < input_depth; in_channel+=16)
-					{
-						ae_int16x4 d_inp0, d_inp1, d_inp2, d_inp3;
-						AE_L16X4X2_IP(d_inp0, d_inp1, (ae_int16x8*)pinp, 2*sizeof(WORD64));
-						AE_L16X4X2_IP(d_inp2, d_inp3, (ae_int16x8*)pinp, 2*sizeof(WORD64));
-
-            for (int filter_y = filt_y_min; filter_y < filt_y_max; ++filter_y)
-						{
-              for (int filter_x = filt_x_min; filter_x < filt_x_max; ++filter_x)
-							{
-								// Compute output element location.
-								int out_x = out_x_orig + filter_x;//out_x_origin + filter_x;
-								int out_y = out_y_orig + filter_y;//out_y_origin + filter_y;
-								ae_int64 *pscratch_src = (ae_int64*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
-                ae_int64 *pscratch_dst = pscratch_src;
-                ae_int64 d_scr0, d_scr1, d_scr2, d_scr3;
-								WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
-								ae_int8x8 d_fil0, d_fil1, d_fil2, d_fil3;
-								ae_int8x8 d_fil4, d_fil5, d_fil6, d_fil7;
-								AE_L8X8X2_XP(d_fil0, d_fil1, (ae_int8x16 *)pfilt, stride1);
-								AE_L8X8X2_XP(d_fil2, d_fil3, (ae_int8x16 *)pfilt, stride1);
-								AE_L8X8X2_XP(d_fil4, d_fil5, (ae_int8x16 *)pfilt, stride1);
-								AE_L8X8X2_XP(d_fil6, d_fil7, (ae_int8x16 *)pfilt, stride1);
-                
-                int loop_cnt = (output_depth & (~3));
-								for (int out_channel = 0; out_channel < loop_cnt; out_channel+=4)
-								{
-									AE_L64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_src, 16);
-									AE_L64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src, 32);
-                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp0, d_inp1);
-                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp2, d_inp3);
-                  AE_L8X8X2_XP(d_fil0, d_fil1, (ae_int8x16 *)pfilt, stride1);
-                  AE_L8X8X2_XP(d_fil2, d_fil3, (ae_int8x16 *)pfilt, stride1);
-                  AE_L8X8X2_XP(d_fil4, d_fil5, (ae_int8x16 *)pfilt, stride1);
-                  AE_L8X8X2_XP(d_fil6, d_fil7, (ae_int8x16 *)pfilt, stride1);
-									AE_S64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_dst, 16);
-									AE_S64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_dst, 32);
-								}
-                // tail loop
-                if (output_depth & 3)
-								{
-									ae_int64 d_tmp0 = AE_ZERO64();
-									ae_int64 d_tmp1 = AE_ZERO64();
-                  AE_L64X2_I(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src, 0);
-                  AE_MULA8QW8X16(d_scr0, d_scr1, d_tmp0, d_tmp1, d_fil0, d_fil2, d_fil4, d_fil6, d_inp0, d_inp1);
-                  AE_MULA8QW8X16(d_scr0, d_scr1, d_tmp0, d_tmp1, d_fil1, d_fil3, d_fil5, d_fil7, d_inp2, d_inp3);
-									AE_S64X2_I(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src, 0);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	else if(input_data && filter_data && output_data && scratch_buffer &&
-			(((unsigned int)input_data&0x7)==0) && (((unsigned int)filter_data&0x3)==0) && (((unsigned int)output_data&0x7) == 0) && 
-      (((unsigned int)scratch_buffer&0x7) == 0) && ((input_depth&0x3)==0) && ((output_depth&0x1)==0))
-	{
-		{
-			//tbd : batch = 1, need to handle other values and in_x_min/max= 0 .. need to check for other values
-			for (int in_y = 0; in_y < input_height; ++in_y)
-			{
-				for (int in_x = 0; in_x < input_width; ++in_x)
-				{
-					const int out_x_orig = in_x*stride_width - pad_width;
-					const int out_y_orig = in_y*stride_height - pad_height;
-					int filt_x_min = -out_x_orig; 
-					int filt_x_max = output_width - out_x_orig; 
-					int filt_y_min = -out_y_orig; 
-					int filt_y_max = output_height - out_y_orig; 
-					filt_x_min = (filt_x_min < filter_width) ? filt_x_min : filter_width;
-					filt_x_min = (filt_x_min < 0) ? 0 : filt_x_min;
-					filt_x_max = (filt_x_max < filter_width) ? filt_x_max : filter_width;
-					filt_x_max = (filt_x_max < 0) ? 0 : filt_x_max;
-					filt_y_min = (filt_y_min < filter_height) ? filt_y_min : filter_height;
-					filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
-					filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
-					filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
-					pinp =  (WORD16*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
-					for (int in_channel = 0; in_channel < input_depth; in_channel+=4)
-					{
-						ae_int16x4 d_inp;
-						AE_L16X4_IP(d_inp, (ae_int16x4*)pinp, sizeof(WORD64));
-
-						for (int filter_y = filt_y_min; filter_y < filt_y_max; ++filter_y)
-						{
-							for (int filter_x = filt_x_min; filter_x < filt_x_max; ++filter_x)
-							{
-								// Compute output element location.
-								int out_x = out_x_orig + filter_x;//out_x_origin + filter_x;
-								int out_y = out_y_orig + filter_y;//out_y_origin + filter_y;
-								ae_int64 *pscratch_src = (ae_int64*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
-								ae_int64 *pscratch_dst = pscratch_src;
-								ae_int64 d_scr0, d_scr1;
-								WORD8* pfilt0 = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
-								WORD8* pfilt1 = pfilt0 + stride1;
-                ae_int16x4 d_fil0, d_fil1;
-								AE_L8X4S_XP(d_fil0, pfilt0, 2*stride1);
-								AE_L8X4S_XP(d_fil1, pfilt1, 2*stride1);
-#pragma concurrent
-								for (int out_channel = 0; out_channel < (output_depth >> 1); ++out_channel)
-								{
-									AE_L64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src, 16);
-									AE_MULAAAA2Q16(d_scr0, d_scr1, d_inp, d_inp, d_fil0, d_fil1);
-                  AE_L8X4S_XP(d_fil0, pfilt0, 2*stride1);
-                  AE_L8X4S_XP(d_fil1, pfilt1, 2*stride1);
-									AE_S64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_dst, 16);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		{
-			for (int in_y = 0; in_y < input_height; ++in_y)
-			{
-				for (int in_x = 0; in_x < input_width; ++in_x)
-				{
-          const int out_x_origin = (in_x * stride_width) - pad_width;
-          const int out_y_origin = (in_y * stride_height) - pad_height;
-          int filt_x_min = -out_x_origin; 
-          int filt_x_max = output_width - out_x_origin; 
-          int filt_y_min = -out_y_origin; 
-          int filt_y_max = output_height - out_y_origin; 
+      (((unsigned int)input_data&0xF)==0) && (((unsigned int)filter_data&0xF)==0) && (((unsigned int)output_data&0x7) == 0) &&
+      (((unsigned int)scratch_buffer&0xF) == 0) && ((input_depth&0xF)==0) && ((output_depth&0x3)==0))
+  {
+    {
+      //tbd : batch = 1, need to handle other values and in_x_min/max= 0 .. need toc heck for other values
+      for (int in_y = 0; in_y < input_height; ++in_y)
+      {
+        for (int in_x = 0; in_x < input_width; ++in_x)
+        {
+          const int out_x_orig = in_x*stride_width - pad_width;
+          const int out_x_orig4 = (in_x +3)*stride_width - pad_width;
+          const int out_y_orig = in_y*stride_height - pad_height;
+          int rem_in_width = (input_width - in_x);
+          int tmp_width_stride1, tmp_width_stride2, tmp_width_stride3;
+          int filt_x_min = -out_x_orig;
+          int filt_x_max = output_width - out_x_orig;
+          int filt_y_min = -out_y_orig;
+          int filt_y_max = output_height - out_y_orig;
           filt_x_min = (filt_x_min < filter_width) ? filt_x_min : filter_width;
           filt_x_min = (filt_x_min < 0) ? 0 : filt_x_min;
           filt_x_max = (filt_x_max < filter_width) ? filt_x_max : filter_width;
@@ -212,53 +82,249 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
           filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
           filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
           filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
-					pinp =  (WORD16*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
-					for (int in_channel = 0; in_channel < input_depth; in_channel+=8)
-					{
+          pinp =  (WORD16*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
+
+         if ((out_x_orig < 0)|| (output_width <= out_x_orig4)|| (output_width-out_x_orig4 < filter_width))
+         {
+          pinp4 = pinp3 = pinp2 = pinp;
+          tmp_width_stride1 = tmp_width_stride2 = tmp_width_stride3 = 0;
+         }
+         else
+         {
+          tmp_width_stride3 = (rem_in_width) > 4 ? 3: (rem_in_width - 1);
+          tmp_width_stride1 = (tmp_width_stride3 < 2) ? 0 : tmp_width_stride3 - 2;
+          tmp_width_stride2 = (tmp_width_stride3 < 1) ? 0 :tmp_width_stride3 - 1;
+
+          pinp2 = (WORD16 *)&input_data[in_y * input_width * input_depth + (in_x+ tmp_width_stride1) * input_depth]; 
+          pinp3 = (WORD16 *)&input_data[in_y * input_width * input_depth + (in_x+ tmp_width_stride2) * input_depth]; 
+          pinp4 = (WORD16 *)&input_data[in_y * input_width * input_depth + (in_x+ tmp_width_stride3) * input_depth]; 
+         }
+
+          for (int in_channel = 0; in_channel < input_depth; in_channel+=16)
+          {
+            ae_int16x4 d_inp0, d_inp1, d_inp2, d_inp3, d_inp1_0, d_inp1_1, d_inp1_2, d_inp1_3;
+            ae_int16x4 d_inp2_0, d_inp2_1, d_inp2_2, d_inp2_3, d_inp3_0, d_inp3_1, d_inp3_2, d_inp3_3;
+            AE_L16X4X2_IP(d_inp0, d_inp1, (ae_int16x8*)pinp, 2*sizeof(WORD64));
+            AE_L16X4X2_IP(d_inp2, d_inp3, (ae_int16x8*)pinp, 2*sizeof(WORD64));
+
+            AE_L16X4X2_IP(d_inp1_0, d_inp1_1, (ae_int16x8 *)pinp2, 2 * sizeof(WORD64));
+            AE_L16X4X2_IP(d_inp1_2, d_inp1_3, (ae_int16x8 *)pinp2, 2 * sizeof(WORD64));
+
+
+            AE_L16X4X2_IP(d_inp2_0, d_inp2_1, (ae_int16x8 *)pinp3, 2 * sizeof(WORD64));
+            AE_L16X4X2_IP(d_inp2_2, d_inp2_3, (ae_int16x8 *)pinp3, 2 * sizeof(WORD64));
+
+            AE_L16X4X2_IP(d_inp3_0, d_inp3_1, (ae_int16x8 *)pinp4, 2 * sizeof(WORD64));
+            AE_L16X4X2_IP(d_inp3_2, d_inp3_3, (ae_int16x8 *)pinp4, 2 * sizeof(WORD64));
+
+            for (int filter_y = filt_y_min; filter_y < filt_y_max; ++filter_y)
+            {
+              for (int filter_x = filt_x_min; filter_x < filt_x_max; ++filter_x)
+              {
+                // Compute output element location.
+                int out_x = out_x_orig + filter_x;//out_x_origin + filter_x;
+                int out_y = out_y_orig + filter_y;//out_y_origin + filter_y;
+                ae_int64 * __restrict pscratch_src = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + out_x * output_depth];
+                ae_int64 * __restrict pscratch_src2 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride1)* output_depth];
+                ae_int64 * __restrict pscratch_src3 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride2) * output_depth];
+                ae_int64 * __restrict pscratch_src4 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride3)* output_depth];
+
+                ae_int64 * __restrict pscratch_dst = pscratch_src;
+                ae_int64 * __restrict pscratch_dst2 = pscratch_src2;
+                ae_int64 * __restrict pscratch_dst3 = pscratch_src3;
+                ae_int64 * __restrict pscratch_dst4 = pscratch_src4;
+
+                ae_int64 d_scr0, d_scr1, d_scr2, d_scr3;
+                ae_int64 d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3;
+                WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
+                ae_int8x8 d_fil0, d_fil1, d_fil2, d_fil3;
+                ae_int8x8 d_fil4, d_fil5, d_fil6, d_fil7;
+                AE_L8X8X2_XP(d_fil0, d_fil1, (ae_int8x16 *)pfilt, stride1);
+                AE_L8X8X2_XP(d_fil2, d_fil3, (ae_int8x16 *)pfilt, stride1);
+                AE_L8X8X2_XP(d_fil4, d_fil5, (ae_int8x16 *)pfilt, stride1);
+                AE_L8X8X2_XP(d_fil6, d_fil7, (ae_int8x16 *)pfilt, stride1);
+
+                for (int out_channel = 0; out_channel < output_depth; out_channel+=4)
+                {
+                  AE_L64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_src, 16);
+                  AE_L64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src, 32);
+
+                  AE_L64X2_I(d_scr1_2, d_scr1_3, (ae_int64x2 *)pscratch_src2, 16);
+                  AE_L64X2_IP(d_scr1_0, d_scr1_1, (ae_int64x2 *)pscratch_src2, 32);
+
+                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp0, d_inp1);
+                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp2, d_inp3);
+
+                  AE_MULA8QW8X16(d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp1_0, d_inp1_1);
+                  AE_MULA8QW8X16(d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp1_2, d_inp1_3);
+
+                  AE_S64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_dst, 16);
+                  AE_S64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_dst, 32);
+
+                  AE_S64X2_I(d_scr1_2, d_scr1_3, (ae_int64x2 *)pscratch_dst2, 16);
+                  AE_S64X2_IP(d_scr1_0, d_scr1_1, (ae_int64x2 *)pscratch_dst2, 32);
+
+                  AE_L64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_src3, 16);
+                  AE_L64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src3, 32);
+
+                  AE_L64X2_I(d_scr1_2, d_scr1_3, (ae_int64x2 *)pscratch_src4, 16);
+                  AE_L64X2_IP(d_scr1_0, d_scr1_1, (ae_int64x2 *)pscratch_src4, 32);
+                  
+                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp2_0, d_inp2_1);
+                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp2_2, d_inp2_3);
+
+                  AE_MULA8QW8X16(d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp3_0, d_inp3_1);
+                  AE_MULA8QW8X16(d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp3_2, d_inp3_3);
+                  
+                  AE_S64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_dst3, 16);
+                  AE_S64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_dst3, 32);
+
+                  AE_S64X2_I(d_scr1_2, d_scr1_3, (ae_int64x2 *)pscratch_dst4, 16);
+                  AE_S64X2_IP(d_scr1_0, d_scr1_1, (ae_int64x2 *)pscratch_dst4, 32);
+
+                  AE_L8X8X2_XP(d_fil0, d_fil1, (ae_int8x16 *)pfilt, stride1);
+                  AE_L8X8X2_XP(d_fil2, d_fil3, (ae_int8x16 *)pfilt, stride1);
+                  AE_L8X8X2_XP(d_fil4, d_fil5, (ae_int8x16 *)pfilt, stride1);
+                  AE_L8X8X2_XP(d_fil6, d_fil7, (ae_int8x16 *)pfilt, stride1);
+
+                }
+              }
+            }
+          }
+          in_x += tmp_width_stride3;
+        }
+      }
+    }
+  }
+  else if(input_data && filter_data && output_data && scratch_buffer &&
+      (((unsigned int)input_data&0x7)==0) && (((unsigned int)filter_data&0x3)==0) && (((unsigned int)output_data&0x7) == 0) &&
+      (((unsigned int)scratch_buffer&0x7) == 0) && ((input_depth&0x3)==0) && ((output_depth&0x1)==0))
+  {
+    {
+      //tbd : batch = 1, need to handle other values and in_x_min/max= 0 .. need to check for other values
+      for (int in_y = 0; in_y < input_height; ++in_y)
+      {
+        for (int in_x = 0; in_x < input_width; ++in_x)
+        {
+          const int out_x_orig = in_x*stride_width - pad_width;
+          const int out_y_orig = in_y*stride_height - pad_height;
+          int filt_x_min = -out_x_orig;
+          int filt_x_max = output_width - out_x_orig;
+          int filt_y_min = -out_y_orig;
+          int filt_y_max = output_height - out_y_orig;
+          filt_x_min = (filt_x_min < filter_width) ? filt_x_min : filter_width;
+          filt_x_min = (filt_x_min < 0) ? 0 : filt_x_min;
+          filt_x_max = (filt_x_max < filter_width) ? filt_x_max : filter_width;
+          filt_x_max = (filt_x_max < 0) ? 0 : filt_x_max;
+          filt_y_min = (filt_y_min < filter_height) ? filt_y_min : filter_height;
+          filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
+          filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
+          filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
+          pinp =  (WORD16*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
+          for (int in_channel = 0; in_channel < input_depth; in_channel+=4)
+          {
+            ae_int16x4 d_inp;
+            AE_L16X4_IP(d_inp, (ae_int16x4*)pinp, sizeof(WORD64));
+
+            for (int filter_y = filt_y_min; filter_y < filt_y_max; ++filter_y)
+            {
+              for (int filter_x = filt_x_min; filter_x < filt_x_max; ++filter_x)
+              {
+                // Compute output element location.
+                int out_x = out_x_orig + filter_x;//out_x_origin + filter_x;
+                int out_y = out_y_orig + filter_y;//out_y_origin + filter_y;
+                ae_int64 *pscratch_src = (ae_int64*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
+                ae_int64 *pscratch_dst = pscratch_src;
+                ae_int64 d_scr0, d_scr1;
+                WORD8* pfilt0 = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
+                WORD8* pfilt1 = pfilt0 + stride1;
+                ae_int16x4 d_fil0, d_fil1;
+                AE_L8X4S_XP(d_fil0, pfilt0, 2*stride1);
+                AE_L8X4S_XP(d_fil1, pfilt1, 2*stride1);
+#pragma concurrent
+                for (int out_channel = 0; out_channel < (output_depth >> 1); ++out_channel)
+                {
+                  AE_L64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src, 16);
+                  AE_MULAAAA2Q16(d_scr0, d_scr1, d_inp, d_inp, d_fil0, d_fil1);
+                  AE_L8X4S_XP(d_fil0, pfilt0, 2*stride1);
+                  AE_L8X4S_XP(d_fil1, pfilt1, 2*stride1);
+                  AE_S64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_dst, 16);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  else
+  {
+    {
+      for (int in_y = 0; in_y < input_height; ++in_y)
+      {
+        for (int in_x = 0; in_x < input_width; ++in_x)
+        {
+          const int out_x_origin = (in_x * stride_width) - pad_width;
+          const int out_y_origin = (in_y * stride_height) - pad_height;
+          int filt_x_min = -out_x_origin;
+          int filt_x_max = output_width - out_x_origin;
+          int filt_y_min = -out_y_origin;
+          int filt_y_max = output_height - out_y_origin;
+          filt_x_min = (filt_x_min < filter_width) ? filt_x_min : filter_width;
+          filt_x_min = (filt_x_min < 0) ? 0 : filt_x_min;
+          filt_x_max = (filt_x_max < filter_width) ? filt_x_max : filter_width;
+          filt_x_max = (filt_x_max < 0) ? 0 : filt_x_max;
+          filt_y_min = (filt_y_min < filter_height) ? filt_y_min : filter_height;
+          filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
+          filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
+          filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
+          pinp =  (WORD16*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
+          for (int in_channel = 0; in_channel < input_depth; in_channel+=8)
+          {
             ae_valignx2 align_pinp = AE_LA128_PP(pinp);
 
-						ae_int16x4 d_inp0, d_inp1;
+            ae_int16x4 d_inp0, d_inp1;
             int offset = XT_MIN(input_depth - in_channel, 8) << 1;
-						AE_LAV16X4X2_XP(d_inp0, d_inp1, align_pinp, (ae_int16x8*)pinp, offset);
+            AE_LAV16X4X2_XP(d_inp0, d_inp1, align_pinp, (ae_int16x8*)pinp, offset);
 
-						for (int filter_y = filt_y_min; filter_y < filt_y_max; ++filter_y)
-						{
-							for (int filter_x = filt_x_min; filter_x < filt_x_max; ++filter_x)
-							{
-								const int out_x = out_x_origin + filter_x;
-								const int out_y = out_y_origin + filter_y;
-								ae_int64 *pscratch_src = (ae_int64*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
+            for (int filter_y = filt_y_min; filter_y < filt_y_max; ++filter_y)
+            {
+              for (int filter_x = filt_x_min; filter_x < filt_x_max; ++filter_x)
+              {
+                const int out_x = out_x_origin + filter_x;
+                const int out_y = out_y_origin + filter_y;
+                ae_int64 *pscratch_src = (ae_int64*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
                 ae_int64 d_scr0;
 
-								WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
+                WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
                 ae_valignx2 align_pfilt = AE_LA128_PP(pfilt);
 
-								ae_int8x8 d_fil0, d_fil1;
+                ae_int8x8 d_fil0, d_fil1;
                 int offset_8 = offset >> 1;
-								AE_LAV8X8X2_XP(d_fil0, d_fil1, align_pfilt, (ae_int8x16 *)pfilt, offset_8);
-                pfilt = pfilt + stride1 - offset_8; 
+                AE_LAV8X8X2_XP(d_fil0, d_fil1, align_pfilt, (ae_int8x16 *)pfilt, offset_8);
+                pfilt = pfilt + stride1 - offset_8;
 
                 for (int out_channel = 0; out_channel < output_depth; ++out_channel)
                 {
-									d_scr0 = AE_L64_I(pscratch_src, 0);
+                  d_scr0 = AE_L64_I(pscratch_src, 0);
                   ae_int64 d_tmp0 = AE_ZERO64();
                   AE_MULAAAA2Q16X8 (d_scr0, d_tmp0, d_inp0, d_inp1, d_fil0);
                   d_scr0 = AE_ADD64S(d_scr0, d_tmp0);
                   ae_valignx2 align_pfilt = AE_LA128_PP(pfilt);
                   AE_LAV8X8X2_XP(d_fil0, d_fil1, align_pfilt, (ae_int8x16 *)pfilt, offset_8);
-                  pfilt = pfilt + stride1 - offset_8; 
-									AE_S64_IP(d_scr0, pscratch_src, sizeof(WORD64));
+                  pfilt = pfilt + stride1 - offset_8;
+                  AE_S64_IP(d_scr0, pscratch_src, sizeof(WORD64));
                 }
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   // Add bias and store output
-  ae_int64 acc0, acc1, acc2, acc3; 
+  ae_int64 acc0, acc1, acc2, acc3;
   ae_int64 dbias0, dbias1;
   ae_int64 *pbias;
   ae_int64 zero_bias = AE_ZERO64();
@@ -283,12 +349,12 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
     int shift1 = output_shift[out_channel+1];
     AE_L64_XP(dbias0, pbias, bias_offset);
     AE_L64_XP(dbias1, pbias, bias_offset);
-    
+
     ae_int64 *pscratch0 = (ae_int64*)&scratch_buffer[out_channel];
-    ae_int64 *pscratch1 = pscratch0 + output_depth; 
+    ae_int64 *pscratch1 = pscratch0 + output_depth;
     ae_int16 *pout0 = (ae_int16*)&output_data[out_channel];
     ae_int16 *pout1 = pout0 + output_depth;
-   
+
     AE_L64X2_XP(acc0, acc2, (ae_int64x2 *)pscratch0, 2*output_depth*sizeof(WORD64));
     AE_L64X2_XP(acc1, acc3, (ae_int64x2 *)pscratch1, 2*output_depth*sizeof(WORD64));
     for (int i = 0; i < ((output_height*output_width)>>1); i++)
@@ -301,11 +367,12 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
 #if XCHAL_HAVE_HIFI5S
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(scaled_acc0, acc0, acc1, output_multiplier[out_channel], (((15 - shift0) << 16) | (15 - shift0)));
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(scaled_acc1, acc2, acc3, output_multiplier[out_channel+1], (((15 - shift1) << 16) | (15 - shift1)));
-#else      
+#else
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32(scaled_acc0, acc0, acc1, output_multiplier[out_channel], shift0);
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32(scaled_acc1, acc2, acc3, output_multiplier[out_channel+1], shift1);
-#endif      
-      ae_int16x4 d1 = AE_SAT16X4(scaled_acc1, scaled_acc0); 
+#endif
+      ae_int16x4 d1 = AE_SAT16X4(scaled_acc1, scaled_acc0);
+      AE_MINMAX16(d1, out_min16, out_max16);
       AE_L64X2_XP(acc0, acc2, (ae_int64x2 *)pscratch0, 2*output_depth*sizeof(WORD64));
       AE_L64X2_XP(acc1, acc3, (ae_int64x2 *)pscratch1, 2*output_depth*sizeof(WORD64));
       AE_S32_H_XP(AE_MOVINT32X2_FROMINT16X4(AE_SEL16_7531(d1, d1)), (ae_int32 *)pout0, 2*output_depth*sizeof(WORD16));
@@ -327,6 +394,7 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
       MPY_BY_QUANT_MULT_ACC64_PER_CHAN_X2_OUT32(scaled_acc0, acc2, acc0, out_mul10, AE_MOVDA32X2(shift1, shift0));
 #endif
       ae_int16x4 d1 = AE_SAT16X4(scaled_acc0, scaled_acc0);
+      AE_MINMAX16(d1, out_min16, out_max16);
       AE_S32_H_XP(AE_MOVINT32X2_FROMINT16X4(d1), (ae_int32 *)pout0, 2*output_depth*sizeof(WORD16));
     }
   }
@@ -348,10 +416,11 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
       ae_int32x2 scaled_acc;
 #if XCHAL_HAVE_HIFI5S
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(scaled_acc, acc0, acc1, output_multiplier[out_channel], (((15 - shift0) << 16) | (15 - shift0)));
-#else      
+#else
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32(scaled_acc, acc0, acc1, output_multiplier[out_channel], shift0);
-#endif      
+#endif
       ae_int16x4 d1 = AE_SAT16X4(scaled_acc, scaled_acc);
+      AE_MINMAX16(d1, out_min16, out_max16);
       AE_L64_XP(acc0, pscratch0, output_depth*sizeof(WORD64));
       AE_L64_XP(acc1, pscratch1, output_depth*sizeof(WORD64));
       AE_S16_0_XP(AE_SEL16_4321(d1, d1), pout, output_depth*sizeof(WORD16));
@@ -363,13 +432,14 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
       ae_int32x2 scaled_acc;
 #if XCHAL_HAVE_HIFI5S
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32_HIFI5S(scaled_acc, acc1, acc1, output_multiplier[out_channel], (((15 - shift0) << 16) | (15 - shift0)));
-#else      
+#else
       MPY_BY_QUANT_MULT_ACC64_X2_OUT32(scaled_acc, acc1, acc1, output_multiplier[out_channel], shift0);
-#endif      
+#endif
       ae_int16x4 d1 = AE_SAT16X4(scaled_acc, scaled_acc);
+      AE_MINMAX16(d1, out_min16, out_max16);
       AE_S16_0_I(d1, pout1, 0);
     }
-  } 
+  }
 }
 
 /* Handle sub-kernel formation and transpose */
@@ -399,8 +469,8 @@ static inline void tconv2d_std_reorder_kernel_sym8s
 
   WORD32 subkermax_w = (kernel_width + x_stride - 1) / x_stride;
   WORD32 subkermax_h = (kernel_height + y_stride - 1) / y_stride;
-  
-	WORD8 *p_ker;
+
+  WORD8 *p_ker;
 
   /* Conversion from NDWH -> DNWH,                       */
   /* transposing of kernels and formation of sub-kernels */
@@ -455,7 +525,9 @@ static inline void tconv_pad(
     WORD32 * p_out_multiplier,
     WORD32 * p_out_shift,
     WORD32 idx_width,
-    WORD32 idx_height)
+    WORD32 idx_height,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max)
 {
   WORD32 i, j, k;
   ae_int16x4 d1;
@@ -477,6 +549,7 @@ static inline void tconv_pad(
         ae_int32x2 acc;
         MPY_BY_QUANT_MULT_ACC64_OUT32(acc, q1, p_out_multiplier[k], p_out_shift[k]);
         d1 = AE_SAT16X4(acc, acc);
+        AE_MINMAX16(d1, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
         AE_S16_0_XP(d1, ptrout, out_channels_offset*sizeof(WORD16));
       }
     }
@@ -484,18 +557,20 @@ static inline void tconv_pad(
 }
 
 static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
-		const WORD16* input_data,
-		const WORD8* filter_data,
-		const WORD64* bias_data,
-		int stride_width, int stride_height,
-		int pad_width, int pad_height,
-		int input_depth, int output_depth,
-		int input_height, int input_width,
-		int filter_height, int filter_width,
-		int output_height, int output_width,
-		int num_elements,
-		int *output_shift, int *output_multiplier,
-		pVOID scratch_buffer)
+    const WORD16* input_data,
+    const WORD8* filter_data,
+    const WORD64* bias_data,
+    int stride_width, int stride_height,
+    int pad_width, int pad_height,
+    int input_depth, int output_depth,
+    int input_height, int input_width,
+    int filter_height, int filter_width,
+    int output_height, int output_width,
+    int num_elements,
+    int *output_shift, int *output_multiplier,
+    pVOID scratch_buffer,
+    int out_activation_min, int out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
 {
  (VOID) num_elements;
   /* Transpose and Reorder the kernel into sub-kernels */
@@ -530,23 +605,23 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
 
   /* Calculate pointers for different sections on scratch buffer */
   WORD32 kernel_size = PADDED_SIZE(subker_size * n_subker, ALIGNMENT_16);
-  WORD8 *p_trp_ker = (WORD8 *)scratch_buffer; 
+  WORD8 *p_trp_ker = (WORD8 *)scratch_buffer;
   WORD16 *p_scr_cnv = (WORD16 *)((WORD8 *)scratch_buffer + kernel_size);
 
   /* Handle cases that have less valid output dimension than the output dimension given by the user */
   if((orig_valid_out_h) < output_height)
   {
-    tconv_pad(output_width, output_height, output_depth, final_out_channels_offset, final_out_width_offset, final_out_height_offset, bias_data, output_data, output_multiplier, output_shift, 0, XT_MAX(0,orig_valid_out_h));
+    tconv_pad(output_width, output_height, output_depth, final_out_channels_offset, final_out_width_offset, final_out_height_offset, bias_data, output_data, output_multiplier, output_shift, 0, XT_MAX(0,orig_valid_out_h), out_activation_min, out_activation_max);
   }
 
   if((orig_valid_out_w) < output_width)
   {
-    tconv_pad(output_width, output_height, output_depth, final_out_channels_offset, final_out_width_offset, final_out_height_offset, bias_data, output_data, output_multiplier, output_shift, XT_MAX(0,orig_valid_out_w), 0);
+    tconv_pad(output_width, output_height, output_depth, final_out_channels_offset, final_out_width_offset, final_out_height_offset, bias_data, output_data, output_multiplier, output_shift, XT_MAX(0,orig_valid_out_w), 0, out_activation_min, out_activation_max);
   }
 
   if((out_h_per_subker < 0))
   {
-    tconv_pad(output_width, output_height, output_depth, final_out_channels_offset, final_out_width_offset, final_out_height_offset, bias_data, output_data, output_multiplier, output_shift, 0, 0);
+    tconv_pad(output_width, output_height, output_depth, final_out_channels_offset, final_out_width_offset, final_out_height_offset, bias_data, output_data, output_multiplier, output_shift, 0, 0, out_activation_min, out_activation_max);
   return;
   }
 
@@ -579,7 +654,7 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
   WORD16 *po_tmp;
   WORD32 rem_val_out_w = valid_out_w % stride_width;
   WORD32 pad_w = pad_width;
-  
+
   // Process Loop to compute one output plane [out_height x out_channels] per iteration
   WORD32 out_w_looopcnt = valid_out_w / stride_width;
   for(j = 0; j < out_w_looopcnt; j++)
@@ -604,14 +679,14 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
         {
           kernelIdx = ((kIdy + pad_height) % stride_height) * stride_width + kIdx;
           WORD8 *p_subkernel = ((WORD8 *)p_trp_ker + kernelIdx * subker_size);
-          WORD32 rem_out_h_per_subker = (rem_val_out_h > 0) ? 1 : 0; 
+          WORD32 rem_out_h_per_subker = (rem_val_out_h > 0) ? 1 : 0;
 
           // Adjust the circ_buf pointer as per pad_height
           WORD32 cir_buf_inp_offset = pad_h_per_subker * input_depth * subkerX_max;
           cir_buf_inp_offset = (pad_h_ky > 0) ? cir_buf_inp_offset : cir_buf_inp_offset + input_depth * subkerX_max;
           WORD16 *p_inp_cir_buf = p_state->cir_buf.p_curr;
           AE_ADDCIRC16X4_XC((ae_int16x4 *)p_inp_cir_buf, cir_buf_inp_offset * input_bytewidth);
-          
+
           // Convolution using matXvec with matrix as circular buffer
           xa_nn_matXvec_sym8sxsym16s_sym16s_circ
           (po_tmp /* output */
@@ -629,6 +704,9 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
            ,output_multiplier
            ,output_shift
            ,0
+           ,out_activation_min
+           ,out_activation_max
+           ,NULL
           );
           po_tmp += final_out_height_offset;
         }
@@ -660,13 +738,13 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
         {
           kernelIdx = ((kIdy + pad_height) % stride_height) * stride_width + kIdx;
           WORD8 *p_subkernel = ((WORD8 *)p_trp_ker + kernelIdx * subker_size);
-          WORD32 rem_out_h_per_subker = (rem_val_out_h > 0) ? 1 : 0; 
+          WORD32 rem_out_h_per_subker = (rem_val_out_h > 0) ? 1 : 0;
           // Adjust the circ_buf pointer as per pad_height
           WORD32 cir_buf_inp_offset = pad_h_per_subker * input_depth * subkerX_max;
           cir_buf_inp_offset = (pad_h_ky > 0) ? cir_buf_inp_offset : cir_buf_inp_offset + input_depth * subkerX_max;
           WORD16 *p_inp_cir_buf = p_state->cir_buf.p_curr;
           AE_ADDCIRC16X4_XC((ae_int16x4 *)p_inp_cir_buf, cir_buf_inp_offset * input_bytewidth);
-          
+
           // Convolution using matXvec with matrix as circular buffer
           xa_nn_matXvec_sym8sxsym16s_sym16s_circ
           (po_tmp /* output */
@@ -684,6 +762,9 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
            ,output_multiplier
            ,output_shift
            ,0
+           ,out_activation_min
+           ,out_activation_max
+           ,NULL
           );
           po_tmp += final_out_height_offset;
         }
@@ -693,40 +774,44 @@ static inline void transpose_conv2d_std_sym8sxsym16s(WORD16* output_data,
   }
 }
 
-int xa_nn_transpose_conv_sym8sxsym16s(WORD16* output_data,
-		const WORD16* input_data,
-		const WORD8* filter_data,
-		const WORD64* bias_data,
-		int stride_width, int stride_height,
-		int pad_width, int pad_height,
-		int input_depth, int output_depth,
-		int input_height, int input_width,
-		int filter_height, int filter_width,
-		int output_height, int output_width,
-		int num_elements,
-		int *output_shift, int *output_multiplier,
-		void* scratch_buffer)
+int xa_nn_transpose_conv_v2_sym8sxsym16s(WORD16* output_data,
+    const WORD16* input_data,
+    const WORD8* filter_data,
+    const WORD64* bias_data,
+    int stride_width, int stride_height,
+    int pad_width, int pad_height,
+    int input_depth, int output_depth,
+    int input_height, int input_width,
+    int filter_height, int filter_width,
+    int output_height, int output_width,
+    int num_elements,
+    int *output_shift, int *output_multiplier,
+    void* scratch_buffer,
+    int out_activation_min, int out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
 {
-	/* NULL pointer checks */
-	XA_NNLIB_ARG_CHK_PTR(output_data, -1);
-	XA_NNLIB_ARG_CHK_PTR(filter_data, -1);
-	XA_NNLIB_ARG_CHK_PTR(input_data, -1);
-	XA_NNLIB_ARG_CHK_PTR(scratch_buffer, -1);
-	/* Pointer alignment checks */
-	XA_NNLIB_ARG_CHK_ALIGN(output_data, sizeof(WORD16), -1);
-	XA_NNLIB_ARG_CHK_ALIGN(filter_data, sizeof(WORD8), -1);
-	XA_NNLIB_ARG_CHK_ALIGN(input_data, sizeof(WORD16), -1);
-	XA_NNLIB_ARG_CHK_ALIGN(bias_data, sizeof(WORD64), -1);
-	XA_NNLIB_ARG_CHK_ALIGN(scratch_buffer, 2*sizeof(WORD64), -1);
-	/* Basic Parameter checks */
-	XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
-	XA_NNLIB_ARG_CHK_COND((input_depth <= 0), -1);
-	XA_NNLIB_ARG_CHK_COND((filter_height <= 0 || filter_width <= 0), -1);
-	XA_NNLIB_ARG_CHK_COND((output_depth <= 0), -1);
-	XA_NNLIB_ARG_CHK_COND((stride_height <= 0 || stride_width <= 0), -1);
-	XA_NNLIB_ARG_CHK_COND((pad_height < 0 || pad_width < 0), -1);
-	XA_NNLIB_ARG_CHK_COND((output_height <= 0 || output_width <= 0), -1);
-	XA_NNLIB_ARG_CHK_COND((num_elements <= 0), -1);
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(output_data, -1);
+  XA_NNLIB_ARG_CHK_PTR(filter_data, -1);
+  XA_NNLIB_ARG_CHK_PTR(input_data, -1);
+  XA_NNLIB_ARG_CHK_PTR(scratch_buffer, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(output_data, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(filter_data, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(input_data, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(bias_data, sizeof(WORD64), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(scratch_buffer, 2*sizeof(WORD64), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((input_depth <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((filter_height <= 0 || filter_width <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((output_depth <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((stride_height <= 0 || stride_width <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((pad_height < 0 || pad_width < 0), -1);
+  XA_NNLIB_ARG_CHK_COND((output_height <= 0 || output_width <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((num_elements <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((out_activation_min < -32768 || out_activation_min > 32767), -1);
+  XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min || out_activation_max > 32767), -1);
 
   int ker_grt_inp = (filter_width > input_width || filter_height > input_height);
   int str_leq_ker = (stride_width <= filter_width && stride_height <= filter_height);
@@ -735,17 +820,42 @@ int xa_nn_transpose_conv_sym8sxsym16s(WORD16* output_data,
   {
     transpose_conv2d_std_sym8sxsym16s(output_data, input_data, filter_data, bias_data,
     stride_width, stride_height, pad_width, pad_height, input_depth, output_depth,
-		input_height, input_width, filter_height, filter_width,	output_height, output_width,
-		num_elements, output_shift, output_multiplier, scratch_buffer);
+    input_height, input_width, filter_height, filter_width, output_height, output_width,
+    num_elements, output_shift, output_multiplier, scratch_buffer, out_activation_min,
+    out_activation_max, p_dma_cfg);
   }
   else
   {
     tconv2d_sym8sxsym16s(output_data, input_data, filter_data, bias_data,
     stride_width, stride_height, pad_width, pad_height, input_depth, output_depth,
-		input_height, input_width, filter_height, filter_width,	output_height, output_width,
-		num_elements, output_shift, output_multiplier, scratch_buffer);
+    input_height, input_width, filter_height, filter_width, output_height, output_width,
+    num_elements, output_shift, output_multiplier, scratch_buffer, out_activation_min,
+    out_activation_max, p_dma_cfg);
   }
 
-	return 0;
+  return 0;
 }
 
+int xa_nn_transpose_conv_sym8sxsym16s(WORD16* output_data,
+    const WORD16* input_data,
+    const WORD8* filter_data,
+    const WORD64* bias_data,
+    int stride_width, int stride_height,
+    int pad_width, int pad_height,
+    int input_depth, int output_depth,
+    int input_height, int input_width,
+    int filter_height, int filter_width,
+    int output_height, int output_width,
+    int num_elements,
+    int *output_shift, int *output_multiplier,
+    void* scratch_buffer)
+{
+  return xa_nn_transpose_conv_v2_sym8sxsym16s(output_data,
+              input_data, filter_data, bias_data, stride_width,
+              stride_height, pad_width, pad_height,
+              input_depth, output_depth, input_height,
+              input_width, filter_height, filter_width,
+              output_height, output_width, num_elements,
+              output_shift, output_multiplier, scratch_buffer,
+              -32768, 32767, NULL);
+}

@@ -217,7 +217,10 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
     WORD32 mat1_offset,
     WORD32 * p_out_multiplier,
     WORD32 * p_out_shift,
-    WORD32 out_offset);
+    WORD32 out_offset,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max,
+    VOID * p_mem_info);
 
 WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
     WORD8 * __restrict__ p_out,
@@ -251,7 +254,10 @@ WORD32 xa_nn_matXvec_sym8sxsym16s_sym16s_circ(
     WORD32 mat1_offset,
     WORD32 * p_out_multiplier,
     WORD32 * p_out_shift,
-    WORD32 out_offset);
+    WORD32 out_offset,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max,
+    VOID * p_mem_info);
 
 VOID conv2d_std_init_cir_buf(
     WORD32 input_channels,

@@ -1121,8 +1121,15 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
     WORD32 mat1_offset,
     WORD32 * p_out_multiplier,
     WORD32 * p_out_shift,
-    WORD32 out_zero_bias)
+    WORD32 out_zero_bias,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max,
+    VOID * p_mem_info)
 {
+  ae_int8x8 max_int8 = AE_MOVDA8(out_activation_max);
+  ae_int8x8 min_int8 = AE_MOVDA8(out_activation_min);
+  ae_int16x4 max_int16 = AE_MOVDA16(out_activation_max);
+  ae_int16x4 min_int16 = AE_MOVDA16(out_activation_min);
   /* Iterators used in for loops */
   int m_itr, vec_itr;
   
@@ -1292,7 +1299,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         ae_int16x4 out_0;
         MPY_BY_QUANT_MULT_PER_CHAN_X2X2_OUT16_ZB_AV(out_0, acc_row0_vec0, acc_row1_vec0, p_out_mult01, p_out_mult23, ls_01, ls_23, rs_01, rs_23, out_zero_bias); 
 
-        AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
+        AE_MINMAX16(out_0, min_int16, max_int16);
 
         /* Store output */
 		    STORE_16x4_8x4(out_0, p_dst_0, out_stride);
@@ -1452,6 +1459,8 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         /* Store output */
         ae_int8x8 out32_0; 
         out32_0 = AE_SAT8X8X16(out_0, out_0);
+        out32_0 = AE_MIN8(AE_MAX8(out32_0, min_int8), max_int8);
+        
         AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_stride);
       }
     }
@@ -1635,10 +1644,11 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
 
         ae_int16x4 out_0, out_1;
         MPY_BY_QUANT_MULT_PER_CHAN_X2X2_X2_OUT16_ZB(out_0, out_1, acc_row1_vec0, acc_row0_vec0, acc_row1_vec1, acc_row0_vec1, p_out_mult32, p_out_mult10, ls_32, ls_10, rs_32, rs_10, out_zero_bias);
-
+        
         /* Store output */
         ae_int8x8 out32_0;
         out32_0 = AE_SAT8X8X16(out_0, out_1);
+        out32_0 = AE_MIN8(AE_MAX8(out32_0, min_int8), max_int8);
         
         AE_S32_H_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_stride);
         AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_stride);
@@ -1683,6 +1693,8 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         /* Store output */
         ae_int8x8 out32_0; 
         out32_0 = AE_SAT8X8X16(out_0, out_0);
+        out32_0 = AE_MIN8(AE_MAX8(out32_0, min_int8), max_int8);
+        
         AE_S32_L_XP(AE_MOVINT32X2_FROMINT8X8(out32_0), (ae_int32 *)p_dst_0, out_stride);
       }
     }
@@ -1883,10 +1895,10 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_2, acc_row0_vec2, acc_row1_vec2, p_out_multiplier[vec_itr + 2], p_left_shift[2], p_right_shift[2], out_zero_bias);
         MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_3, acc_row0_vec3, acc_row1_vec3, p_out_multiplier[vec_itr + 3], p_left_shift[3], p_right_shift[3], out_zero_bias);
 
-        AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
-        AE_MINMAX16(out_1, AE_MOVDA16(-128), AE_MOVDA16(127));
-        AE_MINMAX16(out_2, AE_MOVDA16(-128), AE_MOVDA16(127));
-        AE_MINMAX16(out_3, AE_MOVDA16(-128), AE_MOVDA16(127));
+        AE_MINMAX16(out_0, min_int16, max_int16);
+        AE_MINMAX16(out_1, min_int16, max_int16);
+        AE_MINMAX16(out_2, min_int16, max_int16);
+        AE_MINMAX16(out_3, min_int16, max_int16);
 
         /* Store output */
         AE_SW_S8_6_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_0, out_stride);
@@ -1946,7 +1958,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         ae_int16x4 out_0;
         MPY_BY_QUANT_MULT_PER_CHAN_X2X2_OUT16_ZB_AV(out_0, acc_row0_vec0, acc_row1_vec0, p_out_mult01, p_out_mult23, ls_01, ls_23, rs_01, rs_23, out_zero_bias); 
 
-        AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
+        AE_MINMAX16(out_0, min_int16, max_int16);
 
         AE_SW_S8_6_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_0, out_stride);
         AE_SW_S8_4_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_1, out_stride);
@@ -2031,7 +2043,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         ae_int16x4 out_0;
         MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row1_vec0, p_out_multiplier[vec_itr + 0], temp_ls, temp_rs, out_zero_bias);
 
-        AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
+        AE_MINMAX16(out_0, min_int16, max_int16);
 
         AE_SW_S8_6_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst, out_stride);
         AE_SW_S8_4_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst, out_stride);
@@ -2076,6 +2088,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         MPY_BY_QUANT_MULT_X2_OUT16(out_0, acc_row0_vec0, p_out_multiplier[vec_itr], temp_ls, temp_rs);
         out_0 = AE_ADD16S(out_0, AE_MOVDA16(out_zero_bias));
         ae_int8x8 temp_vec0 = AE_SAT8X8X16(out_0, out_0);
+        temp_vec0 = AE_MIN8(AE_MAX8(temp_vec0, min_int8), max_int8);
 
         //TODO: AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
         AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
@@ -2278,10 +2291,10 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
             MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_2, acc_row0_vec2, acc_row1_vec2, p_out_multiplier[vec_itr + ii + 16], p_left_shift[2], p_right_shift[2], out_zero_bias);
             MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_3, acc_row0_vec3, acc_row1_vec3, p_out_multiplier[vec_itr + ii + 24], p_left_shift[3], p_right_shift[3], out_zero_bias);
 
-            AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
-            AE_MINMAX16(out_1, AE_MOVDA16(-128), AE_MOVDA16(127));
-            AE_MINMAX16(out_2, AE_MOVDA16(-128), AE_MOVDA16(127));
-            AE_MINMAX16(out_3, AE_MOVDA16(-128), AE_MOVDA16(127));
+            AE_MINMAX16(out_0, min_int16, max_int16);
+            AE_MINMAX16(out_1, min_int16, max_int16);
+            AE_MINMAX16(out_2, min_int16, max_int16);
+            AE_MINMAX16(out_3, min_int16, max_int16);
 
             /* Store output */
             AE_SW_S8_6_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_0, out_stride);
@@ -2342,7 +2355,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
           ae_int16x4 out_0;
           MPY_BY_QUANT_MULT_PER_CHAN_X2X2_OUT16_ZB_AV(out_0, acc_row0_vec0, acc_row1_vec0, p_out_mult01, p_out_mult23, ls_01, ls_23, rs_01, rs_23, out_zero_bias); 
 
-          AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
+          AE_MINMAX16(out_0, min_int16, max_int16);
 
           AE_SW_S8_6_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_0, out_stride);
           AE_SW_S8_4_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_1, out_stride);
@@ -2534,10 +2547,10 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_2, acc_row0_vec2, acc_row1_vec2, p_out_multiplier[vec_itr + 2], p_left_shift[2], p_right_shift[2], out_zero_bias);
         MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_3, acc_row0_vec3, acc_row1_vec3, p_out_multiplier[vec_itr + 3], p_left_shift[3], p_right_shift[3], out_zero_bias);
 
-        AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
-        AE_MINMAX16(out_1, AE_MOVDA16(-128), AE_MOVDA16(127));
-        AE_MINMAX16(out_2, AE_MOVDA16(-128), AE_MOVDA16(127));
-        AE_MINMAX16(out_3, AE_MOVDA16(-128), AE_MOVDA16(127));
+        AE_MINMAX16(out_0, min_int16, max_int16);
+        AE_MINMAX16(out_1, min_int16, max_int16);
+        AE_MINMAX16(out_2, min_int16, max_int16);
+        AE_MINMAX16(out_3, min_int16, max_int16);
 
         /* Store output */
         AE_SW_S8_6_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_0, out_stride);
@@ -2597,7 +2610,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         ae_int16x4 out_0;
         MPY_BY_QUANT_MULT_PER_CHAN_X2X2_OUT16_ZB_AV(out_0, acc_row0_vec0, acc_row1_vec0, p_out_mult01, p_out_mult23, ls_01, ls_23, rs_01, rs_23, out_zero_bias); 
 
-        AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
+        AE_MINMAX16(out_0, min_int16, max_int16);
 
         AE_SW_S8_6_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_0, out_stride);
         AE_SW_S8_4_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst_1, out_stride);
@@ -2692,7 +2705,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         ae_int16x4 out_0;
         MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row1_vec0, p_out_multiplier[vec_itr + 0], temp_ls, temp_rs, out_zero_bias);
 
-        AE_MINMAX16(out_0, AE_MOVDA16(-128), AE_MOVDA16(127));
+        AE_MINMAX16(out_0, min_int16, max_int16);
 
         AE_SW_S8_6_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst, out_stride);
         AE_SW_S8_4_XP(AE_MOVINT8X8_FROMINT16X4(out_0), (ae_int8 *) p_dst, out_stride);
@@ -2736,7 +2749,7 @@ WORD32 xa_nn_matXvec_sym8sxasym8s_asym8s_circ(
         MPY_BY_QUANT_MULT_X2_OUT16(out_0, acc_row0_vec0, p_out_multiplier[vec_itr], temp_ls, temp_rs);
         out_0 = AE_ADD16S(out_0, AE_MOVDA16(out_zero_bias));
         ae_int8x8 temp_vec0 = AE_SAT8X8X16(out_0, out_0);
-
+        temp_vec0 = AE_MIN8(AE_MAX8(temp_vec0, min_int8), max_int8);
         //TODO: AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
         AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
       }

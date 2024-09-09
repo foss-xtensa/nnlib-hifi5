@@ -37,15 +37,17 @@ static WORD32 conv_x_left_pad(
     WORD8 *p_out,
     WORD32 * p_out_multiplier,
     WORD32 * p_out_shift,
-    WORD32 out_zero_bias)
+    WORD32 out_zero_bias,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max)
 {
   WORD32 i,j,k;
   WORD32 out_width_over_x_pad = (x_padding - kernel_width)/x_stride + 1;
   WORD32 left_shift, right_shift;
   out_width_over_x_pad = out_width_over_x_pad > out_width ? out_width : out_width_over_x_pad;
 
-  ae_int32x2 max_int8 = AE_MOVDA32(127);
-  ae_int32x2 min_int8 = AE_MOVDA32(-128);
+  ae_int32x2 max_out = AE_MOVDA32(out_activation_max);
+  ae_int32x2 min_out = AE_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -71,7 +73,7 @@ static WORD32 conv_x_left_pad(
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
-        AE_MINMAX32(acc, min_int8, max_int8);
+        AE_MINMAX32(acc, min_out, max_out);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
     }
@@ -93,15 +95,17 @@ static WORD32 conv_x_right_pad(
     WORD8 *p_out,
     WORD32 * p_out_multiplier,
     WORD32 * p_out_shift,
-    WORD32 out_zero_bias)
+    WORD32 out_zero_bias,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max)
 {
   WORD32 i,j,k;
   WORD32 idx_out_width_over_x_r_pad = (x_padding + input_width + x_stride - 1)/x_stride;
   WORD32 left_shift, right_shift;
   WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad;
 
-  ae_int32x2 max_int8 = AE_MOVDA32(127);
-  ae_int32x2 min_int8 = AE_MOVDA32(-128);
+  ae_int32x2 max_out = AE_MOVDA32(out_activation_max);
+  ae_int32x2 min_out = AE_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -127,7 +131,7 @@ static WORD32 conv_x_right_pad(
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
-        AE_MINMAX32(acc, min_int8, max_int8);
+        AE_MINMAX32(acc, min_out, max_out);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
     }
@@ -143,7 +147,9 @@ static void conv_y_pad_nhwc_out(
     const WORD32* __restrict__ p_bias,
     WORD32 * p_out_multiplier,
     WORD32 * p_out_shift,
-    WORD32 out_zero_bias)
+    WORD32 out_zero_bias,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max)
 {
   WORD32 i,j,k;
   WORD32 left_shift, right_shift;
@@ -153,8 +159,8 @@ static void conv_y_pad_nhwc_out(
   out_width_offset = out_channels;
   out_height_offset = out_width * out_width_offset;
 
-  ae_int32x2 max_int8 = AE_MOVDA32(127);
-  ae_int32x2 min_int8 = AE_MOVDA32(-128);
+  ae_int32x2 max_out = AE_MOVDA32(out_activation_max);
+  ae_int32x2 min_out = AE_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -180,7 +186,7 @@ static void conv_y_pad_nhwc_out(
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
         acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
-        AE_MINMAX32(acc, min_int8, max_int8);
+        AE_MINMAX32(acc, min_out, max_out);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (WORD8)AE_MOVAD32_L(acc);
       }
     }
@@ -377,7 +383,7 @@ WORD32 xa_nn_dilated_conv2d_per_chan_sym8sxasym8s(
     if(x_padding_var >= kernel_width_dilation)//dilation
   {
     //out_width_over_x_pad = conv_x_left_pad(x_padding, kernel_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias);//dilation
-    out_width_over_x_pad = conv_x_left_pad(x_padding, kernel_width_dilation, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias);
+    out_width_over_x_pad = conv_x_left_pad(x_padding, kernel_width_dilation, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias, -128, 127);
     x_padding_var -= out_width_over_x_pad * x_stride;
   }
 
@@ -389,7 +395,7 @@ WORD32 xa_nn_dilated_conv2d_per_chan_sym8sxasym8s(
   XA_NNLIB_ARG_CHK_COND((x_r_pad<0), -1);
   if(x_r_pad >= kernel_width_dilation)//dilation
   {
-    out_width_over_x_r_pad = conv_x_right_pad(x_padding, input_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias);
+    out_width_over_x_r_pad = conv_x_right_pad(x_padding, input_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias, -128, 127);
   }
 
 
@@ -543,6 +549,9 @@ WORD32 xa_nn_dilated_conv2d_per_chan_sym8sxasym8s(
 				       ,p_out_multiplier
 				       ,p_out_shift
 				       ,out_zero_bias
+               ,-128
+               ,127
+               ,NULL
 				      );
 			  	  //conv2d_dilation_ptr_reset((void*)p_state, (VOID**)&pp_inp);
 				    p_out += (out_width_offset*dilation_width / gcd(x_stride, dilation_width) );//Mul by dilation width
@@ -559,7 +568,7 @@ WORD32 xa_nn_dilated_conv2d_per_chan_sym8sxasym8s(
 #endif
 
 __attribute__ ((noinline)) 
-static WORD32 internal_xa_nn_conv2d_per_chan_sym8sxasym8s(
+static WORD32 internal_xa_nn_conv2d_v2_per_chan_sym8sxasym8s(
     WORD8* __restrict__ p_out,
     const WORD8* __restrict__ p_inp,
     const WORD8* __restrict__ p_kernel,
@@ -582,7 +591,10 @@ static WORD32 internal_xa_nn_conv2d_per_chan_sym8sxasym8s(
     WORD32 * p_out_shift,
     WORD32 out_zero_bias,
     WORD32 out_data_format,
-    VOID *p_scratch)
+    VOID *p_scratch,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
 {
   WORD32 j;
   WORD32 input_bytewidth = 1;
@@ -604,7 +616,7 @@ static WORD32 internal_xa_nn_conv2d_per_chan_sym8sxasym8s(
   WORD32 out_width_over_x_pad = 0;
   if(x_padding_var >= kernel_width)
   {
-    out_width_over_x_pad = conv_x_left_pad(x_padding, kernel_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias);
+    out_width_over_x_pad = conv_x_left_pad(x_padding, kernel_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias, out_activation_min, out_activation_max);
     x_padding_var -= out_width_over_x_pad * x_stride;
   }
 
@@ -615,7 +627,7 @@ static WORD32 internal_xa_nn_conv2d_per_chan_sym8sxasym8s(
   x_r_pad = x_r_pad < 0 ? 0 : x_r_pad;
   if(x_r_pad >= kernel_width)
   {
-    out_width_over_x_r_pad = conv_x_right_pad(x_padding, input_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias);
+    out_width_over_x_r_pad = conv_x_right_pad(x_padding, input_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias, out_activation_min, out_activation_max);
   }
 
   /* When kernel convolves over input region */
@@ -667,6 +679,9 @@ static WORD32 internal_xa_nn_conv2d_per_chan_sym8sxasym8s(
        ,(p_out_multiplier+grp_i*kernels_per_group)
        ,(p_out_shift+grp_i*kernels_per_group)
        ,out_zero_bias
+       ,out_activation_min
+       ,out_activation_max
+       ,p_dma_cfg
       );
 
     tmp_out += out_width_offset;
@@ -754,7 +769,7 @@ static void xa_nn_rearrange_chw_to_hwc
 
 }
 
-WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
+WORD32 xa_nn_conv2d_v2_per_chan_sym8sxasym8s(
     WORD8* __restrict__ p_out,
     const WORD8* __restrict__ p_inp,
     const WORD8* __restrict__ p_kernel,
@@ -764,7 +779,7 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
     WORD32 input_channels,
     WORD32 kernel_height,
     WORD32 kernel_width,
-	  WORD32 kernel_channels,
+    WORD32 kernel_channels,
     WORD32 dilation_height,
     WORD32 dilation_width,
     WORD32 out_channels,
@@ -779,7 +794,10 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
     WORD32 * p_out_shift,
     WORD32 out_zero_bias,
     WORD32 out_data_format,
-    VOID *p_scratch)
+    VOID *p_scratch,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
 {
    /* NULL pointer checks */
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
@@ -801,8 +819,10 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
   XA_NNLIB_ARG_CHK_COND((input_zero_bias < -127 || input_zero_bias > 128), -1);
   XA_NNLIB_ARG_CHK_COND((out_zero_bias < -128 || out_zero_bias > 127), -1);
   XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
-    XA_NNLIB_ARG_CHK_COND((dilation_height!= 1), -1);
+  XA_NNLIB_ARG_CHK_COND((dilation_height!= 1), -1);
   XA_NNLIB_ARG_CHK_COND((dilation_width!= 1), -1);
+  XA_NNLIB_ARG_CHK_COND((out_activation_min < -128 || out_activation_min > 127), -1);
+  XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min || out_activation_max > 127), -1);
 
   int itr;
   for(itr=0;itr<out_channels;itr++){
@@ -857,7 +877,7 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
       p_scratch += PADDED_SIZE(out_channels * kernel_height * kernel_width, ALIGNMENT_16);
       xa_nn_rearrange_chw_to_hwc(p_kernel_nhwc,p_kernel,kernel_width,kernel_height,out_channels);
       
-      ret |= xa_nn_conv2d_depthwise_per_chan_sym8sxasym8s
+      ret |= xa_nn_conv2d_depthwise_v2_per_chan_sym8sxasym8s
                   (p_out
                   ,p_kernel_nhwc
                   ,p_inp
@@ -881,6 +901,9 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
                   ,0
                   ,out_data_format
                   ,p_scratch
+                  ,out_activation_min
+                  ,out_activation_max
+                  ,NULL
                   );
 
       return ret;            
@@ -907,7 +930,7 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
 
   if(tile_height == out_h || out_data_format == 1)
   {
-    ret |= internal_xa_nn_conv2d_per_chan_sym8sxasym8s(
+    ret |= internal_xa_nn_conv2d_v2_per_chan_sym8sxasym8s(
         p_out,
         p_inp,
         p_kernel,
@@ -930,7 +953,10 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
         p_out_shift,
         out_zero_bias,
         out_data_format,
-        p_scratch);
+        p_scratch,
+        out_activation_min,
+        out_activation_max,
+        NULL);
   }
   else
   {
@@ -955,11 +981,13 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
             p_bias,
             p_out_multiplier,
             p_out_shift,
-            out_zero_bias);
+            out_zero_bias,
+            out_activation_min,
+            out_activation_max);
       }
       else
       {
-        ret |= internal_xa_nn_conv2d_per_chan_sym8sxasym8s(
+        ret |= internal_xa_nn_conv2d_v2_per_chan_sym8sxasym8s(
             &p_out[itr_oh * out_w * out_channels],
             &p_inp[inp_h_idx * inp_w * input_channels],
             p_kernel,
@@ -982,7 +1010,10 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
             p_out_shift,
             out_zero_bias,
             out_data_format,
-            p_scratch);
+            p_scratch,
+            out_activation_min,
+            out_activation_max,
+            NULL);
       }
       itr_oh += tile_height;
       itr_ih += tile_height * y_str;
@@ -991,4 +1022,61 @@ WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
   }
 
   return ret;
+}
+
+WORD32 xa_nn_conv2d_per_chan_sym8sxasym8s(
+    WORD8* __restrict__ p_out,
+    const WORD8* __restrict__ p_inp,
+    const WORD8* __restrict__ p_kernel,
+    const WORD32* __restrict__ p_bias,
+    WORD32 input_height,
+    WORD32 input_width,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 kernel_channels,
+    WORD32 dilation_height,
+    WORD32 dilation_width,
+    WORD32 out_channels,
+    WORD32 x_stride,
+    WORD32 y_stride,
+    WORD32 x_padding,
+    WORD32 y_padding,
+    WORD32 out_height,
+    WORD32 out_width,
+    WORD32 input_zero_bias,
+    WORD32 * p_out_multiplier,
+    WORD32 * p_out_shift,
+    WORD32 out_zero_bias,
+    WORD32 out_data_format,
+    VOID *p_scratch)
+{
+  return xa_nn_conv2d_v2_per_chan_sym8sxasym8s(p_out,
+                                                 p_inp,
+                                                 p_kernel,
+                                                 p_bias,
+                                                 input_height,
+                                                 input_width,
+                                                 input_channels,
+                                                 kernel_height,
+                                                 kernel_width,
+                                                 kernel_channels,
+                                                 dilation_height,
+                                                 dilation_width,
+                                                 out_channels,
+                                                 x_stride,
+                                                 y_stride,
+                                                 x_padding,
+                                                 y_padding,
+                                                 out_height,
+                                                 out_width,
+                                                 input_zero_bias,
+                                                 p_out_multiplier,
+                                                 p_out_shift,
+                                                 out_zero_bias,
+                                                 out_data_format,
+                                                 p_scratch,
+                                                 -128,
+                                                 127,
+                                                 NULL);
 }

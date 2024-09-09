@@ -61,11 +61,7 @@ WORD32 xa_nn_conv2d_std_getsize(
   (void)kernel_precision;
   (void)dilation_height;
   (void)dilation_width;
-  (void)out_data_format;
-  (void)output_channels;
-
-  /* Unused. HiFi4 API compatibility */
-  (void)output_channels;
+  //(void)out_data_format;
 
   WORD32 mem_req = 0;
   WORD32 input_size;
@@ -152,6 +148,12 @@ WORD32 xa_nn_conv2d_std_getsize(
   /* scratch memory for convolution using matrix multiplication */
   mem_req += cir_buf_size_bytes;
   mem_req += BUS_WIDTH;
+
+  if (!(x_padding) && !(input_channels & 0x1) && !(output_channels & 0x3) && !(out_width & 0x1) && (out_data_format == 0) && ((out_width - 1) * x_stride <= (input_width - kernel_width)) && (input_precision == PREC_SYM16S)){
+    WORD32 padded_kernel_mem_req = output_channels * ker_h * ALIGNED_SIZE(ker_w * kernel_channels, 8);
+    mem_req = padded_kernel_mem_req > mem_req ? padded_kernel_mem_req : mem_req;
+  }
+  
 
   return mem_req;
 }
@@ -439,6 +441,7 @@ WORD32 xa_nn_dilated_conv2d_std_getsize(
       align_size = ALIGNMENT>>1;
       break;
     case 16:
+    case -8:
       input_size = sizeof(WORD16);
       align_size = ALIGNMENT>>1;
       break;
@@ -465,7 +468,7 @@ WORD32 xa_nn_dilated_conv2d_std_getsize(
 
   XA_NNLIB_CHK_COND((kernel_height_dilation > input_height_pad), -1);
 
-  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S) //TODO: remove the condition when the padding requirement is removed for other variants.
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S) //TODO: remove the condition when the padding requirement is removed for other variants.
     input_channels_pad = input_channels;
   else
     input_channels_pad = PADDED_SIZE(input_channels, align_size);
@@ -762,6 +765,7 @@ VOID xa_nn_dilated_conv2d_std_init_circ_buf(
       align_size = ALIGNMENT>>1;
       break;
     case 16:
+    case -8:
       input_size = sizeof(WORD16);
       align_size = ALIGNMENT>>1;
       break;
@@ -784,7 +788,7 @@ VOID xa_nn_dilated_conv2d_std_init_circ_buf(
 
   // Computing circular buffer size
   // Determine y-bottom padding
-  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S) //TODO: remove the condition when the padding requirement is removed for other variants.
+  if(input_precision == PREC_8 || input_precision == PREC_ASYM8U || input_precision == PREC_ASYM8S || input_precision == PREC_SYM16S) //TODO: remove the condition when the padding requirement is removed for other variants.
     input_channels_pad = input_channels;
   else
     input_channels_pad = PADDED_SIZE(input_channels, align_size);
@@ -1573,13 +1577,16 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
   //ae_int8x8 zero_pad = AE_MOVDA8(pad_val);
   UWORD8 pad_val_u8 = (UWORD8)pad_val;
   //ae_int8x8 inp_val;
-  (void) input_bytewidth;
   WORD32 y_padding_dilation;
 
+  /* Padding is only for asym8s data type */
+  if(input_bytewidth > 1)
+    pad_val_u8 = 0;
+
   if(!firstCall)
-	  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_state->cir_buf.p_curr, planes_to_add * input_channels_pad);
+	  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_state->cir_buf.p_curr, planes_to_add * input_channels_pad * input_bytewidth);
   WORD8 *p_dst = (WORD8 *)p_state->cir_buf.p_curr;
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * input_channels_pad);
+  AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * input_channels_pad * input_bytewidth);
 
   WORD32 indexCorrectionDoneInHeight = 1;
   WORD32 heightIndexIterationModified = heightIndexIteration;
@@ -1613,10 +1620,10 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
     {
       for(k=0;k<planes_to_add;k++)
       {
-        memset(p_dst, pad_val_u8, input_channels_pad);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad);
+        memset(p_dst, pad_val_u8, input_channels_pad * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad * input_bytewidth);
       }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * input_channels_pad);
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * input_channels_pad * input_bytewidth);
     }
   }
 
@@ -1737,8 +1744,8 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
     WORD32 index_0_input_dilation_height_offset =  (y_padding % dilation_height) ; ///This value represent 0th index in input matrix (post top padding) correspond to which offset in height's dilation scale
     WORD32 input_offset_height_dilation = (dilation_h_offset - index_0_input_dilation_height_offset + dilation_height)%dilation_height;// "index_0_input_dilation_height_offset" represent the dilation offset corresponding to 0 th row of input but, the target is to reach "dilation_h_offset" in dilation scale. This calculation helps reach there from "index_0_input_dilation_height_offset"
 
-	p_inp = p_inp + (input_offset_height_dilation * input_width * input_channels); // This offsets the pointer as per the dilation offset in height dimension for stride=1. While supporting stride find the point inside sub matrix that is the starting point
-	p_inp = p_inp + (input_height_correction * dilation_height * input_width * input_channels);///This accounts for offset i.e., initial index that arises out of stride support
+	p_inp = p_inp + (input_offset_height_dilation * input_width * input_channels * input_bytewidth); // This offsets the pointer as per the dilation offset in height dimension for stride=1. While supporting stride find the point inside sub matrix that is the starting point
+	p_inp = p_inp + (input_height_correction * dilation_height * input_width * input_channels * input_bytewidth);///This accounts for offset i.e., initial index that arises out of stride support
 	/// In the above calculation of pointer ystride is not brought into calculation, in height dimension Ystride will be handled by core convolution code
 
     //for(i=0;i<input_height_dilation;i++)
@@ -1746,13 +1753,13 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
     {
       for(k=0;k<copy_x_pad_width;k++)
       {
-        memset(p_dst, pad_val_u8, input_channels_pad);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad);
+        memset(p_dst, pad_val_u8, input_channels_pad * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad * input_bytewidth);
       }
       WORD32 index_0_input_dilation_offset =  (x_padding_full % dilation_width) ; ///This represent 0th index in input matrix correspond to which offset in dilation
       WORD32 input_offset_dilation = (dilation_w_offset - index_0_input_dilation_offset + dilation_width)%dilation_width;// This is the offset corresponding to the present width offset
-      p_inp = p_inp + (  (input_offset_dilation + (*input_width_consumed)*dilation_width)   *input_channels);/// This is the offset corresponding
-      p_inp = p_inp + input_width_correction * dilation_width * input_channels;
+      p_inp = p_inp + (  (input_offset_dilation + (*input_width_consumed)*dilation_width)   *input_channels * input_bytewidth);/// This is the offset corresponding
+      p_inp = p_inp + input_width_correction * dilation_width * input_channels * input_bytewidth;
       // Pointer Offset in width dimension here does not have an exclusive mention as explained below:
       // a) If stride value is smaller than the kernel then "planes_to_add" would be loaded with "stride" value outside the call. This data will begin from the width index after dropping xstride values. So, no need to exclusively mention this
       // b) If stride value is gr. than kernel then "strideConsumption" would be accounted in the total consumed value and the next index would start appropriately accounting for stride in an indirect fashion
@@ -1760,18 +1767,18 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
 
       for(k=0;k<copy_inp_width;k++)
       {
-        memcpy(p_dst, p_inp, input_channels);
-        memset(&p_dst[input_channels], pad_val_u8, (input_channels_pad - input_channels));
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad);
-        p_inp += (input_channels*dilation_width);
+        memcpy(p_dst, p_inp, input_channels * input_bytewidth);
+        memset(&p_dst[input_channels], pad_val_u8, (input_channels_pad - input_channels) * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad * input_bytewidth);
+        p_inp += (input_channels*dilation_width) * input_bytewidth;
       }
       for(k=0;k<copy_x_r_pad_width;k++)
       {
-          memset(p_dst, pad_val_u8, input_channels_pad);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad);
+          memset(p_dst, pad_val_u8, input_channels_pad * input_bytewidth);
+          AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad * input_bytewidth);
       }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * input_channels_pad);
-      p_inp += ( (input_width - ((copy_inp_width*dilation_width)+(input_offset_dilation + (*input_width_consumed)*dilation_width) + (input_width_correction * dilation_width)  ) ) + ((dilation_height-1)*input_width) )* input_channels;
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * input_channels_pad * input_bytewidth);
+      p_inp += ( (input_width - ((copy_inp_width*dilation_width)+(input_offset_dilation + (*input_width_consumed)*dilation_width) + (input_width_correction * dilation_width)  ) ) + ((dilation_height-1)*input_width) )* input_channels * input_bytewidth;
 
     }
 
@@ -1810,10 +1817,10 @@ VOID xa_nn_dilated_conv2d_std_load_cir_buf_asym8(
     {
       for(k=0;k<planes_to_add;k++)
       {
-        memset(p_dst, pad_val_u8, input_channels_pad);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad);
+        memset(p_dst, pad_val_u8, input_channels_pad * input_bytewidth);
+        AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, input_channels_pad * input_bytewidth);
       }
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * input_channels_pad);
+      AE_ADDCIRC16X4_XC((ae_int16x4 *)p_dst, planes_to_keep * input_channels_pad * input_bytewidth);
     }
 
   }

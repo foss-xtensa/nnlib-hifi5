@@ -1035,7 +1035,7 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_unaligned
         AE_LA8X8X2_IP(vec0_batch_0, vec0_batch_1, align_p_vec_0, (ae_int8x16 *)p_vec_0);
 
         vec0_batch_0 = AE_SEL8X8(vec0_batch_0, vec_bias, sel1);
-
+ 
         MAT_VEC_MAC(acc_row0_vec0, acc_row0_vec1, mat1_row0_0, mat1_row0_0, mat1_row0_0, mat1_row0_0, vec0_batch_0, mat1_zb, vec1_zb);
 
         if(rem_g8)
@@ -1047,6 +1047,658 @@ static inline void _xa_nn_dot_product_1_rows_1_vecs_unaligned
 
     *out_0_0 = acc_row0_vec0;
     *out_1_0 = acc_row0_vec1;
+}
+
+WORD32 xa_nn_matmul_v2_asym8sxasym8s_asym8s(
+    WORD8 * __restrict__ p_out,
+    const WORD8 * __restrict__ p_mat1,
+    const WORD8 * __restrict__ p_vec1,
+    const WORD32 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols1,
+    WORD32 row_stride1,
+    WORD32 vec_count,
+    WORD32 vec_offset,
+    WORD32 out_offset,
+    WORD32 out_stride,
+    WORD32 mat1_zero_bias,
+    WORD32 vec1_zero_bias,
+    WORD32 out_multiplier,
+    WORD32 out_shift,
+    WORD32 out_zero_bias,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
+{
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec1, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_mat1, 2*sizeof(WORD64), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec1, 2*sizeof(WORD64), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, 2*sizeof(WORD64), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+  XA_NNLIB_ARG_CHK_COND((vec_count <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((vec_offset == 0), -1);
+  XA_NNLIB_ARG_CHK_COND((out_offset == 0), -1);
+  XA_NNLIB_ARG_CHK_COND((out_stride == 0), -1);
+  XA_NNLIB_ARG_CHK_COND((mat1_zero_bias < -127 || mat1_zero_bias > 128), -1);
+  XA_NNLIB_ARG_CHK_COND((vec1_zero_bias < -127 || vec1_zero_bias > 128), -1);
+  XA_NNLIB_ARG_CHK_COND((out_shift < -31 || out_shift > 31), -1);
+  XA_NNLIB_ARG_CHK_COND((out_zero_bias < -128 || out_zero_bias > 127), -1);
+
+  /* Iterators used in for loops */
+  int m_itr, vec_itr;
+  int ii;
+
+  /* Shifts to match with Tensorflow */
+  
+
+#if TFLITE_SINGLE_ROUNDING
+  int left_shift;
+  left_shift = out_shift;
+#else /* #if TFLITE_SINGLE_ROUNDING */
+  int left_shift, right_shift;
+  left_shift = out_shift < 0 ? 0 : out_shift;
+  right_shift = out_shift > 0 ? 0 : -out_shift;
+#endif /* #if TFLITE_SINGLE_ROUNDING */
+
+  /*Load AE_BIASV8 and AE_BIASC8 state registers with mat1 and vec1 zero bias values*/
+  ae_int64 biasvc1 = AE_MOVINT64_FROMINT32X2(AE_MOVDA32X2(-vec1_zero_bias, -mat1_zero_bias));
+  ae_int64 biascv1 = AE_MOVINT64_FROMINT32X2(AE_MOVDA32X2(-mat1_zero_bias, -vec1_zero_bias));
+
+  /* Assign initial value so this value will be used in trailing loop */
+  m_itr = 0;
+  vec_itr = 0;
+  ae_int32x2 acc_row0_vec0, acc_row0_vec1, acc_row0_vec2, acc_row0_vec3;
+  ae_int32x2 acc_row1_vec0, acc_row1_vec1, acc_row1_vec2, acc_row1_vec3;
+  
+  if(
+      ((row_stride1 & 15) == 0) &&
+      ((vec_offset & 15) == 0)
+    )
+  {
+    ae_int32x2 acc_row0_vec0, acc_row0_vec1, acc_row0_vec2, acc_row0_vec3;
+    ae_int32x2 acc_row1_vec0, acc_row1_vec1, acc_row1_vec2, acc_row1_vec3;
+
+    for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
+    {
+      WORD8* p_dst_0 = (WORD8*)p_out + (vec_itr + 0) * out_offset;
+      WORD8* p_dst_1 = (WORD8*)p_out + (vec_itr + 1) * out_offset;
+      WORD8* p_dst_2 = (WORD8*)p_out + (vec_itr + 2) * out_offset;
+      WORD8* p_dst_3 = (WORD8*)p_out + (vec_itr + 3) * out_offset;
+
+      for(m_itr = 0; m_itr < (rows & ~(4 - 1)); m_itr += 4)
+      {
+        ae_int32x2 bias_01 = AE_ZERO32(), bias_23 = AE_ZERO32();
+
+        if(p_bias)
+        {
+          bias_01 = AE_MOVDA32X2(p_bias[m_itr + 0], p_bias[m_itr + 1]);
+          bias_23 = AE_MOVDA32X2(p_bias[m_itr + 2], p_bias[m_itr + 3]);
+        }
+
+        acc_row0_vec0 = bias_01;
+        acc_row1_vec0 = bias_23;
+        acc_row0_vec1 = bias_01;
+        acc_row1_vec1 = bias_23;
+        acc_row0_vec2 = bias_01;
+        acc_row1_vec2 = bias_23;
+        acc_row0_vec3 = bias_01;
+        acc_row1_vec3 = bias_23;
+
+        ae_int8* p_vec_0  = (ae_int8 *)(p_vec1 + vec_itr * vec_offset);
+        ae_int8x8 *p_mat1_0 = (ae_int8x8 *) &p_mat1[(m_itr + 0) * row_stride1];
+
+        AE_MOVZBVCDR(biasvc1);
+        _xa_nn_dot_product_4_rows_4_vecs_aligned
+          (&acc_row0_vec0
+           ,&acc_row0_vec1
+           ,&acc_row0_vec2
+           ,&acc_row0_vec3
+           ,&acc_row1_vec0
+           ,&acc_row1_vec1
+           ,&acc_row1_vec2
+           ,&acc_row1_vec3
+           ,p_mat1_0
+           ,p_vec_0
+           ,cols1
+           ,row_stride1
+           ,vec_offset
+           ,-mat1_zero_bias
+#ifndef AE_MULAZB8Q8X8
+           ,-vec1_zero_bias
+#endif
+          );
+
+        ae_int16x4 out_0, out_1, out_2, out_3;
+
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row1_vec0, out_multiplier, left_shift, right_shift, out_zero_bias);
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_1, acc_row0_vec1, acc_row1_vec1, out_multiplier, left_shift, right_shift, out_zero_bias);
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_2, acc_row0_vec2, acc_row1_vec2, out_multiplier, left_shift, right_shift, out_zero_bias);
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_3, acc_row0_vec3, acc_row1_vec3, out_multiplier, left_shift, right_shift, out_zero_bias);
+
+        AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+        AE_MINMAX16(out_1, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+        AE_MINMAX16(out_2, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+        AE_MINMAX16(out_3, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+        ae_int8x8 temp_vec0, temp_vec1;
+        temp_vec0 = AE_SAT8X8X16(out_0, out_1);
+        temp_vec1 = AE_SAT8X8X16(out_2, out_3);
+
+        AE_SW_S8_7_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_6_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_5_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_4_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+        AE_SW_S8_2_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+        AE_SW_S8_1_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+        AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+
+        AE_SW_S8_7_XP(temp_vec1, (ae_int8 *) p_dst_2, out_stride);
+        AE_SW_S8_6_XP(temp_vec1, (ae_int8 *) p_dst_2, out_stride);
+        AE_SW_S8_5_XP(temp_vec1, (ae_int8 *) p_dst_2, out_stride);
+        AE_SW_S8_4_XP(temp_vec1, (ae_int8 *) p_dst_2, out_stride);
+        AE_SW_S8_3_XP(temp_vec1, (ae_int8 *) p_dst_3, out_stride);
+        AE_SW_S8_2_XP(temp_vec1, (ae_int8 *) p_dst_3, out_stride);
+        AE_SW_S8_1_XP(temp_vec1, (ae_int8 *) p_dst_3, out_stride);
+        AE_S8_0_XP(temp_vec1, (ae_int8 *) p_dst_3, out_stride);
+      }
+
+      // Remaining vectors
+      for(m_itr = (rows & (~3)); m_itr < rows; m_itr++)
+      {
+        ae_int32x2 bias_0 = AE_ZERO32();
+        if(p_bias)
+        {
+          bias_0 = AE_MOVDA32(p_bias[m_itr]);
+        }
+
+        acc_row0_vec0 = bias_0;
+        acc_row0_vec1 = bias_0;
+
+        ae_int8x8* p_vec_0  = (ae_int8x8 *)(p_vec1 + vec_itr * vec_offset);
+        ae_int8 *p_mat1_0 = (ae_int8 *) &p_mat1[(m_itr + 0) * row_stride1];
+
+        AE_MOVZBVCDR(biascv1);
+        _xa_nn_dot_product_4_rows_1_vecs_aligned
+          (&acc_row0_vec0
+           ,&acc_row0_vec1
+           ,p_vec_0
+           ,p_mat1_0
+           ,cols1
+           ,vec_offset
+#ifndef AE_MULAZB8Q8X8
+           ,-vec1_zero_bias
+#endif
+           ,-mat1_zero_bias
+          );
+
+        ae_int16x4 out_0;
+
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row0_vec1, out_multiplier, left_shift, right_shift, out_zero_bias);
+        AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+        ae_int8x8 temp_vec0;
+        temp_vec0 = AE_SAT8X8X16(out_0, out_0);
+
+        AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_2_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+        AE_SW_S8_1_XP(temp_vec0, (ae_int8 *) p_dst_2, out_stride);
+        AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst_3, out_stride);
+      }
+    }
+
+    // remaining rows
+    for (vec_itr = (vec_count & (~3)); vec_itr < vec_count; vec_itr++)
+    {
+      WORD8* p_dst = (WORD8*)p_out + (vec_itr + 0) * out_offset;
+      for(m_itr = 0; m_itr < (rows & ~(4 - 1)); m_itr += 4)
+      {
+        ae_int32x2 bias_01 = AE_ZERO32(), bias_23 = AE_ZERO32();
+
+        if(p_bias)
+        {
+          bias_01 = AE_MOVDA32X2(p_bias[m_itr + 0], p_bias[m_itr + 1]);
+          bias_23 = AE_MOVDA32X2(p_bias[m_itr + 2], p_bias[m_itr + 3]);
+        }
+
+        acc_row0_vec0 = bias_01;
+        acc_row1_vec0 = bias_23;
+
+        ae_int8* p_vec_0  = (ae_int8 *)(p_vec1 + vec_itr * vec_offset);
+        ae_int8x8 *p_mat1_0 = (ae_int8x8 *) &p_mat1[(m_itr + 0) * row_stride1];
+
+        AE_MOVZBVCDR(biasvc1);
+        _xa_nn_dot_product_4_rows_1_vecs_aligned
+          (&acc_row0_vec0
+           ,&acc_row1_vec0
+           ,p_mat1_0
+           ,p_vec_0
+           ,cols1
+           ,row_stride1
+#ifndef AE_MULAZB8Q8X8
+           ,-mat1_zero_bias
+#endif
+           ,-vec1_zero_bias
+          );
+
+        ae_int16x4 out_0;
+
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row1_vec0, out_multiplier, left_shift, right_shift, out_zero_bias);
+        AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+        ae_int8x8 temp_vec0;
+        temp_vec0 = AE_SAT8X8X16(out_0, out_0);
+
+        AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
+        AE_SW_S8_2_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
+        AE_SW_S8_1_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
+        AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
+      }
+
+      // Remaining vectors
+      for(m_itr = (rows & (~3)); m_itr < rows; m_itr++)
+      {
+        ae_int32x2 bias_0 = AE_ZERO32();
+        if(p_bias)
+        {
+          bias_0 = AE_MOVDA32(p_bias[m_itr]);
+        }
+
+        acc_row0_vec0 = bias_0;
+        acc_row0_vec1 = bias_0;
+
+        ae_int8* p_vec_0  = (ae_int8 *)(p_vec1 + vec_itr * vec_offset);
+        ae_int8x8 *p_mat1_0 = (ae_int8x8 *) &p_mat1[(m_itr + 0) * row_stride1];
+
+        AE_MOVZBVCDR(biasvc1);
+        _xa_nn_dot_product_1_rows_1_vecs_aligned
+          (&acc_row0_vec0
+           ,&acc_row0_vec1
+           ,p_mat1_0
+           ,p_vec_0
+           ,cols1
+#ifndef AE_MULAZB8Q8X8
+           ,-mat1_zero_bias
+#endif
+           ,-vec1_zero_bias
+          );
+
+        ae_int8x8 temp_vec0;
+        MPY_BY_QUANT_MULT_X2_OUT32(acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift, right_shift);
+        acc_row0_vec0 = AE_ADD32S(acc_row0_vec0, out_zero_bias);
+        AE_MINMAX32(acc_row0_vec0, AE_MOVDA32(out_activation_min), AE_MOVDA32(out_activation_max));
+        temp_vec0 = AE_SAT8X4X32_L(acc_row0_vec0, acc_row0_vec0);
+        AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst, out_stride);
+      }
+    }
+  }
+  else
+  {
+    for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
+    {
+      WORD8* p_dst_0 = (WORD8*)p_out + (vec_itr + 0) * out_offset;
+      WORD8* p_dst_1 = (WORD8*)p_out + (vec_itr + 1) * out_offset;
+      WORD8* p_dst_2 = (WORD8*)p_out + (vec_itr + 2) * out_offset;
+      WORD8* p_dst_3 = (WORD8*)p_out + (vec_itr + 3) * out_offset;
+
+      for(m_itr = 0; m_itr < (rows & ~(32 - 1)); m_itr += 32)
+      {
+
+        for(ii = 0; ii < 8; ii++)
+        {
+          WORD8* p_dst_0_ii = p_dst_0 + (m_itr + ii) * out_stride;
+          WORD8* p_dst_1_ii = p_dst_1 + (m_itr + ii) * out_stride;
+          WORD8* p_dst_2_ii = p_dst_2 + (m_itr + ii) * out_stride;
+          WORD8* p_dst_3_ii = p_dst_3 + (m_itr + ii) * out_stride;
+
+          ae_int32x2 bias_01 = AE_ZERO32(), bias_23 = AE_ZERO32();
+          if(p_bias)
+          {
+            bias_01 = AE_MOVDA32X2(p_bias[ 0 + ii + m_itr], p_bias[ 8 + ii + m_itr]);
+            bias_23 = AE_MOVDA32X2(p_bias[16 + ii + m_itr], p_bias[24 + ii + m_itr]);
+          }
+
+          acc_row0_vec0 = bias_01;
+          acc_row1_vec0 = bias_23;
+          acc_row0_vec1 = bias_01;
+          acc_row1_vec1 = bias_23;
+          acc_row0_vec2 = bias_01;
+          acc_row1_vec2 = bias_23;
+          acc_row0_vec3 = bias_01;
+          acc_row1_vec3 = bias_23;
+
+          ae_int8* p_vec_0  = (ae_int8 *)(p_vec1 + vec_itr * vec_offset);
+          ae_int8x8 *p_mat1_0 = (ae_int8x8 *) &p_mat1[(m_itr + ii + 0) * row_stride1];
+
+          AE_MOVZBVCDR(biasvc1);
+          _xa_nn_dot_product_4_rows_4_vecs_offset_aligned
+            (&acc_row0_vec0
+             ,&acc_row0_vec1
+             ,&acc_row0_vec2
+             ,&acc_row0_vec3
+             ,&acc_row1_vec0
+             ,&acc_row1_vec1
+             ,&acc_row1_vec2
+             ,&acc_row1_vec3
+             ,p_mat1_0
+             ,p_vec_0
+             ,cols1
+             ,row_stride1
+             ,vec_offset
+             ,-mat1_zero_bias
+  #ifndef AE_MULAZB8Q8X8
+             ,-vec1_zero_bias
+  #endif
+            );
+
+          ae_int16x4 out_0, out_1, out_2, out_3;
+
+          MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row1_vec0, out_multiplier, left_shift, right_shift, out_zero_bias);
+          MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_1, acc_row0_vec1, acc_row1_vec1, out_multiplier, left_shift, right_shift, out_zero_bias);
+          MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_2, acc_row0_vec2, acc_row1_vec2, out_multiplier, left_shift, right_shift, out_zero_bias);
+          MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_3, acc_row0_vec3, acc_row1_vec3, out_multiplier, left_shift, right_shift, out_zero_bias);
+
+          AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+          AE_MINMAX16(out_1, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+          AE_MINMAX16(out_2, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+          AE_MINMAX16(out_3, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+          ae_int8x8 temp_vec0, temp_vec1;
+          temp_vec0 = AE_SAT8X8X16(out_0, out_1);
+          temp_vec1 = AE_SAT8X8X16(out_2, out_3);
+
+          AE_SW_S8_7_XP(temp_vec0, (ae_int8 *) p_dst_0_ii, 8 * out_stride);
+          AE_SW_S8_6_XP(temp_vec0, (ae_int8 *) p_dst_0_ii, 8 * out_stride);
+          AE_SW_S8_5_XP(temp_vec0, (ae_int8 *) p_dst_0_ii, 8 * out_stride);
+          AE_SW_S8_4_XP(temp_vec0, (ae_int8 *) p_dst_0_ii, 8 * out_stride);
+          AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst_1_ii, 8 * out_stride);
+          AE_SW_S8_2_XP(temp_vec0, (ae_int8 *) p_dst_1_ii, 8 * out_stride);
+          AE_SW_S8_1_XP(temp_vec0, (ae_int8 *) p_dst_1_ii, 8 * out_stride);
+          AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst_1_ii, 8 * out_stride);
+
+          AE_SW_S8_7_XP(temp_vec1, (ae_int8 *) p_dst_2_ii, 8 * out_stride);
+          AE_SW_S8_6_XP(temp_vec1, (ae_int8 *) p_dst_2_ii, 8 * out_stride);
+          AE_SW_S8_5_XP(temp_vec1, (ae_int8 *) p_dst_2_ii, 8 * out_stride);
+          AE_SW_S8_4_XP(temp_vec1, (ae_int8 *) p_dst_2_ii, 8 * out_stride);
+          AE_SW_S8_3_XP(temp_vec1, (ae_int8 *) p_dst_3_ii, 8 * out_stride);
+          AE_SW_S8_2_XP(temp_vec1, (ae_int8 *) p_dst_3_ii, 8 * out_stride);
+          AE_SW_S8_1_XP(temp_vec1, (ae_int8 *) p_dst_3_ii, 8 * out_stride);
+          AE_S8_0_XP(temp_vec1, (ae_int8 *) p_dst_3_ii, 8 * out_stride);
+        }
+      }
+      p_dst_0 = p_dst_0 + (rows & (~31)) * out_stride;
+      p_dst_1 = p_dst_1 + (rows & (~31)) * out_stride;
+      p_dst_2 = p_dst_2 + (rows & (~31)) * out_stride;
+      p_dst_3 = p_dst_3 + (rows & (~31)) * out_stride;
+
+      // Remaining vectors
+
+      for(m_itr = (rows & (~31)); m_itr < (rows & ~(4 - 1)); m_itr += 4)
+      {
+        ae_int32x2 bias_01 = AE_ZERO32(), bias_23 = AE_ZERO32();
+        if(p_bias)
+        {
+          bias_01 = AE_MOVDA32X2(p_bias[m_itr + 0], p_bias[m_itr + 1]);
+          bias_23 = AE_MOVDA32X2(p_bias[m_itr + 2], p_bias[m_itr + 3]);
+        }
+
+        acc_row0_vec0 = bias_01;
+        acc_row1_vec0 = bias_23;
+        acc_row0_vec1 = bias_01;
+        acc_row1_vec1 = bias_23;
+        acc_row0_vec2 = bias_01;
+        acc_row1_vec2 = bias_23;
+        acc_row0_vec3 = bias_01;
+        acc_row1_vec3 = bias_23;
+
+        ae_int8* p_vec_0  = (ae_int8*)(p_vec1 + vec_itr * vec_offset);
+        ae_int8x8* p_mat1_0 = (ae_int8x8*) &p_mat1[(m_itr)* row_stride1];
+
+        AE_MOVZBVCDR(biasvc1);
+        _xa_nn_dot_product_4_rows_4_vecs_unaligned
+          (&acc_row0_vec0
+           ,&acc_row0_vec1
+           ,&acc_row0_vec2
+           ,&acc_row0_vec3
+           ,&acc_row1_vec0
+           ,&acc_row1_vec1
+           ,&acc_row1_vec2
+           ,&acc_row1_vec3
+           ,p_mat1_0
+           ,p_vec_0
+           ,cols1
+           ,row_stride1
+           ,vec_offset
+           ,-mat1_zero_bias
+  #ifndef AE_MULAZB8Q8X8
+           ,-vec1_zero_bias
+  #endif
+          );
+
+        ae_int16x4 out_0, out_1, out_2, out_3;
+
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row1_vec0, out_multiplier, left_shift, right_shift, out_zero_bias);
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_1, acc_row0_vec1, acc_row1_vec1, out_multiplier, left_shift, right_shift, out_zero_bias);
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_2, acc_row0_vec2, acc_row1_vec2, out_multiplier, left_shift, right_shift, out_zero_bias);
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_3, acc_row0_vec3, acc_row1_vec3, out_multiplier, left_shift, right_shift, out_zero_bias);
+
+        AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+        AE_MINMAX16(out_1, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+        AE_MINMAX16(out_2, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+        AE_MINMAX16(out_3, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+        ae_int8x8 temp_vec0, temp_vec1;
+        temp_vec0 = AE_SAT8X8X16(out_0, out_1);
+        temp_vec1 = AE_SAT8X8X16(out_2, out_3);
+
+        AE_SW_S8_7_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_6_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_5_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_4_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+        AE_SW_S8_2_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+        AE_SW_S8_1_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+        AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+
+        AE_SW_S8_7_XP(temp_vec1, (ae_int8 *) p_dst_2, out_stride);
+        AE_SW_S8_6_XP(temp_vec1, (ae_int8 *) p_dst_2, out_stride);
+        AE_SW_S8_5_XP(temp_vec1, (ae_int8 *) p_dst_2, out_stride);
+        AE_SW_S8_4_XP(temp_vec1, (ae_int8 *) p_dst_2, out_stride);
+        AE_SW_S8_3_XP(temp_vec1, (ae_int8 *) p_dst_3, out_stride);
+        AE_SW_S8_2_XP(temp_vec1, (ae_int8 *) p_dst_3, out_stride);
+        AE_SW_S8_1_XP(temp_vec1, (ae_int8 *) p_dst_3, out_stride);
+        AE_S8_0_XP(temp_vec1, (ae_int8 *) p_dst_3, out_stride);
+      }
+
+      // remaining rows
+      for(m_itr = (rows & (~3)); m_itr < rows; m_itr++)
+      {
+        ae_int32x2 bias_0 = AE_ZERO32();
+        if(p_bias)
+        {
+          bias_0 = AE_MOVDA32(p_bias[m_itr]);
+        }
+        acc_row0_vec0 = bias_0;
+        acc_row0_vec1 = bias_0;
+        ae_int8x8* p_vec_0  = (ae_int8x8*)(p_vec1 + vec_itr * vec_offset);
+        ae_int8 *p_mat1_0 = (ae_int8*) &p_mat1[m_itr * row_stride1];
+
+        AE_MOVZBVCDR(biascv1);
+        _xa_nn_dot_product_4_rows_1_vecs_unaligned
+          (&acc_row0_vec0
+           ,&acc_row0_vec1
+           ,p_vec_0
+           ,p_mat1_0
+           ,cols1
+           ,vec_offset
+  #ifndef AE_MULAZB8Q8X8
+           ,-vec1_zero_bias
+  #endif
+           ,-mat1_zero_bias
+          );
+
+        ae_int16x4 out_0;
+
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row0_vec1, out_multiplier, left_shift, right_shift, out_zero_bias);
+        AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+        ae_int8x8 temp_vec0;
+        temp_vec0 = AE_SAT8X8X16(out_0, out_0);
+
+        AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_2_XP(temp_vec0, (ae_int8 *) p_dst_1, out_stride);
+        AE_SW_S8_1_XP(temp_vec0, (ae_int8 *) p_dst_2, out_stride);
+        AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst_3, out_stride);
+      }
+    }
+
+    for (vec_itr = (vec_count & (~3)); vec_itr < (vec_count); vec_itr++)
+    {
+      WORD8* p_dst_0 = (WORD8*)p_out + (vec_itr + 0) * out_offset;
+
+      for(m_itr = 0; m_itr < (rows & ~(32 - 1)); m_itr += 32)
+      {
+
+        for(ii = 0; ii < 8; ii++)
+        {
+          WORD8* p_dst_0_ii = p_dst_0 + (m_itr + ii) * out_stride;
+
+          ae_int32x2 bias_01 = AE_ZERO32(), bias_23 = AE_ZERO32();
+          if(p_bias)
+          {
+            bias_01 = AE_MOVDA32X2(p_bias[ 0 + ii + m_itr], p_bias[ 8 + ii + m_itr]);
+            bias_23 = AE_MOVDA32X2(p_bias[16 + ii + m_itr], p_bias[24 + ii + m_itr]);
+          }
+
+          acc_row0_vec0 = bias_01;
+          acc_row1_vec0 = bias_23;
+
+          ae_int8* p_vec_0  = (ae_int8 *)(p_vec1 + vec_itr * vec_offset);
+          ae_int8x8 *p_mat1_0 = (ae_int8x8 *) &p_mat1[(m_itr + ii + 0) * row_stride1];
+
+          AE_MOVZBVCDR(biasvc1);
+          _xa_nn_dot_product_4_rows_1_vecs_offset_aligned
+            (&acc_row0_vec0
+             ,&acc_row1_vec0
+             ,p_mat1_0
+             ,p_vec_0
+             ,cols1
+             ,row_stride1
+  #ifndef AE_MULAZB8Q8X8
+             ,-mat1_zero_bias
+  #endif
+             ,-vec1_zero_bias
+            );
+
+          ae_int16x4 out_0;
+
+          MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row1_vec0, out_multiplier, left_shift, right_shift, out_zero_bias);
+
+          AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+          ae_int8x8 temp_vec0;
+          temp_vec0 = AE_SAT8X8X16(out_0, out_0);
+
+          AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst_0_ii, 8 * out_stride);
+          AE_SW_S8_2_XP(temp_vec0, (ae_int8 *) p_dst_0_ii, 8 * out_stride);
+          AE_SW_S8_1_XP(temp_vec0, (ae_int8 *) p_dst_0_ii, 8 * out_stride);
+          AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst_0_ii, 8 * out_stride);
+        }
+      }
+      p_dst_0 = p_dst_0 + (rows & (~31)) * out_stride;
+
+      // Remaining vectors
+
+      for(m_itr = (rows & (~31)); m_itr < (rows & ~(4 - 1)); m_itr += 4)
+      {
+        ae_int32x2 bias_01 = AE_ZERO32(), bias_23 = AE_ZERO32();
+        if(p_bias)
+        {
+          bias_01 = AE_MOVDA32X2(p_bias[m_itr + 0], p_bias[m_itr + 1]);
+          bias_23 = AE_MOVDA32X2(p_bias[m_itr + 2], p_bias[m_itr + 3]);
+        }
+
+        acc_row0_vec0 = bias_01;
+        acc_row1_vec0 = bias_23;
+
+        ae_int8* p_vec_0  = (ae_int8*)(p_vec1 + vec_itr * vec_offset);
+        ae_int8x8* p_mat1_0 = (ae_int8x8*) &p_mat1[(m_itr)* row_stride1];
+
+        AE_MOVZBVCDR(biasvc1);
+        _xa_nn_dot_product_4_rows_1_vecs_unaligned
+          (&acc_row0_vec0
+           ,&acc_row1_vec0
+           ,p_mat1_0
+           ,p_vec_0
+           ,cols1
+           ,row_stride1
+  #ifndef AE_MULAZB8Q8X8
+           ,-mat1_zero_bias
+  #endif
+           ,-vec1_zero_bias
+          );
+
+        ae_int16x4 out_0;
+
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row1_vec0, out_multiplier, left_shift, right_shift, out_zero_bias);
+
+        AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+        ae_int8x8 temp_vec0;
+        temp_vec0 = AE_SAT8X8X16(out_0, out_0);
+
+        AE_SW_S8_3_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_2_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_SW_S8_1_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+        AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+      }
+
+      // remaining rows
+      for(m_itr = (rows & (~3)); m_itr < rows; m_itr++)
+      {
+        ae_int32x2 bias_0 = AE_ZERO32();
+        if(p_bias)
+        {
+          bias_0 = AE_MOVDA32(p_bias[m_itr]);
+        }
+        acc_row0_vec0 = bias_0;
+        acc_row0_vec1 = bias_0;
+        ae_int8* p_vec_0  = (ae_int8*)(p_vec1 + vec_itr * vec_offset);
+        ae_int8x8 *p_mat1_0 = (ae_int8x8*) &p_mat1[m_itr * row_stride1];
+
+        AE_MOVZBVCDR(biasvc1);
+        _xa_nn_dot_product_1_rows_1_vecs_unaligned
+          (&acc_row0_vec0
+           ,&acc_row0_vec1
+           ,p_mat1_0
+           ,p_vec_0
+           ,cols1
+  #ifndef AE_MULAZB8Q8X8
+           ,-mat1_zero_bias
+  #endif
+           ,-vec1_zero_bias
+          );
+
+        ae_int16x4 out_0;
+
+        MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out_0, acc_row0_vec0, acc_row0_vec0, out_multiplier, left_shift, right_shift, out_zero_bias);
+        AE_MINMAX16(out_0, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
+
+        ae_int8x8 temp_vec0;
+        temp_vec0 = AE_SAT8X8X16(out_0, out_0);
+
+        AE_S8_0_XP(temp_vec0, (ae_int8 *) p_dst_0, out_stride);
+      }
+    }
+  }
+  return 0;
 }
 
 WORD32 xa_nn_matmul_asym8sxasym8s_asym8s(
@@ -1395,6 +2047,8 @@ WORD32 xa_nn_matmul_asym8sxasym8s_asym8s(
     ae_int8x8 sel2;
     if(rem_g8)
       sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(post_loop_sel_pattern[2 * (rem_cols & 7) * rem_g8], post_loop_sel_pattern[2 * (rem_cols & 7) * rem_g8 + 1]));
+    else if(rem_cols == 0)
+      sel2 = sel1;
     else
       sel2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32(0));
         
