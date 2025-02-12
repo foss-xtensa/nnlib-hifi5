@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -124,18 +124,20 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
                 // Compute output element location.
                 int out_x = out_x_orig + filter_x;//out_x_origin + filter_x;
                 int out_y = out_y_orig + filter_y;//out_y_origin + filter_y;
-                ae_int64 * __restrict pscratch_src = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + out_x * output_depth];
-                ae_int64 * __restrict pscratch_src2 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride1)* output_depth];
-                ae_int64 * __restrict pscratch_src3 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride2) * output_depth];
-                ae_int64 * __restrict pscratch_src4 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride3)* output_depth];
+                ae_int64 * pscratch_src = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + out_x * output_depth];
+                ae_int64 * pscratch_src2 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride1)* output_depth];
+                ae_int64 * pscratch_src3 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride2) * output_depth];
+                ae_int64 * pscratch_src4 = (ae_int64 *)&scratch_buffer[out_y * output_width * output_depth + (out_x + stride_width*tmp_width_stride3)* output_depth];
 
-                ae_int64 * __restrict pscratch_dst = pscratch_src;
-                ae_int64 * __restrict pscratch_dst2 = pscratch_src2;
-                ae_int64 * __restrict pscratch_dst3 = pscratch_src3;
-                ae_int64 * __restrict pscratch_dst4 = pscratch_src4;
+                ae_int64 * pscratch_dst = pscratch_src;
+                ae_int64 * pscratch_dst2 = pscratch_src2;
+                ae_int64 * pscratch_dst3 = pscratch_src3;
+                ae_int64 * pscratch_dst4 = pscratch_src4;
 
-                ae_int64 d_scr0, d_scr1, d_scr2, d_scr3;
-                ae_int64 d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3;
+                ae_int64 d_scr00, d_scr01, d_scr02, d_scr03;
+                ae_int64 d_scr1_00, d_scr1_01, d_scr1_02, d_scr1_03;
+                ae_int64 d_scr10, d_scr11, d_scr12, d_scr13;
+                ae_int64 d_scr1_10, d_scr1_11, d_scr1_12, d_scr1_13;
                 WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
                 ae_int8x8 d_fil0, d_fil1, d_fil2, d_fil3;
                 ae_int8x8 d_fil4, d_fil5, d_fil6, d_fil7;
@@ -146,41 +148,42 @@ static inline void tconv2d_sym8sxsym16s(WORD16* output_data,
 
                 for (int out_channel = 0; out_channel < output_depth; out_channel+=4)
                 {
-                  AE_L64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_src, 16);
-                  AE_L64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src, 32);
+                  AE_L64X2_I(d_scr02, d_scr03, (ae_int64x2 *)pscratch_src, 16);
+                  AE_L64X2_IP(d_scr00, d_scr01, (ae_int64x2 *)pscratch_src, 32);
 
-                  AE_L64X2_I(d_scr1_2, d_scr1_3, (ae_int64x2 *)pscratch_src2, 16);
-                  AE_L64X2_IP(d_scr1_0, d_scr1_1, (ae_int64x2 *)pscratch_src2, 32);
+                  AE_L64X2_I(d_scr1_02, d_scr1_03, (ae_int64x2 *)pscratch_src2, 16);
+                  AE_L64X2_IP(d_scr1_00, d_scr1_01, (ae_int64x2 *)pscratch_src2, 32);
 
-                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp0, d_inp1);
-                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp2, d_inp3);
-
-                  AE_MULA8QW8X16(d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp1_0, d_inp1_1);
-                  AE_MULA8QW8X16(d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp1_2, d_inp1_3);
-
-                  AE_S64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_dst, 16);
-                  AE_S64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_dst, 32);
-
-                  AE_S64X2_I(d_scr1_2, d_scr1_3, (ae_int64x2 *)pscratch_dst2, 16);
-                  AE_S64X2_IP(d_scr1_0, d_scr1_1, (ae_int64x2 *)pscratch_dst2, 32);
-
-                  AE_L64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_src3, 16);
-                  AE_L64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_src3, 32);
-
-                  AE_L64X2_I(d_scr1_2, d_scr1_3, (ae_int64x2 *)pscratch_src4, 16);
-                  AE_L64X2_IP(d_scr1_0, d_scr1_1, (ae_int64x2 *)pscratch_src4, 32);
                   
-                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp2_0, d_inp2_1);
-                  AE_MULA8QW8X16(d_scr0, d_scr1, d_scr2, d_scr3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp2_2, d_inp2_3);
+                  AE_MULA8QW8X16(d_scr00, d_scr01, d_scr02, d_scr03, d_fil0, d_fil2, d_fil4, d_fil6, d_inp0, d_inp1);
+                  AE_MULA8QW8X16(d_scr00, d_scr01, d_scr02, d_scr03, d_fil1, d_fil3, d_fil5, d_fil7, d_inp2, d_inp3);
 
-                  AE_MULA8QW8X16(d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3, d_fil0, d_fil2, d_fil4, d_fil6, d_inp3_0, d_inp3_1);
-                  AE_MULA8QW8X16(d_scr1_0, d_scr1_1, d_scr1_2, d_scr1_3, d_fil1, d_fil3, d_fil5, d_fil7, d_inp3_2, d_inp3_3);
+                  AE_MULA8QW8X16(d_scr1_00, d_scr1_01, d_scr1_02, d_scr1_03, d_fil0, d_fil2, d_fil4, d_fil6, d_inp1_0, d_inp1_1);
+                  AE_MULA8QW8X16(d_scr1_00, d_scr1_01, d_scr1_02, d_scr1_03, d_fil1, d_fil3, d_fil5, d_fil7, d_inp1_2, d_inp1_3);
+
+                  AE_L64X2_I(d_scr12, d_scr13, (ae_int64x2 *)pscratch_src3, 16);
+                  AE_L64X2_IP(d_scr10, d_scr11, (ae_int64x2 *)pscratch_src3, 32);
+
+                  AE_L64X2_I(d_scr1_12, d_scr1_13, (ae_int64x2 *)pscratch_src4, 16);
+                  AE_L64X2_IP(d_scr1_10, d_scr1_11, (ae_int64x2 *)pscratch_src4, 32);
+
+                  AE_S64X2_I(d_scr02, d_scr03, (ae_int64x2 *)pscratch_dst, 16);
+                  AE_S64X2_IP(d_scr00, d_scr01, (ae_int64x2 *)pscratch_dst, 32);
+
+                  AE_S64X2_I(d_scr1_02, d_scr1_03, (ae_int64x2 *)pscratch_dst2, 16);
+                  AE_S64X2_IP(d_scr1_00, d_scr1_01, (ae_int64x2 *)pscratch_dst2, 32);
                   
-                  AE_S64X2_I(d_scr2, d_scr3, (ae_int64x2 *)pscratch_dst3, 16);
-                  AE_S64X2_IP(d_scr0, d_scr1, (ae_int64x2 *)pscratch_dst3, 32);
+                  AE_MULA8QW8X16(d_scr10, d_scr11, d_scr12, d_scr13, d_fil0, d_fil2, d_fil4, d_fil6, d_inp2_0, d_inp2_1);
+                  AE_MULA8QW8X16(d_scr10, d_scr11, d_scr12, d_scr13, d_fil1, d_fil3, d_fil5, d_fil7, d_inp2_2, d_inp2_3);
 
-                  AE_S64X2_I(d_scr1_2, d_scr1_3, (ae_int64x2 *)pscratch_dst4, 16);
-                  AE_S64X2_IP(d_scr1_0, d_scr1_1, (ae_int64x2 *)pscratch_dst4, 32);
+                  AE_MULA8QW8X16(d_scr1_10, d_scr1_11, d_scr1_12, d_scr1_13, d_fil0, d_fil2, d_fil4, d_fil6, d_inp3_0, d_inp3_1);
+                  AE_MULA8QW8X16(d_scr1_10, d_scr1_11, d_scr1_12, d_scr1_13, d_fil1, d_fil3, d_fil5, d_fil7, d_inp3_2, d_inp3_3);
+
+                  AE_S64X2_I(d_scr12, d_scr13, (ae_int64x2 *)pscratch_dst3, 16);
+                  AE_S64X2_IP(d_scr10, d_scr11, (ae_int64x2 *)pscratch_dst3, 32);
+
+                  AE_S64X2_I(d_scr1_12, d_scr1_13, (ae_int64x2 *)pscratch_dst4, 16);
+                  AE_S64X2_IP(d_scr1_10, d_scr1_11, (ae_int64x2 *)pscratch_dst4, 32);
 
                   AE_L8X8X2_XP(d_fil0, d_fil1, (ae_int8x16 *)pfilt, stride1);
                   AE_L8X8X2_XP(d_fil2, d_fil3, (ae_int8x16 *)pfilt, stride1);
@@ -784,7 +787,7 @@ int xa_nn_transpose_conv_v2_sym8sxsym16s(WORD16* output_data,
     int input_height, int input_width,
     int filter_height, int filter_width,
     int output_height, int output_width,
-    int num_elements,
+    int num_elements, int num_groups,
     int *output_shift, int *output_multiplier,
     void* scratch_buffer,
     int out_activation_min, int out_activation_max,
@@ -813,6 +816,9 @@ int xa_nn_transpose_conv_v2_sym8sxsym16s(WORD16* output_data,
   XA_NNLIB_ARG_CHK_COND((out_activation_min < -32768 || out_activation_min > 32767), -1);
   XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min || out_activation_max > 32767), -1);
 
+  /* Temporary change till we add suppport for group > 1 */
+  (void)num_groups;
+  
   int ker_grt_inp = (filter_width > input_width || filter_height > input_height);
   int str_leq_ker = (stride_width <= filter_width && stride_height <= filter_height);
 
@@ -846,7 +852,7 @@ int xa_nn_transpose_conv_sym8sxsym16s(WORD16* output_data,
     int input_height, int input_width,
     int filter_height, int filter_width,
     int output_height, int output_width,
-    int num_elements,
+    int num_elements, int num_groups,
     int *output_shift, int *output_multiplier,
     void* scratch_buffer)
 {
@@ -855,7 +861,7 @@ int xa_nn_transpose_conv_sym8sxsym16s(WORD16* output_data,
               stride_height, pad_width, pad_height,
               input_depth, output_depth, input_height,
               input_width, filter_height, filter_width,
-              output_height, output_width, num_elements,
+              output_height, output_width, num_elements, num_groups,
               output_shift, output_multiplier, scratch_buffer,
               -32768, 32767, NULL);
 }

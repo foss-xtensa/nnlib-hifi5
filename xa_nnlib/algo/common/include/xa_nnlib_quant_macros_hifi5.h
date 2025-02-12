@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -500,7 +500,7 @@
   ae_int64 q0_l; \
   q0_l = AE_MUL32S_LL(d_red_mult, AE_MOVINT32X2_FROMINT64(inp0)); \
   AE_MULAF32S_LL(q0_l, d_red_mult_l16, AE_SLAI32(d_inp0_h, 15)); \
-  q0_l = AE_SLAA64(q0_l, (l_shift + 17)); \
+  q0_l = AE_SLAA64S(q0_l, (l_shift + 17)); \
   out0 = AE_ROUND32F64SASYM(q0_l); \
 }
 
@@ -528,7 +528,7 @@
   AE_MUL32X2S_HH_LL(q0_l, q1_l, d_red_mult, AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(inp0), AE_MOVINT32X2_FROMINT64(inp1))); \
   AE_MULAFP32X2S_HH_LL(q0_l, q1_l, d_red_mult_l16, AE_SLAI32(d_inp01_h, 15)); \
   AE_MUL32X2S_HH_LL(q2_l, q3_l, d_red_mult, AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(inp2), AE_MOVINT32X2_FROMINT64(inp3))); \
-  AE_MULAFP32X2S_HH_LL(q2_l, q2_l, d_red_mult_l16, AE_SLAI32(d_inp23_h, 15)); \
+  AE_MULAFP32X2S_HH_LL(q2_l, q3_l, d_red_mult_l16, AE_SLAI32(d_inp23_h, 15)); \
   out32_0 = AE_TRUNCA32X2F64S(q0_l, q1_l, l_shift + 33); \
   out32_1 = AE_TRUNCA32X2F64S(q2_l, q3_l, l_shift + 33); \
   out0 = AE_ROUND16X4F32SASYM(out32_0, out32_1); \
@@ -542,8 +542,8 @@
   ae_int64 q0_l, q1_l; \
   AE_MUL32X2S_HH_LL(q0_l, q1_l, d_red_mult01, AE_SEL32_LL(AE_MOVINT32X2_FROMINT64(inp0), AE_MOVINT32X2_FROMINT64(inp1))); \
   AE_MULAFP32X2S_HH_LL(q0_l, q1_l, d_red_mult01_l16, AE_SLAI32(d_inp01_h, 15)); \
-  q0_l = AE_SLAA64(q0_l, (AE_MOVAD32_H(l_shift01)+17)); \
-  q1_l = AE_SLAA64(q1_l, (AE_MOVAD32_L(l_shift01)+17)); \
+  q0_l = AE_SLAA64S(q0_l, (AE_MOVAD32_H(l_shift01)+17)); \
+  q1_l = AE_SLAA64S(q1_l, (AE_MOVAD32_L(l_shift01)+17)); \
   out0 = AE_ROUND32X2F64SASYM(q0_l, q1_l); \
 }
 

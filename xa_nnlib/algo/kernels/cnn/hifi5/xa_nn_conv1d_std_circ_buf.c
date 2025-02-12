@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -135,8 +135,8 @@ VOID xa_nn_conv1d_std_init_state(
 
   AE_SETCBEGIN0(p_state->cir_buf.p_begin);
   AE_SETCEND0(p_state->cir_buf.p_end);
-  AE_ADDCIRC16X4_XC(p_state->cir_buf.p_curr, -y_stride * input_channelsXwidth_pad * input_size);
-
+  p_state->cir_buf.p_curr -= (y_stride * input_channelsXwidth_pad * input_size);
+  AE_ADDCIRC16X4_XC(p_state->cir_buf.p_curr, 0);
 }
 
 // Init (kernel_height - y_stride) x input_channelsXwidth_pad planes in circular buffer

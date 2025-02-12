@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2024 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -44,8 +44,9 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
     int input_depth, int output_depth,
     int input_height, int input_width,
     int filter_height, int filter_width,
+    int indepth_per_grp, int outdepth_per_grp,
     int output_height, int output_width,
-    int num_elements,
+    int num_elements, int num_groups,
     int input_offset, int output_offset,
     int *output_shift, int *output_multiplier,
     int32_t* scratch_buffer, WORD32 out_activation_min,
@@ -67,10 +68,10 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
    */
   if(input_data && filter_data && scratch_buffer &&
       (((unsigned int)input_data&0xF)==0) && (((unsigned int)filter_data&0xF)==0) &&
-      (((unsigned int)scratch_buffer&0xF) == 0) && ((input_depth&0xF)==0) && ((output_depth&0x3)==0))
+      (((unsigned int)scratch_buffer&0xF) == 0) && ((indepth_per_grp&0xF)==0) && ((outdepth_per_grp&0x3)==0))
   {
+    for (int g = 0; g < num_groups; ++g)
     {
-      //tbd : batch = 1, need to handle other values and in_x_min/max= 0 .. need toc heck for other values
       for (int in_y = 0; in_y < input_height; ++in_y)
       {
         for (int in_x = 0; in_x < input_width; ++in_x)
@@ -89,8 +90,8 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
           filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
           filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
           filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
-          pinp =  (WORD8*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
-          for (int in_channel = 0; in_channel < input_depth; in_channel+=16)
+          pinp =  (WORD8*)&input_data[in_y*input_width*input_depth+in_x*input_depth+g*indepth_per_grp];
+          for (int in_channel = 0; in_channel < indepth_per_grp; in_channel+=16)
           {
             ae_int8x8 d_inp0, d_inp1;
             AE_L8X8X2_IP(d_inp0, d_inp1, (ae_int8x16*)pinp, 2*sizeof(WORD64));
@@ -102,10 +103,10 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
                 // Compute output element location.
                 int out_x = out_x_orig + filter_x;//out_x_origin + filter_x;
                 int out_y = out_y_orig + filter_y;//out_y_origin + filter_y;
-                ae_int32 *pscratch_src = (ae_int32*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
+                ae_int32 *pscratch_src = (ae_int32*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth+g*outdepth_per_grp];
                 ae_int32 *pscratch_dst = pscratch_src;
                 ae_int32x2 d_scr0, d_scr1;
-                WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
+                WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + g*indepth_per_grp + in_channel];
                 ae_int8x8 d_fil0, d_fil1, d_fil2, d_fil3;
                 ae_int8x8 d_fil4, d_fil5, d_fil6, d_fil7;
                 AE_L8X8X2_XP(d_fil0, d_fil1, (ae_int8x16 *)pfilt, stride1);
@@ -113,7 +114,7 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
                 AE_L8X8X2_XP(d_fil4, d_fil5, (ae_int8x16 *)pfilt, stride1);
                 AE_L8X8X2_XP(d_fil6, d_fil7, (ae_int8x16 *)pfilt, stride1);
 
-                for (int out_channel = 0; out_channel < (output_depth & (~3)); out_channel+=4)
+                for (int out_channel = 0; out_channel < (outdepth_per_grp & (~3)); out_channel+=4)
                 {
                   AE_L32X2X2_IP(d_scr0, d_scr1, (ae_int32x4 *)pscratch_src, 16);
                   MAT_VEC_MUL(d_scr0, d_scr1, d_fil0, d_fil2, d_fil4, d_fil6, d_inp0, input_offset);
@@ -133,10 +134,10 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
   }
   else if(input_data && filter_data && scratch_buffer &&
       (((unsigned int)input_data&0x3)==0) && (((unsigned int)filter_data&0x3)==0) &&
-      (((unsigned int)scratch_buffer&0x7) == 0) && ((input_depth&0x3)==0) && ((output_depth&0x1)==0))
+      (((unsigned int)scratch_buffer&0x7) == 0) && ((indepth_per_grp&0x3)==0) && ((outdepth_per_grp&0x1)==0))
   {
+    for (int g = 0; g < num_groups; ++g)
     {
-      //tbd : batch = 1, need to handle other values and in_x_min/max= 0 .. need to check for other values
       for (int in_y = 0; in_y < input_height; ++in_y)
       {
         for (int in_x = 0; in_x < input_width; ++in_x)
@@ -155,8 +156,8 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
           filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
           filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
           filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
-          pinp =  (WORD8*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
-          for (int in_channel = 0; in_channel < input_depth; in_channel+=4)
+          pinp =  (WORD8*)&input_data[in_y*input_width*input_depth+in_x*input_depth+g*indepth_per_grp];
+          for (int in_channel = 0; in_channel < indepth_per_grp; in_channel+=4)
           {
             ae_int16x4 d_inp;
             AE_L8X4S_IP(d_inp, (WORD8*)pinp, sizeof(WORD32));
@@ -169,15 +170,15 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
                 // Compute output element location.
                 int out_x = out_x_orig + filter_x;//out_x_origin + filter_x;
                 int out_y = out_y_orig + filter_y;//out_y_origin + filter_y;
-                ae_int32 *pscratch_src = (ae_int32*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
+                ae_int32 *pscratch_src = (ae_int32*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth+g*outdepth_per_grp];
                 ae_int32 *pscratch_dst = pscratch_src;
                 ae_int32x2 d_scr0;
-                WORD8* pfilt0 = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
+                WORD8* pfilt0 = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + g*indepth_per_grp + in_channel];
                 WORD8* pfilt1 = pfilt0 + stride1;
                 ae_int16x4 d_fil0, d_fil1;
                 AE_L8X4S_XP(d_fil0, pfilt0, 2*stride1);
                 AE_L8X4S_XP(d_fil1, pfilt1, 2*stride1);
-                for (int out_channel = 0; out_channel < (output_depth >> 1); ++out_channel)
+                for (int out_channel = 0; out_channel < (outdepth_per_grp >> 1); ++out_channel)
                 {
                   ae_int64 d0, d1;
                   AE_L32X2_IP(d_scr0, (ae_int32x2 *)pscratch_src, 8);
@@ -194,8 +195,69 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
       }
     }
   }
+#ifdef AE_MULAZB3X3O8X8
+  else if(input_data && filter_data && scratch_buffer &&
+      (((unsigned int)scratch_buffer&0x7)==0) && (indepth_per_grp==1) && (outdepth_per_grp==1) && (num_groups & 0x7)==0)
+  {
+    for (int in_y = 0; in_y < input_height; ++in_y)
+    {
+      for (int in_x = 0; in_x < input_width; ++in_x)
+      {
+        const int out_x_origin = (in_x * stride_width) - pad_width;
+        const int out_y_origin = (in_y * stride_height) - pad_height;
+        int filt_x_min = -out_x_origin;
+        int filt_x_max = output_width - out_x_origin;
+        int filt_y_min = -out_y_origin;
+        int filt_y_max = output_height - out_y_origin;
+        filt_x_min = (filt_x_min < filter_width) ? filt_x_min : filter_width;
+        filt_x_min = (filt_x_min < 0) ? 0 : filt_x_min;
+        filt_x_max = (filt_x_max < filter_width) ? filt_x_max : filter_width;
+        filt_x_max = (filt_x_max < 0) ? 0 : filt_x_max;
+        filt_y_min = (filt_y_min < filter_height) ? filt_y_min : filter_height;
+        filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
+        filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
+        filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
+  
+        for (int filter_y = filt_y_min; filter_y < filt_y_max; ++filter_y)
+        {
+          for (int filter_x = filt_x_min; filter_x < filt_x_max; ++filter_x)
+          {
+            pinp =  (WORD8*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
+            ae_valign align_pinp = AE_LA64_PP(pinp);
+
+            const int out_x = out_x_origin + filter_x;
+            const int out_y = out_y_origin + filter_y;
+            ae_int32 *pscratch_src = (ae_int32*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
+            ae_int32x2 d_scr0, d_scr1, d_scr2, d_scr3;
+            ae_int8x8 d_zero = AE_MOVDA8(0);
+
+            WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth+filter_x*input_depth];
+            ae_valign align_pfilt = AE_LA64_PP(pfilt);
+            for (int g = 0; g < num_groups; g+=8)
+            {
+              ae_int8x8 d_inp0;
+              ae_int8x8 d_fil0;
+              
+              AE_LA8X8_IP(d_inp0, align_pinp, (ae_int8x8*)pinp);
+              AE_LA8X8_IP(d_fil0, align_pfilt, (ae_int8x8 *)pfilt);
+
+              AE_L32X2X2_I(d_scr0, d_scr1, pscratch_src, 0);
+              AE_L32X2X2_I(d_scr2, d_scr3, pscratch_src, 16);
+              
+              AE_MULAZB3X3O8X8(d_scr0, d_scr1, d_scr2, d_scr3, d_fil0, d_zero, d_zero, d_inp0, d_zero, d_zero);
+              
+              AE_S32X2X2_I(d_scr2, d_scr3, pscratch_src, 16);
+              AE_S32X2X2_IP(d_scr0, d_scr1, pscratch_src, 32);
+            }
+          }
+        }
+      }
+    }
+  }
+#endif
   else
   {
+    for (int g = 0; g < num_groups; ++g)
     {
       for (int in_y = 0; in_y < input_height; ++in_y)
       {
@@ -215,13 +277,13 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
           filt_y_min = (filt_y_min < 0) ? 0 : filt_y_min;
           filt_y_max = (filt_y_max < filter_height) ? filt_y_max : filter_height;
           filt_y_max = (filt_y_max < 0) ? 0 : filt_y_max;
-          pinp =  (WORD8*)&input_data[in_y*input_width*input_depth+in_x*input_depth];
-          for (int in_channel = 0; in_channel < input_depth; in_channel+=16)
+          pinp =  (WORD8*)&input_data[in_y*input_width*input_depth+in_x*input_depth+g*indepth_per_grp];
+          for (int in_channel = 0; in_channel < indepth_per_grp; in_channel+=16)
           {
             ae_valignx2 align_pinp = AE_LA128_PP(pinp);
 
             ae_int8x8 d_inp0, d_inp1;
-            int offset = XT_MIN(input_depth - in_channel, 16);
+            int offset = XT_MIN(indepth_per_grp - in_channel, 16);
             AE_LAV8X8X2_XP(d_inp0, d_inp1, align_pinp, (ae_int8x16*)pinp, offset);
 
             for (int filter_y = filt_y_min; filter_y < filt_y_max; ++filter_y)
@@ -230,17 +292,17 @@ static inline void tconv2d_sym8sxasym8s(WORD8* output_data,
               {
                 const int out_x = out_x_origin + filter_x;
                 const int out_y = out_y_origin + filter_y;
-                ae_int32 *pscratch_src = (ae_int32*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth];
+                ae_int32 *pscratch_src = (ae_int32*)&scratch_buffer[out_y*output_width*output_depth+out_x*output_depth+g*outdepth_per_grp];
                 ae_int32x2 d_scr0;
 
-                WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + in_channel];
+                WORD8* pfilt = (WORD8*)&filter_data[filter_y*filter_width*input_depth + filter_x*input_depth + g*indepth_per_grp + in_channel];
                 ae_valignx2 align_pfilt = AE_LA128_PP(pfilt);
 
                 ae_int8x8 d_fil0, d_fil1;
                 AE_LAV8X8X2_XP(d_fil0, d_fil1, align_pfilt, (ae_int8x16 *)pfilt, offset);
                 pfilt = pfilt + stride1 - offset;
 
-                for (int out_channel = 0; out_channel < output_depth; ++out_channel)
+                for (int out_channel = 0; out_channel < outdepth_per_grp; ++out_channel)
                 {
                   d_scr0 = AE_L32_I(pscratch_src, 0);
                   ae_int32x2 d_tmp0 = AE_ZERO32();
@@ -619,8 +681,8 @@ static inline void transpose_conv2d_std_sym8sxasym8s(WORD8* output_data,
   WORD32 pad_w = pad_width;
 
   // Process Loop to compute one output plane [out_height x out_channels] per iteration
-  WORD32 out_w_looopcnt = valid_out_w / stride_width;
-  for(j = 0; j < out_w_looopcnt; j++)
+  WORD32 out_w_loopcnt = valid_out_w / stride_width;
+  for(j = 0; j < out_w_loopcnt; j++)
   {
     // Add x_stride x (input_height x input_channels) new planes to circular buffer
     conv2d_std_update_cir_buf_asym8(input_depth, input_depth, input_bytewidth, input_width, input_height, y_pad, y_b_pad, x_pad, subkerX_max, 1, (VOID**)&pp_inp, idx_beg_inp_width_pad, p_state, -input_offset);
@@ -747,7 +809,7 @@ int xa_nn_transpose_conv_v2_sym8sxasym8s(WORD8* output_data,
     int input_height, int input_width,
     int filter_height, int filter_width,
     int output_height, int output_width,
-    int num_elements,
+    int num_elements, int num_groups,
     int input_offset, int output_offset,
     int *output_shift, int *output_multiplier,
     void* scratch_buffer, WORD32 out_activation_min,
@@ -778,10 +840,16 @@ int xa_nn_transpose_conv_v2_sym8sxasym8s(WORD8* output_data,
   XA_NNLIB_ARG_CHK_COND((out_activation_min < -128 || out_activation_min > 127), -1);
   XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min || out_activation_max > 127), -1);
 
+  XA_NNLIB_ARG_CHK_COND((num_groups<=0), -1);
+  XA_NNLIB_ARG_CHK_COND(((input_depth % num_groups)!=0),-1);
+  const int indepth_per_grp = input_depth / num_groups;
+  XA_NNLIB_ARG_CHK_COND(((output_depth % num_groups)!=0),-1);
+  const int outdepth_per_grp = output_depth / num_groups;
+  
   int ker_grt_inp = (filter_width > input_width || filter_height > input_height);
   int str_leq_ker = (stride_width <= filter_width && stride_height <= filter_height);
 
-  if(!ker_grt_inp && str_leq_ker)
+  if(!ker_grt_inp && str_leq_ker && (num_groups == 1))
   {
     transpose_conv2d_std_sym8sxasym8s(output_data, input_data, filter_data, bias_data,
     stride_width, stride_height, pad_width, pad_height, input_depth, output_depth,
@@ -793,8 +861,8 @@ int xa_nn_transpose_conv_v2_sym8sxasym8s(WORD8* output_data,
   {
     tconv2d_sym8sxasym8s(output_data, input_data, filter_data, bias_data,
     stride_width, stride_height, pad_width, pad_height, input_depth, output_depth,
-    input_height, input_width, filter_height, filter_width, output_height, output_width,
-    num_elements, input_offset, output_offset, output_shift, output_multiplier, scratch_buffer,
+    input_height, input_width, filter_height, filter_width, indepth_per_grp, outdepth_per_grp, output_height, output_width,
+    num_elements, num_groups, input_offset, output_offset, output_shift, output_multiplier, scratch_buffer,
     out_activation_min, out_activation_max, p_dma_cfg);
   }
   return 0;
@@ -810,7 +878,7 @@ int xa_nn_transpose_conv_sym8sxasym8s(WORD8* output_data,
     int input_height, int input_width,
     int filter_height, int filter_width,
     int output_height, int output_width,
-    int num_elements,
+    int num_elements,int num_groups,
     int input_offset, int output_offset,
     int *output_shift, int *output_multiplier,
     void* scratch_buffer)
@@ -820,7 +888,7 @@ int xa_nn_transpose_conv_sym8sxasym8s(WORD8* output_data,
              stride_height, pad_width, pad_height, input_depth,
              output_depth, input_height, input_width,
              filter_height, filter_width, output_height,
-             output_width, num_elements, input_offset,
+             output_width, num_elements, num_groups, input_offset,
              output_offset, output_shift, output_multiplier,
              scratch_buffer, -128, 127, NULL);
 }
