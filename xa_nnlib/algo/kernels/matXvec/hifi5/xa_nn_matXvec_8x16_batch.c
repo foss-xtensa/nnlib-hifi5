@@ -99,7 +99,7 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
             {
                 for (vec_itr = 0; vec_itr < (vec_count & ~(VEC_UNROLL-1)); vec_itr += VEC_UNROLL)
                 {
-                    ae_int16 _ae_int16_bias = ZERO16;
+                    ae_int16 _ae_int16_bias = AE_MOVINT16_FROMINT16X4(ZERO16);
                     ae_int64 _ae_int64_sat_bias = ZERO64;
                     ae_int16 *_ae_int16_p_bias = (ae_int16 *) p_bias;
                     for(m_itr = 0; m_itr < (rows & ~(4-1)); m_itr += 4)
@@ -151,33 +151,33 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
 
 
                         ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16);
-                        _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift);
-                        _ae_int64_acc_0 = AE_ADD64S(_ae_int64_acc_0, _ae_int64_sat_bias);
-                        _ae_int64_acc_8 = AE_ADD64S(_ae_int64_acc_8, _ae_int64_sat_bias);
+                        _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift);
+                        _ae_int64_acc_0 = SW_ADD64S_INT64_INT64(_ae_int64_acc_0, _ae_int64_sat_bias);
+                        _ae_int64_acc_8 = SW_ADD64S_INT64_INT64(_ae_int64_acc_8, _ae_int64_sat_bias);
 
                         ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16);
-                        _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift);
-                        _ae_int64_acc_1 = AE_ADD64S(_ae_int64_acc_1, _ae_int64_sat_bias);
-                        _ae_int64_acc_9 = AE_ADD64S(_ae_int64_acc_9, _ae_int64_sat_bias);
+                        _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift);
+                        _ae_int64_acc_1 = SW_ADD64S_INT64_INT64(_ae_int64_acc_1, _ae_int64_sat_bias);
+                        _ae_int64_acc_9 = SW_ADD64S_INT64_INT64(_ae_int64_acc_9, _ae_int64_sat_bias);
 
                         ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16);
-                        _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift);
-                        _ae_int64_acc_2 = AE_ADD64S(_ae_int64_acc_2, _ae_int64_sat_bias);
-                        _ae_int64_acc_10 = AE_ADD64S(_ae_int64_acc_10, _ae_int64_sat_bias);
+                        _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift);
+                        _ae_int64_acc_2 = SW_ADD64S_INT64_INT64(_ae_int64_acc_2, _ae_int64_sat_bias);
+                        _ae_int64_acc_10 = SW_ADD64S_INT64_INT64(_ae_int64_acc_10, _ae_int64_sat_bias);
 
                         ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16);
-                        _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift);
-                        _ae_int64_acc_3 = AE_ADD64S(_ae_int64_acc_3, _ae_int64_sat_bias);
-                        _ae_int64_acc_11 = AE_ADD64S(_ae_int64_acc_11, _ae_int64_sat_bias);
+                        _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift);
+                        _ae_int64_acc_3 = SW_ADD64S_INT64_INT64(_ae_int64_acc_3, _ae_int64_sat_bias);
+                        _ae_int64_acc_11 = SW_ADD64S_INT64_INT64(_ae_int64_acc_11, _ae_int64_sat_bias);
 
-                        _ae_int64_acc_0 =  AE_SLAA64S(_ae_int64_acc_0,acc_shift);
-                        _ae_int64_acc_1 =  AE_SLAA64S(_ae_int64_acc_1,acc_shift);
-                        _ae_int64_acc_2 =  AE_SLAA64S(_ae_int64_acc_2,acc_shift);
-                        _ae_int64_acc_3 =  AE_SLAA64S(_ae_int64_acc_3,acc_shift);
-                        _ae_int64_acc_8  = AE_SLAA64S(_ae_int64_acc_8 ,acc_shift);
-                        _ae_int64_acc_9  = AE_SLAA64S(_ae_int64_acc_9 ,acc_shift);
-                        _ae_int64_acc_10 = AE_SLAA64S(_ae_int64_acc_10,acc_shift);
-                        _ae_int64_acc_11 = AE_SLAA64S(_ae_int64_acc_11,acc_shift);
+                        _ae_int64_acc_0 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_0,acc_shift);
+                        _ae_int64_acc_1 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_1,acc_shift);
+                        _ae_int64_acc_2 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_2,acc_shift);
+                        _ae_int64_acc_3 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_3,acc_shift);
+                        _ae_int64_acc_8  = SW_SLAA64S_INT64_INT64(_ae_int64_acc_8 ,acc_shift);
+                        _ae_int64_acc_9  = SW_SLAA64S_INT64_INT64(_ae_int64_acc_9 ,acc_shift);
+                        _ae_int64_acc_10 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_10,acc_shift);
+                        _ae_int64_acc_11 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_11,acc_shift);
                         AE_S64_IP(_ae_int64_acc_0 ,output_ptr ,sizeof(ae_int64));
                         AE_S64_IP(_ae_int64_acc_1 ,output_ptr ,sizeof(ae_int64));
                         AE_S64_IP(_ae_int64_acc_2 ,output_ptr ,sizeof(ae_int64));
@@ -219,11 +219,11 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
 
                         }
                         ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16);
-                        _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift);
-                        _ae_int64_acc_0 = AE_ADD64S(_ae_int64_acc_0, _ae_int64_sat_bias);
-                        _ae_int64_acc_1 = AE_ADD64S(_ae_int64_acc_1, _ae_int64_sat_bias);
-                        _ae_int64_acc_0 =  AE_SLAA64S(_ae_int64_acc_0,acc_shift);
-                        _ae_int64_acc_1 =  AE_SLAA64S(_ae_int64_acc_1,acc_shift);
+                        _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift);
+                        _ae_int64_acc_0 = SW_ADD64S_INT64_INT64(_ae_int64_acc_0, _ae_int64_sat_bias);
+                        _ae_int64_acc_1 = SW_ADD64S_INT64_INT64(_ae_int64_acc_1, _ae_int64_sat_bias);
+                        _ae_int64_acc_0 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_0,acc_shift);
+                        _ae_int64_acc_1 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_1,acc_shift);
                         AE_S64_IP(_ae_int64_acc_0,output_ptr,sizeof(ae_int64));
                         AE_S64_IP(_ae_int64_acc_1,output_ptr1,sizeof(ae_int64));
 
@@ -243,7 +243,7 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
             {
                 for (vec_itr = 0; vec_itr < (vec_count & ~(VEC_UNROLL-1)); vec_itr += VEC_UNROLL)
                 {
-                    ae_int16 _ae_int16_bias = ZERO16;
+                    ae_int16 _ae_int16_bias = AE_MOVINT16_FROMINT16X4(ZERO16);                    
                     ae_int64 _ae_int64_sat_bias = ZERO64;
                     ae_int16 *_ae_int16_p_bias = (ae_int16 *) p_bias;
                     for(m_itr = 0; m_itr < rows; m_itr++)
@@ -278,11 +278,11 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
 
                         }
                         ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16);
-                        _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift);
-                        _ae_int64_acc_0 = AE_ADD64S(_ae_int64_acc_0, _ae_int64_sat_bias);
-                        _ae_int64_acc_1 = AE_ADD64S(_ae_int64_acc_1, _ae_int64_sat_bias);
-                        _ae_int64_acc_0 =  AE_SLAA64S(_ae_int64_acc_0,acc_shift);
-                        _ae_int64_acc_1 =  AE_SLAA64S(_ae_int64_acc_1,acc_shift);
+                        _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift);
+                        _ae_int64_acc_0 = SW_ADD64S_INT64_INT64(_ae_int64_acc_0, _ae_int64_sat_bias);
+                        _ae_int64_acc_1 = SW_ADD64S_INT64_INT64(_ae_int64_acc_1, _ae_int64_sat_bias);
+                        _ae_int64_acc_0 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_0,acc_shift);
+                        _ae_int64_acc_1 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_1,acc_shift);
                         AE_S64_IP(_ae_int64_acc_0,output_ptr,sizeof(ae_int64));
                         AE_S64_IP(_ae_int64_acc_1,output_ptr1,sizeof(ae_int64));
                     }
@@ -291,7 +291,7 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
             {
                 for(; vec_itr < vec_count; vec_itr++)
                 {
-                    ae_int16 _ae_int16_bias = ZERO16;
+                    ae_int16 _ae_int16_bias = AE_MOVINT16_FROMINT16X4(ZERO16);                    
                     ae_int64 _ae_int64_sat_bias = ZERO64;
                     ae_int16 *_ae_int16_p_bias = (ae_int16 *) p_bias;
                     for(m_itr = 0; m_itr < rows; m_itr++)
@@ -317,9 +317,9 @@ WORD32 xa_nn_matXvec_batch_8x16_64(
 
                         }
                         ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16);
-                        _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift);
-                        _ae_int64_acc_0 = AE_ADD64S(_ae_int64_acc_0, _ae_int64_sat_bias);
-                        _ae_int64_acc_0 =  AE_SLAA64S(_ae_int64_acc_0,acc_shift);
+                        _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift);
+                        _ae_int64_acc_0 = SW_ADD64S_INT64_INT64(_ae_int64_acc_0, _ae_int64_sat_bias);
+                        _ae_int64_acc_0 =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_0,acc_shift);
 
                         AE_S64_IP(_ae_int64_acc_0,output_ptr,sizeof(ae_int64));
                     }

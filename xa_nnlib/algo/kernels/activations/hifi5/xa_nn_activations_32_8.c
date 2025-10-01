@@ -22,6 +22,7 @@
 #include "xa_nnlib_common.h"
 #include "../../../ndsp/hifi5/include/NatureDSP_Signal_math.h"
 
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
 /*-------------------------------------------------------------------------
   Sigmoid
   The functions compute the sigmoid of input argument. 32-bit fixed-point
@@ -89,19 +90,20 @@ WORD32 xa_nn_vec_sigmoid_32_8(
 
     static const int32_t polypow2[] = { 14685184, -114217216 , 514075392, -1488269056, 2147483647, 2061584302 };// coefficients in q31 format
     int n;
-    ae_int32x2 Xa, Xb, Xc, Xd, Ea, Eb, Ec, Ed, Ya, Yb, Yc, Yd, Za, Zb, Zc, Zd, Da, Db, Dc, Dd;
+    ae_int32x2 Xa, Xb, Xc, Xd, Ea, Eb, Ec, Ed, Ya, Yb, Yc, Yd, Da, Db, Dc, Dd;
+    ae_f32x2 Za, Zb, Zc, Zd;
     ae_f32x2 ta, tb, tc, td;//t;
     ae_int8x8 Y_8, Y1_8;
     xtbool2 sign_a,sign_b, sign_c, sign_d;
-    const ae_int32x2 * __restrict pX  = (const ae_int32x2 *)&x[0];
-    const ae_int32x2 * __restrict pX1 = (const ae_int32x2 *)&x[0];
-          ae_int8 * __restrict pY = (      ae_int8 *)&y[0];
+    const ae_int32x4 * __restrict pX  = (const ae_int32x4 *)&x[0];
+    const ae_int32 * __restrict pX1 = (const ae_int32 *)&x[0];
+          ae_int8x8 * __restrict pY = (      ae_int8x8 *)&y[0];
     ae_valignx2 aX;//, aY;
     ae_valign   aY;
     ae_f32x2 t1,t2;
 
     ae_int32 * __restrict p_polypow2 = (ae_int32 *)polypow2;
-    pX1 = (ae_int32x2 *)((ae_int32 *)pX1 + (N >> 3)*8);
+    pX1 = (ae_int32 *)pX1 + (N >> 3)*8;
 
     NASSERT(x);
     NASSERT(y);
@@ -111,8 +113,8 @@ WORD32 xa_nn_vec_sigmoid_32_8(
     U = AE_MOVDA32X2(774541002, 774541002); // ln computation redundant in the loop
 //    V =AE_MOVDA32X2(0x007fffff, 0x007fffff);
 
-    t1 = 2061584302;// 0.96 in the accumulator loaded outside from
-    t2 = 2061584302;// 0.96 in the accumulator loaded outside from
+    t1 = AE_MOVF32X2_FROMINT32X2(SW_MOVDA32(2061584302));// 0.96 in the accumulator loaded outside from
+    t2 = AE_MOVF32X2_FROMINT32X2(SW_MOVDA32(2061584302));// 0.96 in the accumulator loaded outside from
                     //  0.96-x/2
 
     if(N >= 8)
@@ -120,24 +122,24 @@ WORD32 xa_nn_vec_sigmoid_32_8(
         aY = AE_ZALIGN64();
         aX = AE_LA128_PP(pX);
 
-        AE_LA32X2X2_IP(Xa, Xb, aX, (ae_int32x4 *)pX); // try for software pipelining using preloading
-        AE_LA32X2X2_IP(Xc, Xd, aX, (ae_int32x4 *)pX); // try for software pipelining using preloading
+        AE_LA32X2X2_IP(Xa, Xb, aX, pX); // try for software pipelining using preloading
+        AE_LA32X2X2_IP(Xc, Xd, aX, pX); // try for software pipelining using preloading
         for (n = 0; n < (N >> 3); n++)
         {
-            sign_a = AE_LT32(Xa, 0);
-            sign_b = AE_LT32(Xb, 0);
-            sign_c = AE_LT32(Xc, 0);
-            sign_d = AE_LT32(Xd, 0);
+            sign_a = AE_LT32(Xa, SW_MOVDA32(0));
+            sign_b = AE_LT32(Xb, SW_MOVDA32(0));
+            sign_c = AE_LT32(Xc, SW_MOVDA32(0));
+            sign_d = AE_LT32(Xd, SW_MOVDA32(0));
 
-            Za = AE_MULFP32X2RAS(Xa, U);
-            Xa = AE_ABS32S(Za);
-            Zb = AE_MULFP32X2RAS(Xb, U);
-            Xb = AE_ABS32S(Zb);
+            Za = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(U));
+            Xa = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Za));
+            Zb = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(U));
+            Xb = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Zb));
 
-            Zc = AE_MULFP32X2RAS(Xc, U);
-            Xc = AE_ABS32S(Zc);
-            Zd = AE_MULFP32X2RAS(Xd, U);
-            Xd = AE_ABS32S(Zd);
+            Zc = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(U));
+            Xc = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Zc));
+            Zd = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(U));
+            Xd = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Zd));
 
             Ea = AE_SRAI32(Xa, 23);
             Xa = AE_MOVDEXT(Xa, 23, 8);
@@ -150,52 +152,52 @@ WORD32 xa_nn_vec_sigmoid_32_8(
             Xd = AE_MOVDEXT(Xd, 23, 8);
 
             Ya = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 0);
-            ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);
-            tb = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);AE_MULAF2P32X4RAS(ta, tb, Xa, Xb, Ya, Ya);Ya = ta;Yb = tb;
-            ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);
-            tb = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);AE_MULAF2P32X4RAS(ta, tb, Xa, Xb, Ya, Yb);Ya = ta;Yb = tb;
-            ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);
-            tb = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);AE_MULAF2P32X4RAS(ta, tb, Xa, Xb, Ya, Yb);Ya = ta;Yb = tb;
-            ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);
-            tb = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);AE_MULAF2P32X4RAS(ta, tb, Xa, Xb, Ya, Yb);Ya = ta;Yb = tb;
+            ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));
+            tb = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));AE_MULAF2P32X4RAS(ta, tb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(Ya), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);Yb = AE_MOVINT32X2_FROMF32X2(tb);
+            ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));
+            tb = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));AE_MULAF2P32X4RAS(ta, tb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(Ya), AE_MOVF32X2_FROMINT32X2(Yb));Ya = AE_MOVINT32X2_FROMF32X2(ta);Yb = AE_MOVINT32X2_FROMF32X2(tb);
+            ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));
+            tb = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));AE_MULAF2P32X4RAS(ta, tb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(Ya), AE_MOVF32X2_FROMINT32X2(Yb));Ya = AE_MOVINT32X2_FROMF32X2(ta);Yb = AE_MOVINT32X2_FROMF32X2(tb);
+            ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));
+            tb = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));AE_MULAF2P32X4RAS(ta, tb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(Ya), AE_MOVF32X2_FROMINT32X2(Yb));Ya = AE_MOVINT32X2_FROMF32X2(ta);Yb = AE_MOVINT32X2_FROMF32X2(tb);
             Xa = AE_SRAV32RS(Ya, Ea);
             Xb = AE_SRAV32RS(Yb, Eb);
 
             Yc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 0);
-            tc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);
-            td = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);AE_MULAF2P32X4RAS(tc, td, Xc, Xd, Yc, Yc);Yc = tc;Yd = td;
-            tc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);
-            td = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);AE_MULAF2P32X4RAS(tc, td, Xc, Xd, Yc, Yd);Yc = tc;Yd = td;
-            tc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);
-            td = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);AE_MULAF2P32X4RAS(tc, td, Xc, Xd, Yc, Yd);Yc = tc;Yd = td;
-            tc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);
-            td = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);AE_MULAF2P32X4RAS(tc, td, Xc, Xd, Yc, Yd);Yc = tc;Yd = td;
+            tc = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));
+            td = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));AE_MULAF2P32X4RAS(tc, td, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(Yc), AE_MOVF32X2_FROMINT32X2(Yc));Yc = AE_MOVINT32X2_FROMF32X2(tc);Yd = AE_MOVINT32X2_FROMF32X2(td);
+            tc = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));
+            td = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));AE_MULAF2P32X4RAS(tc, td, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(Yc), AE_MOVF32X2_FROMINT32X2(Yd));Yc = AE_MOVINT32X2_FROMF32X2(tc);Yd = AE_MOVINT32X2_FROMF32X2(td);
+            tc = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));
+            td = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));AE_MULAF2P32X4RAS(tc, td, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(Yc), AE_MOVF32X2_FROMINT32X2(Yd));Yc = AE_MOVINT32X2_FROMF32X2(tc);Yd = AE_MOVINT32X2_FROMF32X2(td);
+            tc = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));
+            td = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));AE_MULAF2P32X4RAS(tc, td, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(Yc), AE_MOVF32X2_FROMINT32X2(Yd));Yc = AE_MOVINT32X2_FROMF32X2(tc);Yd = AE_MOVINT32X2_FROMF32X2(td);
             Xc = AE_SRAV32RS(Yc, Ec);
             Xd = AE_SRAV32RS(Yd, Ed);
 
-            Za = AE_MULADDF32RAS(t1,Xa, -1073741824);
-            ta = AE_SUB32(2147483647, Za);AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
-            AE_MULAFP32X2RAS(Za, Za, Da);
-            ta = AE_SUB32(2147483647, Za);AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
-            AE_MULAFP32X2RAS(Za, Za, Da);
+            Za = AE_MULADDF32RAS(t1,AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(SW_MOVDA32(-1073741824)));
+            ta = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Za)));AE_MULSFP32X2RAS(ta, Za, AE_MOVF32X2_FROMINT32X2(Xa));Da = AE_MOVINT32X2_FROMF32X2(ta);
+            AE_MULAFP32X2RAS(Za, Za, AE_MOVF32X2_FROMINT32X2(Da));
+            ta = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Za)));AE_MULSFP32X2RAS(ta, Za, AE_MOVF32X2_FROMINT32X2(Xa));Da = AE_MOVINT32X2_FROMF32X2(ta);
+            AE_MULAFP32X2RAS(Za, Za, AE_MOVF32X2_FROMINT32X2(Da));
 
-            Zb = AE_MULADDF32RAS(t2,Xb, -1073741824);
-            tb = AE_SUB32(2147483647, Zb);AE_MULSFP32X2RAS(tb, Zb, Xb);Db = tb;
-            AE_MULAFP32X2RAS(Zb, Zb, Db);
-            tb = AE_SUB32(2147483647, Zb);AE_MULSFP32X2RAS(tb, Zb, Xb);Db = tb;
-            AE_MULAFP32X2RAS(Zb, Zb, Db);
+            Zb = AE_MULADDF32RAS(t2,AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(SW_MOVDA32(-1073741824)));
+            tb = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zb)));AE_MULSFP32X2RAS(tb, Zb, AE_MOVF32X2_FROMINT32X2(Xb));Db = AE_MOVINT32X2_FROMF32X2(tb);
+            AE_MULAFP32X2RAS(Zb, Zb, AE_MOVF32X2_FROMINT32X2(Db));
+            tb = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zb)));AE_MULSFP32X2RAS(tb, Zb, AE_MOVF32X2_FROMINT32X2(Xb));Db = AE_MOVINT32X2_FROMF32X2(tb);
+            AE_MULAFP32X2RAS(Zb, Zb, AE_MOVF32X2_FROMINT32X2(Db));
 
-            Zc = AE_MULADDF32RAS(t1,Xc, -1073741824);
-            tc = AE_SUB32(2147483647, Zc);AE_MULSFP32X2RAS(tc, Zc, Xc);Dc = tc;
-            AE_MULAFP32X2RAS(Zc, Zc, Dc);
-            tc = AE_SUB32(2147483647, Zc);AE_MULSFP32X2RAS(tc, Zc, Xc);Dc = tc;
-            AE_MULAFP32X2RAS(Zc, Zc, Dc);
+            Zc = AE_MULADDF32RAS(t1,AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(SW_MOVDA32(-1073741824)));
+            tc = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zc)));AE_MULSFP32X2RAS(tc, Zc, AE_MOVF32X2_FROMINT32X2(Xc));Dc = AE_MOVINT32X2_FROMF32X2(tc);
+            AE_MULAFP32X2RAS(Zc, Zc, AE_MOVF32X2_FROMINT32X2(Dc));
+            tc = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zc)));AE_MULSFP32X2RAS(tc, Zc, AE_MOVF32X2_FROMINT32X2(Xc));Dc = AE_MOVINT32X2_FROMF32X2(tc);
+            AE_MULAFP32X2RAS(Zc, Zc, AE_MOVF32X2_FROMINT32X2(Dc));
 
-            Zd = AE_MULADDF32RAS(t2,Xd, -1073741824);
-            td = AE_SUB32(2147483647, Zd);AE_MULSFP32X2RAS(td, Zd, Xd);Dd = td;
-            AE_MULAFP32X2RAS(Zd, Zd, Dd);
-            td = AE_SUB32(2147483647, Zd);AE_MULSFP32X2RAS(td, Zd, Xd);Dd = td;
-            AE_MULAFP32X2RAS(Zd, Zd, Dd);
+            Zd = AE_MULADDF32RAS(t2,AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(SW_MOVDA32(-1073741824)));
+            td = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zd)));AE_MULSFP32X2RAS(td, Zd, AE_MOVF32X2_FROMINT32X2(Xd));Dd = AE_MOVINT32X2_FROMF32X2(td);
+            AE_MULAFP32X2RAS(Zd, Zd, AE_MOVF32X2_FROMINT32X2(Dd));
+            td = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zd)));AE_MULSFP32X2RAS(td, Zd, AE_MOVF32X2_FROMINT32X2(Xd));Dd = AE_MOVINT32X2_FROMF32X2(td);
+            AE_MULAFP32X2RAS(Zd, Zd, AE_MOVF32X2_FROMINT32X2(Dd));
 
             Za = AE_SRAA32RS(Za, 24);
             Zb = AE_SRAA32RS(Zb, 24);
@@ -203,62 +205,68 @@ WORD32 xa_nn_vec_sigmoid_32_8(
             Zd = AE_SRAA32RS(Zd, 24);
 
             //For negative X, sigmoid(X) = 1 - sigmoid(|X|)
-            Ya = AE_SUB32(128, Za);
-            AE_MOVT32X2(Za, Ya, sign_a);
+            Ya = AE_SUB32(SW_MOVDA32(128), AE_MOVINT32X2_FROMF32X2(Za));
+            ae_int32x2 za_32x2, zb_32x2, zc_32x2, zd_32x2;
+            za_32x2 =AE_MOVINT32X2_FROMF32X2(Za);
+            AE_MOVT32X2(za_32x2, Ya, sign_a);
 
-            Yb = AE_SUB32(128, Zb);
-            AE_MOVT32X2(Zb, Yb, sign_b);
+            Yb = AE_SUB32(SW_MOVDA32(128), AE_MOVINT32X2_FROMF32X2(Zb));
+            zb_32x2 =AE_MOVINT32X2_FROMF32X2(Zb);
+            AE_MOVT32X2(zb_32x2, Yb, sign_b);
 
-            Yc = AE_SUB32(128, Zc);
-            AE_MOVT32X2(Zc, Yc, sign_c);
+            Yc = AE_SUB32(SW_MOVDA32(128), AE_MOVINT32X2_FROMF32X2(Zc));
+            zc_32x2 = AE_MOVINT32X2_FROMF32X2(Zc);
+            AE_MOVT32X2(zc_32x2, Yc, sign_c);
 
-            Yd = AE_SUB32(128, Zd);
-            AE_MOVT32X2(Zd, Yd, sign_d);
+            Yd = AE_SUB32(SW_MOVDA32(128), AE_MOVINT32X2_FROMF32X2(Zd));
+            zd_32x2 = AE_MOVINT32X2_FROMF32X2(Zd);
+            AE_MOVT32X2(zd_32x2, Yd, sign_d);
 
-            AE_LA32X2X2_IP(Xa, Xb, aX, (ae_int32x4 *)pX);
-            AE_LA32X2X2_IP(Xc, Xd, aX, (ae_int32x4 *)pX);
+            AE_LA32X2X2_IP(Xa, Xb, aX, pX);
+            AE_LA32X2X2_IP(Xc, Xd, aX, pX);
 
-            Y_8  = AE_SAT8X4X32_L(Za, Zb);
-            Y1_8 = AE_SAT8X4X32_L(Zc, Zd);
+            Y_8  = AE_SAT8X4X32_L(za_32x2, zb_32x2);
+            Y1_8 = AE_SAT8X4X32_L(zc_32x2, zd_32x2);
             Y_8  = AE_SEL8X8I(Y_8, Y1_8, 3);
 
-            AE_SA8X8_IP(Y_8, aY, (ae_int8x8 *)pY);
+            AE_SA8X8_IP(Y_8, aY, pY);
         }
         AE_SA64POS_FP(aY, pY);
     }
-
+    ae_int8 *p8_Y = (ae_int8 *)pY;
     for(n=0; n < (N & 7); n++)
     {
-        AE_L32_IP(Xa, (const ae_int32 *)pX1, 4);
-        sign_a = AE_LT32(Xa, 0);
+        AE_L32_IP(Xa,pX1 , 4);
+        sign_a = AE_LT32(Xa, SW_MOVDA32(0));
 
-        Za = AE_MULFP32X2RAS(Xa, U);
-        Xa = AE_ABS32S(Za);
+        Za = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(U));
+        Xa = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Za));
         Ea = AE_SRAI32(Xa, 23);
         Xa = AE_MOVDEXT(Xa, 23, 8);
 
         Ya = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 0);
-        ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-        ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-        ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-        ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+        ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));AE_MULAFP32X2RAS( ta, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);
+        ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));AE_MULAFP32X2RAS( ta, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);
+        ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));AE_MULAFP32X2RAS( ta, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);
+        ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));AE_MULAFP32X2RAS( ta, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);
         Xa = AE_SRAV32RS(Ya, Ea);
 
-        Za = AE_MULADDF32RAS(t1, Xa, -1073741824);
-        ta = AE_SUB32(2147483647, Za);AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
-		AE_MULAFP32X2RAS(Za, Za, Da);
-        ta = AE_SUB32(2147483647, Za);AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
-		AE_MULAFP32X2RAS(Za, Za, Da);
+        Za = AE_MULADDF32RAS(t1, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(SW_MOVDA32(-1073741824)));
+        ta = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Za)));AE_MULSFP32X2RAS(ta, Za, AE_MOVF32X2_FROMINT32X2(Xa));Da = AE_MOVINT32X2_FROMF32X2(ta);
+		AE_MULAFP32X2RAS(Za, Za, AE_MOVF32X2_FROMINT32X2(Da));
+        ta = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Za)));AE_MULSFP32X2RAS(ta, Za, AE_MOVF32X2_FROMINT32X2(Xa));Da = AE_MOVINT32X2_FROMF32X2(ta);
+		AE_MULAFP32X2RAS(Za, Za, AE_MOVF32X2_FROMINT32X2(Da));
 
         Za = AE_SRAA32RS(Za, 24);
 
         //For negative X, sigmoid(X) = 1 - sigmoid(|X|)
-        Ya = AE_SUB32(128, Za);
-        AE_MOVT32X2(Za, Ya, sign_a);
+        Ya = AE_SUB32(SW_MOVDA32(128), AE_MOVINT32X2_FROMF32X2(Za));
+        ae_int32x2 za_32x2 = AE_MOVINT32X2_FROMF32X2(Za);
+        AE_MOVT32X2(za_32x2, Ya, sign_a);
 
-        Y_8 = AE_SAT8X4X32_L(Za, Za);
+        Y_8 = AE_SAT8X4X32_L(za_32x2, za_32x2);
 
-        AE_S8_0_IP(Y_8, pY, 1);
+        AE_S8_0_IP(Y_8, p8_Y, 1);
     }
     return 0;
 } /* xa_nn_vec_sigmoid_32_8() */
@@ -325,13 +333,14 @@ WORD32 xa_nn_vec_tanh_32_8(
     */
     static const int32_t polypow2[] = { 14685184, -114217216 , 514075392, -1488269056, 2147483647 };// coefficients in q31 format
     int n;
-    ae_int32x2 Xa, Xb, Xc, Xd ,Ea, Eb, Ec, Ed, Ya, Yb, Yc, Yd, Za, Zb, Zc, Zd, Da, Db, Dc, Dd, Xa_, Xb_, Xc_, Xd_;
+    ae_int32x2 Xa, Xb, Xc, Xd ,Ea, Eb, Ec, Ed, Ya, Yb, Yc, Yd, Da, Db, Dc, Dd, Xa_, Xb_, Xc_, Xd_;
+    ae_f32x2 Za, Zb, Zc, Zd;
     ae_f32x2 ta, tb, tc, td;
     ae_int8x8 Y_8, Y1_8;
     xtbool2 sign;
-    const ae_int32x2 * __restrict pX = (const ae_int32x2 *)x;
-    const ae_int32x2 * __restrict pX1 = (const ae_int32x2 *)x;
-          ae_int8 * __restrict pY = (      ae_int8 *)y;
+    const ae_int32x4 * __restrict pX = (const ae_int32x4 *)x;
+    const ae_int32x4 * __restrict pX1 = (const ae_int32x4 *)x;
+          ae_int8x8 * __restrict pY = (      ae_int8x8 *)y;
     ae_valignx2 aX, aX1;
     ae_valign   aY;
     ae_int32 * __restrict p_polypow2 = (ae_int32 *)polypow2;
@@ -348,18 +357,18 @@ WORD32 xa_nn_vec_tanh_32_8(
 
         for (n = 0; n < (N >> 3); n++)
         {
-            AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);
-            AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);
+            AE_LA32X2X2_IP(Xa_, Xb_, aX, pX);
+            AE_LA32X2X2_IP(Xc_, Xd_, aX, pX);
 
-            Za = AE_MULFP32X2RAS(Xa_, AE_MOVDA32X2(1549082005, 1549082005));
-            Xa = AE_ABS32S(Za);
-            Zb = AE_MULFP32X2RAS(Xb_, AE_MOVDA32X2(1549082005, 1549082005));
-            Xb = AE_ABS32S(Zb);
+            Za = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xa_), AE_MOVF32X2_FROMINT32X2(AE_MOVDA32X2(1549082005, 1549082005)));
+            Xa = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Za));
+            Zb = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xb_), AE_MOVF32X2_FROMINT32X2(AE_MOVDA32X2(1549082005, 1549082005)));
+            Xb = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Zb));
 
-            Zc = AE_MULFP32X2RAS(Xc_, AE_MOVDA32X2(1549082005, 1549082005));
-            Xc = AE_ABS32S(Zc);
-            Zd = AE_MULFP32X2RAS(Xd_, AE_MOVDA32X2(1549082005, 1549082005));
-            Xd = AE_ABS32S(Zd);
+            Zc = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xc_), AE_MOVF32X2_FROMINT32X2(AE_MOVDA32X2(1549082005, 1549082005)));
+            Xc = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Zc));
+            Zd = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xd_), AE_MOVF32X2_FROMINT32X2(AE_MOVDA32X2(1549082005, 1549082005)));
+            Xd = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Zd));
 
             Ea = AE_SRAI32(Xa, 23);
             Xa = AE_MOVDEXT(Xa, 23, 8);
@@ -373,125 +382,127 @@ WORD32 xa_nn_vec_tanh_32_8(
 
             // e^x implementation using taylor series
             Ya = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 0);
-            ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-            tb = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);AE_MULAF2P32X4RAS(ta, tb, Xa, Xb, Ya, Ya);Ya = ta;Yb = tb;
-            ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-            tb = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);AE_MULAF2P32X4RAS(ta, tb, Xa, Xb, Ya, Yb);Ya = ta;Yb = tb;
-            ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-            tb = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);AE_MULAF2P32X4RAS(ta, tb, Xa, Xb, Ya, Yb);Ya = ta;Yb = tb;
-            ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-            tb = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);AE_MULAF2P32X4RAS(ta, tb, Xa, Xb, Ya, Yb);Ya = ta;Yb = tb;
+            ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+            tb = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));AE_MULAF2P32X4RAS(ta, tb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(Ya), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);Yb = AE_MOVINT32X2_FROMF32X2(tb);
+            ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+            tb = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));AE_MULAF2P32X4RAS(ta, tb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(Ya), AE_MOVF32X2_FROMINT32X2(Yb));Ya = AE_MOVINT32X2_FROMF32X2(ta);Yb = AE_MOVINT32X2_FROMF32X2(tb);
+            ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+            tb = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));AE_MULAF2P32X4RAS(ta, tb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(Ya), AE_MOVF32X2_FROMINT32X2(Yb));Ya = AE_MOVINT32X2_FROMF32X2(ta);Yb = AE_MOVINT32X2_FROMF32X2(tb);
+            ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+            tb = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));AE_MULAF2P32X4RAS(ta, tb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32X2(Ya), AE_MOVF32X2_FROMINT32X2(Yb));Ya = AE_MOVINT32X2_FROMF32X2(ta);Yb = AE_MOVINT32X2_FROMF32X2(tb);
             Xa = AE_SRAV32RS(Ya, Ea);
             Xb = AE_SRAV32RS(Yb, Eb);
 
             Yc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 0);
-            tc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-            td = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);AE_MULAF2P32X4RAS(tc, td, Xc, Xd, Yc, Yc);Yc = tc;Yd = td;
-            tc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-            td = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);AE_MULAF2P32X4RAS(tc, td, Xc, Xd, Yc, Yd);Yc = tc;Yd = td;
-            tc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-            td = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);AE_MULAF2P32X4RAS(tc, td, Xc, Xd, Yc, Yd);Yc = tc;Yd = td;
-            tc = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-            td = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);AE_MULAF2P32X4RAS(tc, td, Xc, Xd, Yc, Yd);Yc = tc;Yd = td;
+            tc = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+            td = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));AE_MULAF2P32X4RAS(tc, td, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(Yc), AE_MOVF32X2_FROMINT32X2(Yc));Yc = AE_MOVINT32X2_FROMF32X2(tc);Yd = AE_MOVINT32X2_FROMF32X2(td);
+            tc = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+            td = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));AE_MULAF2P32X4RAS(tc, td, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(Yc), AE_MOVF32X2_FROMINT32X2(Yd));Yc = AE_MOVINT32X2_FROMF32X2(tc);Yd = AE_MOVINT32X2_FROMF32X2(td);
+            tc = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+            td = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));AE_MULAF2P32X4RAS(tc, td, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(Yc), AE_MOVF32X2_FROMINT32X2(Yd));Yc = AE_MOVINT32X2_FROMF32X2(tc);Yd = AE_MOVINT32X2_FROMF32X2(td);
+            tc = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));//AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+            td = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));AE_MULAF2P32X4RAS(tc, td, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32X2(Yc), AE_MOVF32X2_FROMINT32X2(Yd));Yc = AE_MOVINT32X2_FROMF32X2(tc);Yd = AE_MOVINT32X2_FROMF32X2(td);
             Xc = AE_SRAV32RS(Yc, Ec);
             Xd = AE_SRAV32RS(Yd, Ed);
 
             // 1/(1+x) implementation part
-            Za = AE_MULADDF32RAS(2061584302,Xa, -1073741824);
-            ta = AE_SUB32(2147483647, Za);
-            Zb = AE_MULADDF32RAS(2061584302,Xb, -1073741824);
-            tb = AE_SUB32(2147483647, Zb);
-            AE_MULSF2P32X4RAS(ta, tb, Za, Zb, Xa, Xb);Da = ta;Db = tb;
-            AE_MULAF2P32X4RAS(Za, Zb, Za, Zb, Da, Db);
+            Za = AE_MULADDF32RAS(AE_MOVF32X2_FROMINT32(AE_MOVDA32(2061584302)),AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32(AE_MOVDA32(-1073741824)));
+            ta = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Za)));
+            Zb = AE_MULADDF32RAS(AE_MOVF32X2_FROMINT32(AE_MOVDA32(2061584302)),AE_MOVF32X2_FROMINT32X2(Xb), AE_MOVF32X2_FROMINT32(AE_MOVDA32(-1073741824)));
+            tb = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zb)));
+            AE_MULSF2P32X4RAS(ta, tb, Za, Zb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb));Da = AE_MOVINT32X2_FROMF32X2(ta);Db = AE_MOVINT32X2_FROMF32X2(tb);
+            AE_MULAF2P32X4RAS(Za, Zb, Za, Zb, AE_MOVF32X2_FROMINT32X2(Da), AE_MOVF32X2_FROMINT32X2(Db));
 
-            Zc = AE_MULADDF32RAS(2061584302,Xc, -1073741824);
-            tc = AE_SUB32(2147483647, Zc);
-            Zd = AE_MULADDF32RAS(2061584302,Xd, -1073741824);
-            td = AE_SUB32(2147483647, Zd);
-            AE_MULSF2P32X4RAS(tc, td, Zc, Zd, Xc, Xd);Dc = tc;Dd = td;
-            AE_MULAF2P32X4RAS(Zc, Zd, Zc, Zd, Dc, Dd);
+            Zc = AE_MULADDF32RAS(AE_MOVF32X2_FROMINT32(AE_MOVDA32(2061584302)),AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32(AE_MOVDA32(-1073741824)));
+            tc = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zc)));
+            Zd = AE_MULADDF32RAS(AE_MOVF32X2_FROMINT32(AE_MOVDA32(2061584302)),AE_MOVF32X2_FROMINT32X2(Xd), AE_MOVF32X2_FROMINT32(AE_MOVDA32(-1073741824)));
+            td = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zd)));
+            AE_MULSF2P32X4RAS(tc, td, Zc, Zd, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd));Dc = AE_MOVINT32X2_FROMF32X2(tc);Dd = AE_MOVINT32X2_FROMF32X2(td);
+            AE_MULAF2P32X4RAS(Zc, Zd, Zc, Zd, AE_MOVF32X2_FROMINT32X2(Dc), AE_MOVF32X2_FROMINT32X2(Dd));
 
-            ta = AE_SUB32(2147483647, Za);
-            tb = AE_SUB32(2147483647, Zb);
-            AE_MULSF2P32X4RAS(ta, tb, Za, Zb, Xa, Xb);Da = ta;Db = tb;
+            ta = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Za)));
+            tb = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zb)));
+            AE_MULSF2P32X4RAS(ta, tb, Za, Zb, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Xb));Da = AE_MOVINT32X2_FROMF32X2(ta);Db = AE_MOVINT32X2_FROMF32X2(tb);
 
-            tc = AE_SUB32(2147483647, Zc);
-            td = AE_SUB32(2147483647, Zd);
-            AE_MULSF2P32X4RAS(tc, td, Zc, Zd, Xc, Xd);Dc = tc;Dd = td;
+            tc = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zc)));
+            td = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Zd)));
+            AE_MULSF2P32X4RAS(tc, td, Zc, Zd, AE_MOVF32X2_FROMINT32X2(Xc), AE_MOVF32X2_FROMINT32X2(Xd));Dc = AE_MOVINT32X2_FROMF32X2(tc);Dd = AE_MOVINT32X2_FROMF32X2(td);
 
-            AE_MULAFP32X2RAS(Za, Za, Da);
-            AE_MULAFP32X2RAS(Zb, Zb, Db);
-            AE_MULAFP32X2RAS(Zc, Zc, Dc);
-            AE_MULAFP32X2RAS(Zd, Zd, Dd);
+            AE_MULAFP32X2RAS(Za, Za, AE_MOVF32X2_FROMINT32X2(Da));
+            AE_MULAFP32X2RAS(Zb, Zb, AE_MOVF32X2_FROMINT32X2(Db));
+            AE_MULAFP32X2RAS(Zc, Zc, AE_MOVF32X2_FROMINT32X2(Dc));
+            AE_MULAFP32X2RAS(Zd, Zd, AE_MOVF32X2_FROMINT32X2(Dd));
 
-            Ya = AE_SUB32(2147483647, Xa);
-            Za = AE_MULFP32X2RAS(Za, Ya);
-            Yb = AE_SUB32(2147483647, Xb);
-            Zb = AE_MULFP32X2RAS(Zb, Yb);
-            Yc = AE_SUB32(2147483647, Xc);
-            Zc = AE_MULFP32X2RAS(Zc, Yc);
-            Yd = AE_SUB32(2147483647, Xd);
-            Zd = AE_MULFP32X2RAS(Zd, Yd);
+            Ya = AE_SUB32(SW_MOVDA32(2147483647), Xa);
+            Za = AE_MULFP32X2RAS(Za, AE_MOVF32X2_FROMINT32X2(Ya));
+            Yb = AE_SUB32(SW_MOVDA32(2147483647), Xb);
+            Zb = AE_MULFP32X2RAS(Zb, AE_MOVF32X2_FROMINT32X2(Yb));
+            Yc = AE_SUB32(SW_MOVDA32(2147483647), Xc);
+            Zc = AE_MULFP32X2RAS(Zc, AE_MOVF32X2_FROMINT32X2(Yc));
+            Yd = AE_SUB32(SW_MOVDA32(2147483647), Xd);
+            Zd = AE_MULFP32X2RAS(Zd, AE_MOVF32X2_FROMINT32X2(Yd));
 
-            AE_LA32X2X2_IP(Xa, Xb, aX1, (ae_int32x4 *)pX1);
-            AE_LA32X2X2_IP(Xc, Xd, aX1, (ae_int32x4 *)pX1);
+            AE_LA32X2X2_IP(Xa, Xb, aX1, pX1);
+            AE_LA32X2X2_IP(Xc, Xd, aX1, pX1);
 
-            Za = AE_MOVNEG32S_T(Za, Xa);
-            Zb = AE_MOVNEG32S_T(Zb, Xb);
-            Zc = AE_MOVNEG32S_T(Zc, Xc);
-            Zd = AE_MOVNEG32S_T(Zd, Xd);
+            Za = AE_MOVF32X2_FROMINT32X2(AE_MOVNEG32S_T(AE_MOVINT32X2_FROMF32X2(Za), Xa));
+            Zb = AE_MOVF32X2_FROMINT32X2(AE_MOVNEG32S_T(AE_MOVINT32X2_FROMF32X2(Zb), Xb));
+            Zc = AE_MOVF32X2_FROMINT32X2(AE_MOVNEG32S_T(AE_MOVINT32X2_FROMF32X2(Zc), Xc));
+            Zd = AE_MOVF32X2_FROMINT32X2(AE_MOVNEG32S_T(AE_MOVINT32X2_FROMF32X2(Zd), Xd));
 
 /*            AE_LA32X2X2_IP(Xa_, Xb_, aX, (ae_int32x4 *)pX);
               AE_LA32X2X2_IP(Xc_, Xd_, aX, (ae_int32x4 *)pX);*/
 
-            Y_8  = AE_ROUND8X4F32SASYM_L(Za, Zb);
-            Y1_8 = AE_ROUND8X4F32SASYM_L(Zc, Zd);
+            Y_8  = AE_ROUND8X4F32SASYM_L(AE_MOVINT32X2_FROMF32X2(Za), AE_MOVINT32X2_FROMF32X2(Zb));
+            Y1_8 = AE_ROUND8X4F32SASYM_L(AE_MOVINT32X2_FROMF32X2(Zc), AE_MOVINT32X2_FROMF32X2(Zd));
             Y_8  = AE_SEL8X8I(Y_8, Y1_8, 3);
-            AE_SA8X8_IP(Y_8, aY, (ae_int8x8 *)pY);
+            AE_SA8X8_IP(Y_8, aY, pY);
         }
         AE_SA64POS_FP(aY, pY);
     }
-
+    const ae_int32 *p32_X1 = (const ae_int32 *)pX1;
+    ae_int8 *p8_Y = (ae_int8 *)pY;
     for(n=0;n<(N & 7);n++)
     {
-        AE_L32_IP(Xa, (const ae_int32 *)pX1, 4);
-        sign = AE_LT32(Xa, 0);
+        AE_L32_IP(Xa, p32_X1, 4);
+        sign = AE_LT32(Xa, SW_MOVDA32(0));
 
-        Za = AE_MULFP32X2RAS(Xa, AE_MOVDA32X2(1549082005, 1549082005));
-        Xa = AE_ABS32S(Za);
+        Za = AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(AE_MOVDA32X2(1549082005, 1549082005)));
+        Xa = AE_MOVINT32X2_FROMF32X2(AE_ABS32S(Za));
 
         Ea = AE_SRAI32(Xa, 23);
         Xa = AE_MOVDEXT(Xa, 23, 8);
 
 	    // e^x implementation using taylor series
         Ya = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 0);
-        ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1);AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-        ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2);AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-        ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3);AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
-        ta = AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4);AE_MULAFP32X2RAS( ta, Xa, Ya);Ya = ta;
+        ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 1));AE_MULAFP32X2RAS( ta, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);
+        ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 2));AE_MULAFP32X2RAS( ta, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);
+        ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 3));AE_MULAFP32X2RAS( ta, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);
+        ta = AE_MOVF32X2_FROMINT32X2(AE_L32_I((const ae_int32 *)p_polypow2, 4 * 4));AE_MULAFP32X2RAS( ta, AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32X2(Ya));Ya = AE_MOVINT32X2_FROMF32X2(ta);
         Xa = AE_SRAV32RS(Ya, Ea);
 
         // 1/(1+x) implementation part
-        Za = AE_MULADDF32RAS(2061584302,Xa, -1073741824);
-        ta = AE_SUB32(2147483647, Za);
+        Za = AE_MULADDF32RAS(AE_MOVF32X2_FROMINT32(AE_MOVDA32(2061584302)),AE_MOVF32X2_FROMINT32X2(Xa), AE_MOVF32X2_FROMINT32(AE_MOVDA32(-1073741824)));
+        ta = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Za)));
 
-        AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
-        AE_MULAFP32X2RAS(Za, Za, Da);
+        AE_MULSFP32X2RAS(ta, Za, AE_MOVF32X2_FROMINT32X2(Xa));Da = AE_MOVINT32X2_FROMF32X2(ta);
+        AE_MULAFP32X2RAS(Za, Za, AE_MOVF32X2_FROMINT32X2(Da));
 
-        ta = AE_SUB32(2147483647, Za);
-        AE_MULSFP32X2RAS(ta, Za, Xa);Da = ta;
+        ta = AE_MOVF32X2_FROMINT32X2(AE_SUB32(SW_MOVDA32(2147483647), AE_MOVINT32X2_FROMF32X2(Za)));
+        AE_MULSFP32X2RAS(ta, Za, AE_MOVF32X2_FROMINT32X2(Xa));Da = AE_MOVINT32X2_FROMF32X2(ta);
 
-		AE_MULAFP32X2RAS(Za, Za, Da);
+		AE_MULAFP32X2RAS(Za, Za, AE_MOVF32X2_FROMINT32X2(Da));
 
-        Ya = AE_SUB32(2147483647, Xa);
-        Za = AE_MULFP32X2RAS(Za, Ya);
+        Ya = AE_SUB32(SW_MOVDA32(2147483647), Xa);
+        Za = AE_MULFP32X2RAS(Za, AE_MOVF32X2_FROMINT32X2(Ya));
 
-        Xa = AE_NEG32S(Za);
-        AE_MOVT32X2(Za, Xa, sign);
+        Xa = AE_MOVINT32X2_FROMF32X2(AE_NEG32S(Za));
+        ae_int32x2 za_32x2 = AE_MOVINT32X2_FROMF32X2(Za);
+        AE_MOVT32X2(za_32x2, Xa, sign);
 
-        Y_8  = AE_ROUND8X4F32SASYM_L(Za, Za);
+        Y_8  = AE_ROUND8X4F32SASYM_L(za_32x2, za_32x2);
 
-        AE_S8_0_IP(Y_8, pY, 1);
+        AE_S8_0_IP(Y_8, p8_Y, 1);
     }
 
     return 0;

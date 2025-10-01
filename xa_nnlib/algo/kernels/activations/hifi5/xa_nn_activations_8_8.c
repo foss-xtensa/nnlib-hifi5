@@ -22,6 +22,7 @@
 #include "xa_type_def.h"
 #include "xa_nn_common.h"
 #include "xa_nnlib_err_chk.h"
+#include "xa_nnlib_kernels_api.h"
 
 #define LIMIT(out, inp, min, max){\
         out = AE_MIN8(inp, max);\
@@ -52,28 +53,28 @@ WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
     XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((activation_max < activation_min), -1);
 
-    WORD8 *p_o = p_out;
-    WORD8 *p_v = (WORD8 *)p_vec;
+    ae_int8x16 *p_o = (ae_int8x16 *)p_out;
+    ae_int8x16 *p_v = (ae_int8x16 *)p_vec;
 
     min  = AE_MOVDA8(activation_min);
     max  = AE_MOVDA8(activation_max);
 
-    align_src = AE_LA128_PP((ae_int8x16 *)p_v);
+    align_src = AE_LA128_PP(p_v);
     align_dst = AE_ZALIGN128();
 
     if((activation_max >= (int)MAX_WORD8) && (activation_min <= (int)MIN_WORD8))
     {
         for(i=0; i<(vec_length >> 4); i++)
         {
-            AE_LA8X8X2_IP(x, y, align_src, (ae_int8x16 *)p_v);
+            AE_LA8X8X2_IP(x, y, align_src, p_v);
 
-            AE_SA8X8X2_IP(x, y, align_dst, (ae_int8x16 *)p_o);
+            AE_SA8X8X2_IP(x, y, align_dst, p_o);
         }
         int rem_itr = (vec_length & 15);
         {
-            AE_LAV8X8X2_XP(x, y, align_src, (ae_int8x16 *)p_v, rem_itr);
+            AE_LAV8X8X2_XP(x, y, align_src, p_v, rem_itr);
 
-            AE_SAV8X8X2_XP(x, y, align_dst, (ae_int8x16 *)p_o, rem_itr);
+            AE_SAV8X8X2_XP(x, y, align_dst, p_o, rem_itr);
         }
         AE_SA128POS_FP(align_dst, p_o);
     }
@@ -81,21 +82,21 @@ WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
     {
         for(i=0; i<(vec_length >> 4); i++)
         {
-            AE_LA8X8X2_IP(x, y, align_src, (ae_int8x16 *)p_v);
+            AE_LA8X8X2_IP(x, y, align_src, p_v);
 
             x = AE_MIN8(x, max);
             y = AE_MIN8(y, max);
 
-            AE_SA8X8X2_IP(x, y, align_dst, (ae_int8x16 *)p_o);
+            AE_SA8X8X2_IP(x, y, align_dst, p_o);
         }
         int rem_itr = (vec_length & 15);
         {
-            AE_LAV8X8X2_XP(x, y, align_src, (ae_int8x16 *)p_v, rem_itr);
+            AE_LAV8X8X2_XP(x, y, align_src, p_v, rem_itr);
 
             x = AE_MIN8(x, max);
             y = AE_MIN8(y, max);
 
-            AE_SAV8X8X2_XP(x, y, align_dst, (ae_int8x16 *)p_o, rem_itr);
+            AE_SAV8X8X2_XP(x, y, align_dst, p_o, rem_itr);
         }
         AE_SA128POS_FP(align_dst, p_o);
     }
@@ -103,21 +104,21 @@ WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
     {
         for(i=0; i<(vec_length >> 4); i++)
         {
-            AE_LA8X8X2_IP(x, y, align_src, (ae_int8x16 *)p_v);
+            AE_LA8X8X2_IP(x, y, align_src, p_v);
 
             x = AE_MAX8(x, min);
             y = AE_MAX8(y, min);
 
-            AE_SA8X8X2_IP(x, y, align_dst, (ae_int8x16 *)p_o);
+            AE_SA8X8X2_IP(x, y, align_dst, p_o);
         }
         int rem_itr = (vec_length & 15);
         {
-            AE_LAV8X8X2_XP(x, y, align_src, (ae_int8x16 *)p_v, rem_itr);
+            AE_LAV8X8X2_XP(x, y, align_src, p_v, rem_itr);
 
             x = AE_MAX8(x, min);
             y = AE_MAX8(y, min);
 
-            AE_SAV8X8X2_XP(x, y, align_dst, (ae_int8x16 *)p_o, rem_itr);
+            AE_SAV8X8X2_XP(x, y, align_dst, p_o, rem_itr);
         }
         AE_SA128POS_FP(align_dst, p_o);
     }
@@ -125,21 +126,21 @@ WORD32 xa_nn_vec_activation_min_max_8_8(WORD8 * __restrict__ p_out,
     {
         for(i=0; i<(vec_length >> 4); i++)
         {
-            AE_LA8X8X2_IP(x, y, align_src, (ae_int8x16 *)p_v);
+            AE_LA8X8X2_IP(x, y, align_src, p_v);
 
             LIMIT(x, x, min, max)
             LIMIT(y, y, min, max)
 
-            AE_SA8X8X2_IP(x, y, align_dst, (ae_int8x16 *)p_o);
+            AE_SA8X8X2_IP(x, y, align_dst, p_o);
         }
         int rem_itr = (vec_length & 15);
         {
-            AE_LAV8X8X2_XP(x, y, align_src, (ae_int8x16 *)p_v, rem_itr);
+            AE_LAV8X8X2_XP(x, y, align_src, p_v, rem_itr);
 
             LIMIT(x, x, min, max)
             LIMIT(y, y, min, max)
 
-            AE_SAV8X8X2_XP(x, y, align_dst, (ae_int8x16 *)p_o, rem_itr);
+            AE_SAV8X8X2_XP(x, y, align_dst, p_o, rem_itr);
         }
         AE_SA128POS_FP(align_dst, p_o);
     }

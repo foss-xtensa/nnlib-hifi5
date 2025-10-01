@@ -25,6 +25,8 @@
 #include "xa_nn_conv2d_std_state.h"
 #include "xa_nnlib_err_chk.h"
 
+#define SW_SLAA64S_INT64_INT64(inp1, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(AE_MOVF64_FROMINT64(inp1), bias_shift))
+
 static WORD32 conv_x_left_pad(
     WORD32 x_padding,
     WORD32 kernel_width,
@@ -36,10 +38,11 @@ static WORD32 conv_x_left_pad(
     WORD32 out_width_offset,
     WORD32 out_height_offset,
     WORD16 *p_bias,
-    WORD16 *p_out,
+    WORD16 *pt_out,
     WORD32 bias_shift,
     WORD32 acc_shift)
 {
+  ae_int16 *p_out = (ae_int16*)pt_out;
   WORD32 i,j,k;
   WORD32 out_width_over_x_pad = (x_padding - kernel_width)/x_stride + 1;
   out_width_over_x_pad = out_width_over_x_pad > out_width ? out_width : out_width_over_x_pad;
@@ -51,10 +54,10 @@ static WORD32 conv_x_left_pad(
     {
       for(k=0;k<out_channels;k++)
       {
-        ae_int64 acc = p_bias[k];
-        acc = AE_SLAA64S(acc, bias_shift);
-        acc = AE_SLAA64S(acc, acc_shift);
-        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(acc),16),-16));
+        ae_int64 acc = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[k])),48);;
+        acc = SW_SLAA64S_INT64_INT64(acc, bias_shift);
+        acc = SW_SLAA64S_INT64_INT64(acc, acc_shift);
+        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(acc)),16),-16));
       }
     }
   }
@@ -72,10 +75,11 @@ static WORD32 conv_x_right_pad(
     WORD32 out_width_offset,
     WORD32 out_height_offset,
     WORD16 *p_bias,
-    WORD16 *p_out,
+    WORD16 *pt_out,
     WORD32 bias_shift,
     WORD32 acc_shift)
 {
+  ae_int16 *p_out = (ae_int16*)pt_out;
   WORD32 i,j,k;
   WORD32 idx_out_width_over_x_r_pad = (x_padding + input_width + x_stride - 1)/x_stride + 1;
   WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad;
@@ -87,10 +91,10 @@ static WORD32 conv_x_right_pad(
     {
       for(k=0;k<out_channels;k++)
       {
-        ae_int64 acc = p_bias[k];
-        acc = AE_SLAA64S(acc, bias_shift);
-        acc = AE_SLAA64S(acc, acc_shift);
-        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(acc),16),-16));
+        ae_int64 acc = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[k])),48);
+        acc = SW_SLAA64S_INT64_INT64(acc, bias_shift);
+        acc = SW_SLAA64S_INT64_INT64(acc, acc_shift);
+        p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(acc)),16),-16));
         //p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = AE_ROUND16X4F32SSYM(0, AE_TRUNCA32F64S(acc, acc_shift));
       }
     }

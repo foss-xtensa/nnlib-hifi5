@@ -76,14 +76,17 @@ WORD32 xa_nn_elm_mul_acc_f32xf32_f32(FLOAT32 * __restrict__ p_out,
         }
 
         // Remainder Loop
+        xtfloat *inp1_temp = (xtfloat *)inp1;
+        xtfloat *inp2_temp = (xtfloat *)inp2;
+        xtfloat *out_wt = (xtfloat *)out_w;
         if (num_elm & 1)
         {
             xtfloat a1, a2, a;
             a = XT_LSI((xtfloat *)out_r, 0);
-            XT_LSIP(a1, (xtfloat *)inp1, 0);
-            XT_LSIP(a2, (xtfloat *)inp2, 0);
+            XT_LSIP(a1, inp1_temp, 0);
+            XT_LSIP(a2, inp2_temp, 0);
             XT_MADD_S(a, a1, a2);
-            XT_SSI(a, (xtfloat *)out_w, 0);
+            XT_SSI(a, out_wt, 0);
         }
     }
     else
@@ -114,14 +117,17 @@ WORD32 xa_nn_elm_mul_acc_f32xf32_f32(FLOAT32 * __restrict__ p_out,
         XT_SASX2POSFP(out_w_a, out_w);
 
         // Remainder Loop
+        xtfloat *inp1_temp = (xtfloat *)inp1;
+        xtfloat *inp2_temp = (xtfloat *)inp2;
+        xtfloat *out_wt = (xtfloat *)out_w;
         if (num_elm & 1)
         {
             xtfloat a1, a2, a;
             a = XT_LSI((xtfloat *)out_r, 0);
-            XT_LSIP(a1, (xtfloat *)inp1, 0);
-            XT_LSIP(a2, (xtfloat *)inp2, 0);
+            XT_LSIP(a1, inp1_temp, 0);
+            XT_LSIP(a2, inp2_temp, 0);
             XT_MADD_S(a, a1, a2);
-            XT_SSI(a, (xtfloat *)out_w, 0);
+            XT_SSI(a, out_wt, 0);
         }
     }
 

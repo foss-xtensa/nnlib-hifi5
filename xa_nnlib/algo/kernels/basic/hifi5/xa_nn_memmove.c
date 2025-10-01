@@ -73,11 +73,13 @@ WORD32 xa_nn_memmove_8_8( void *pdst,
         AE_SA128POS_FP(alignOut, pOut);
     }
 
+    ae_int8 *p8_Inp = (ae_int8 *)pInp;
+    ae_int8 *p8_Out = (ae_int8 *)pOut;
     // i<<=4;//Reminder Loop
     for(i = 0 ;i< (n&15);i++)
     {
-        AE_L8_IP(d0, (ae_int8 *)pInp, sizeof(WORD8));
-        AE_S8_0_IP(d0, (ae_int8 *)pOut, sizeof(WORD8));
+        AE_L8_IP(d0, p8_Inp, sizeof(WORD8));
+        AE_S8_0_IP(d0, p8_Out, sizeof(WORD8));
     }
   }
   else
@@ -110,14 +112,19 @@ WORD32 xa_nn_memmove_8_8( void *pdst,
             pInp = (const  ae_int8x16 *)&x[n-1];
             pOut = (ae_int8x16 *)&y[n-1];
             ae_valign alignIn, alignOut;
-            alignIn = AE_LA64_PP(pInp);
+            
+            const ae_int8x8 *p8x8_Inp = (const ae_int8x8 *)pInp;
+            ae_int8x8 *p8x8_Out = (ae_int8x8 *)pOut;
+            alignIn = AE_LA64_PP(p8x8_Inp);
             alignOut = AE_ZALIGN64();
             for(i=0;i<n>>3;i++)
             {
-                AE_LA8X8_RIP(d0, alignIn, (const ae_int8x8 *)pInp);
-                AE_SA8X8_RIP(d0, alignOut, (ae_int8x8 *)pOut);
+                AE_LA8X8_RIP(d0, alignIn, p8x8_Inp);
+                AE_SA8X8_RIP(d0, alignOut, p8x8_Out);
             }
-            AE_SA64NEG_FP(alignOut, (void*)pOut);
+            AE_SA64NEG_FP(alignOut, (void*)p8x8_Out);
+            pInp = (const ae_int8x16*)p8x8_Inp;
+            pOut = (ae_int8x16 *)p8x8_Out;
 
             // i<<=3;//Reminder Loop
             for(i = 0 ;i<(n&7);i++)

@@ -21,7 +21,6 @@
 ******************************************************************************/
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
-
 /* Helper functions for 16x16 matrix-vector multiplication */
 
 /* Multiply four rows and one vector, aligned access case, continuous row accesses in four streams */
@@ -204,11 +203,11 @@ static inline void multiply_three_row_one_vec_16x16
 
     if((cols > 0) && (cols & 7))
     {
-        ae_int16x8 *p_src1 = (ae_int16x8 *)(p_vec +  (cols & ~7));
+        ae_int16 *p_src1 = (ae_int16 *)(p_vec +  (cols & ~7));
 
-        ae_int16x8 *p_row1 = (ae_int16x8 *)(p_mat + (row + 0)* row_offset + (cols & ~7));
-        ae_int16x8 *p_row2 = (ae_int16x8 *)(p_mat + (row + 1)* row_offset + (cols & ~7));
-        ae_int16x8 *p_row3 = (ae_int16x8 *)(p_mat + (row + 2)* row_offset + (cols & ~7));
+        ae_int16 *p_row1 = (ae_int16 *)(p_mat + (row + 0)* row_offset + (cols & ~7));
+        ae_int16 *p_row2 = (ae_int16 *)(p_mat + (row + 1)* row_offset + (cols & ~7));
+        ae_int16 *p_row3 = (ae_int16 *)(p_mat + (row + 2)* row_offset + (cols & ~7));
 
         for (col = 0; col < (cols & 7) ; col++)
         {
@@ -217,11 +216,11 @@ static inline void multiply_three_row_one_vec_16x16
             ae_int16x4 in31;
             ae_int16x4 src11;
 
-            AE_L16_IP(in11, (ae_int16 *)p_row1, 2);
-            AE_L16_IP(in21, (ae_int16 *)p_row2, 2);
-            AE_L16_IP(in31, (ae_int16 *)p_row3, 2);
+            AE_L16_IP(in11, p_row1, 2);
+            AE_L16_IP(in21, p_row2, 2);
+            AE_L16_IP(in31, p_row3, 2);
 
-            AE_L16_IP(src11, (ae_int16 *)p_src1, 2);
+            AE_L16_IP(src11, p_src1, 2);
 
             AE_MULA16_00(accu1, in11, src11);
             AE_MULA16_00(accu2, in21, src11);
@@ -229,7 +228,7 @@ static inline void multiply_three_row_one_vec_16x16
         }
     }
 
-    *p_accu1 = AE_ADD64S(accu1, accu4);
+    *p_accu1 = SW_ADD64S_INT64_INT64(accu1, accu4);
     *p_accu2 = accu2;
     *p_accu3 = accu3;
 }
@@ -294,7 +293,7 @@ static inline void multiply_one_row_one_vec_16x16_aligned
     }
 #endif
 
-    *p_accu = AE_ADD64S(accu1, accu2);
+    *p_accu = SW_ADD64S_INT64_INT64(accu1, accu2);
 }
 
 /* Multiply one row and one vector, unaligned access cases */
@@ -329,21 +328,21 @@ static inline void multiply_one_row_one_vec_16x16
 
     if((cols > 0) && (cols & 7))
     {
-        ae_int16x8 *p_src1 = (ae_int16x8 *)(p_vec +  (cols & ~7));
-        ae_int16x8 *p_row1 = (ae_int16x8 *)(p_mat + row * row_offset + (cols & ~7));
+        ae_int16 *p_src1 = (ae_int16 *)(p_vec +  (cols & ~7));
+        ae_int16 *p_row1 = (ae_int16 *)(p_mat + row * row_offset + (cols & ~7));
 
         for (col = 0; col < (cols & 7) ; col++)
         {
             ae_int16x4 in11;
             ae_int16x4 src11;
 
-            AE_L16_IP(in11, (ae_int16 *)p_row1, 2);
-            AE_L16_IP(src11, (ae_int16 *)p_src1, 2);
+            AE_L16_IP(in11, p_row1, 2);
+            AE_L16_IP(src11, p_src1, 2);
             AE_MULA16_00(accu1, in11, src11);
         }
     }
 
-    *p_accu = AE_ADD64S(accu1, accu2);
+    *p_accu = SW_ADD64S_INT64_INT64(accu1, accu2);
 }
 
 
@@ -418,10 +417,10 @@ WORD32 xa_nn_matXvec_16x16_16(
         ae_int32x2 out2_32;
         ae_int16x4 out_16;
 
-        ae_int64 accu1 = AE_SLAS64S(p_bias[row + 0 * rows_by_four]);
-        ae_int64 accu2 = AE_SLAS64S(p_bias[row + 1 * rows_by_four]);
-        ae_int64 accu3 = AE_SLAS64S(p_bias[row + 2 * rows_by_four]);
-        ae_int64 accu4 = AE_SLAS64S(p_bias[row + 3 * rows_by_four]);
+        ae_int64 accu1 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 0 * rows_by_four]);
+        ae_int64 accu2 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 1 * rows_by_four]);
+        ae_int64 accu3 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 2 * rows_by_four]);
+        ae_int64 accu4 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 3 * rows_by_four]);
 
         multiply_four_row_one_vec_16x16_aligned_cache
             (&accu1
@@ -451,13 +450,13 @@ WORD32 xa_nn_matXvec_16x16_16(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
-        accu4 = AE_SLAA64S(accu4, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+        accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-        out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+        out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu4);
         out_16 = AE_SAT16X4(out1_32, out2_32);
 
         p_out[(row + 0)]  = (WORD16)AE_MOVAD16_3(out_16);
@@ -472,7 +471,7 @@ WORD32 xa_nn_matXvec_16x16_16(
     {
         ae_int32x2 out1_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16_aligned
             (&accu1
@@ -492,9 +491,10 @@ WORD32 xa_nn_matXvec_16x16_16(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-        p_out[(row+0)]  = AE_SAT16X4(out1_32, out1_32);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+        //p_out[(row+0)]  = AE_SAT16X4(out1_32, out1_32);
+        AE_S16_0_I(AE_SAT16X4(out1_32, out1_32), (ae_int16 *)&p_out[(row+0)], 0);
     }
   }
   else if (p_mat1 && p_vec1 && p_mat2 && p_vec2)
@@ -509,9 +509,9 @@ WORD32 xa_nn_matXvec_16x16_16(
         ae_int32x2 out2_32;
         ae_int16x4 out_16;
 
-        ae_int64 accu1 = AE_SLAS64S(p_bias[row + 0]);
-        ae_int64 accu2 = AE_SLAS64S(p_bias[row + 1]);
-        ae_int64 accu3 = AE_SLAS64S(p_bias[row + 2]);
+        ae_int64 accu1 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 0]);
+        ae_int64 accu2 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 1]);
+        ae_int64 accu3 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 2]);
 
         multiply_three_row_one_vec_16x16
             (&accu1
@@ -535,12 +535,12 @@ WORD32 xa_nn_matXvec_16x16_16(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-        out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+        out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu3);
         out_16 = AE_SAT16X4(out1_32, out2_32);
 
         p_out[(row+0)]  = (WORD16)AE_MOVAD16_3(out_16);
@@ -552,7 +552,7 @@ WORD32 xa_nn_matXvec_16x16_16(
     {
         ae_int32x2 out1_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16
             (&accu1
@@ -572,9 +572,9 @@ WORD32 xa_nn_matXvec_16x16_16(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-        p_out[(row+0)]  = AE_SAT16X4(out1_32, out1_32);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+        AE_S16_0_I(AE_SAT16X4(out1_32, out1_32), (ae_int16 *)&p_out[(row+0)], 0);
     }
   }
   else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && (cols1% 16 ==0) && (row_stride1 % 8 == 0))
@@ -590,10 +590,10 @@ WORD32 xa_nn_matXvec_16x16_16(
         ae_int32x2 out2_32;
         ae_int16x4 out_16;
 
-        ae_int64 accu1 = AE_SLAS64S(p_bias[row + 0 * rows_by_four]);
-        ae_int64 accu2 = AE_SLAS64S(p_bias[row + 1 * rows_by_four]);
-        ae_int64 accu3 = AE_SLAS64S(p_bias[row + 2 * rows_by_four]);
-        ae_int64 accu4 = AE_SLAS64S(p_bias[row + 3 * rows_by_four]);
+        ae_int64 accu1 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 0 * rows_by_four]);
+        ae_int64 accu2 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 1 * rows_by_four]);
+        ae_int64 accu3 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 2 * rows_by_four]);
+        ae_int64 accu4 = SW_SLAS64S_INT16PTR_INT64(p_bias[row + 3 * rows_by_four]);
 
         WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
         WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -614,13 +614,13 @@ WORD32 xa_nn_matXvec_16x16_16(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
-        accu4 = AE_SLAA64S(accu4, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+        accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-        out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+        out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu4);
         out_16 = AE_SAT16X4(out1_32, out2_32);
 
         p_out[(row+0 * rows_by_four)]  = (WORD16)AE_MOVAD16_3(out_16);
@@ -635,7 +635,7 @@ WORD32 xa_nn_matXvec_16x16_16(
     {
         ae_int32x2 out1_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16_aligned
             (&accu1
@@ -646,9 +646,9 @@ WORD32 xa_nn_matXvec_16x16_16(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-        p_out[(row+0)]  = AE_SAT16X4(out1_32, out1_32);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+        AE_S16_0_I(AE_SAT16X4(out1_32, out1_32), (ae_int16 *)&p_out[(row+0)], 0);
     }
   }
   else if (p_mat1 && p_vec1 )
@@ -661,9 +661,9 @@ WORD32 xa_nn_matXvec_16x16_16(
         ae_int32x2 out2_32;
         ae_int16x4 out_16;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2], bias_shift);
 
         multiply_three_row_one_vec_16x16
             (&accu1
@@ -676,12 +676,12 @@ WORD32 xa_nn_matXvec_16x16_16(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-        out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+        out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu3);
         out_16 = AE_SAT16X4(out1_32, out2_32);
 
         p_out[(row+0)]  = (WORD16)AE_MOVAD16_3(out_16);
@@ -693,7 +693,7 @@ WORD32 xa_nn_matXvec_16x16_16(
     {
         ae_int32x2 out1_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16
             (&accu1
@@ -704,9 +704,9 @@ WORD32 xa_nn_matXvec_16x16_16(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-        p_out[(row+0)]  = AE_SAT16X4(out1_32, out1_32);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+        AE_S16_0_I(AE_SAT16X4(out1_32, out1_32), (ae_int16 *)&p_out[(row+0)], 0);
     }
   }
   else
@@ -773,10 +773,10 @@ WORD32 xa_nn_matXvec_16x16_32(
         ae_int32x2 out1_32;
         ae_int32x2 out2_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0 * rows_by_four], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1 * rows_by_four], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2 * rows_by_four], bias_shift);
-        ae_int64 accu4 = AE_SLAA64S(p_bias[row + 3 * rows_by_four], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0 * rows_by_four], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1 * rows_by_four], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2 * rows_by_four], bias_shift);
+        ae_int64 accu4 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 3 * rows_by_four], bias_shift);
 
         WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
         WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -816,13 +816,13 @@ WORD32 xa_nn_matXvec_16x16_32(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
-        accu4 = AE_SLAA64S(accu4, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+        accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-        out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+        out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu4);
 
         p_out[(row+0 * rows_by_four)]  = AE_MOVAD32_H(out1_32);
         p_out[(row+1 * rows_by_four)]  = AE_MOVAD32_L(out1_32);
@@ -836,7 +836,7 @@ WORD32 xa_nn_matXvec_16x16_32(
     {
         ae_int32x2 out1_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16_aligned
             (&accu1
@@ -856,9 +856,10 @@ WORD32 xa_nn_matXvec_16x16_32(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-        p_out[(row+0)]  = out1_32;
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+        //p_out[(row+0)]  = out1_32;
+        AE_S32_H_I(out1_32,(ae_int32*)&p_out[(row+0)],0);
     }
   }
   else if (p_mat1 && p_vec1 && p_mat2 && p_vec2)
@@ -870,9 +871,9 @@ WORD32 xa_nn_matXvec_16x16_32(
         ae_int32x2 out1_32;
         ae_int32x2 out2_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2], bias_shift);
 
         multiply_three_row_one_vec_16x16
             (&accu1
@@ -896,12 +897,12 @@ WORD32 xa_nn_matXvec_16x16_32(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-        out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+        out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu3);
 
         p_out[(row+0)]  = AE_MOVAD32_H(out1_32);
         p_out[(row+1)]  = AE_MOVAD32_L(out1_32);
@@ -912,7 +913,7 @@ WORD32 xa_nn_matXvec_16x16_32(
     {
         ae_int32x2 out1_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16
             (&accu1
@@ -932,9 +933,10 @@ WORD32 xa_nn_matXvec_16x16_32(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-        p_out[(row+0)]  = out1_32;
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+        //p_out[(row+0)]  = out1_32;
+        AE_S32_H_I(out1_32,(ae_int32*)&p_out[(row+0)],0);
     }
   }
   else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && cols1%16==0 && row_stride1%8== 0)
@@ -947,10 +949,10 @@ WORD32 xa_nn_matXvec_16x16_32(
         ae_int32x2 out1_32;
         ae_int32x2 out2_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0 * rows_by_four], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1 * rows_by_four], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2 * rows_by_four], bias_shift);
-        ae_int64 accu4 = AE_SLAA64S(p_bias[row + 3 * rows_by_four], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0 * rows_by_four], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1 * rows_by_four], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2 * rows_by_four], bias_shift);
+        ae_int64 accu4 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 3 * rows_by_four], bias_shift);
 
         WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
         WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -971,13 +973,13 @@ WORD32 xa_nn_matXvec_16x16_32(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
-        accu4 = AE_SLAA64S(accu4, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+        accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-        out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+        out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu4);
 
         p_out[(row+0 * rows_by_four)]  = AE_MOVAD32_H(out1_32);
         p_out[(row+1 * rows_by_four)]  = AE_MOVAD32_L(out1_32);
@@ -991,7 +993,7 @@ WORD32 xa_nn_matXvec_16x16_32(
     {
         ae_int32x2 out1_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16_aligned
             (&accu1
@@ -1002,9 +1004,10 @@ WORD32 xa_nn_matXvec_16x16_32(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-        p_out[(row+0)]  = out1_32;
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+        //p_out[(row+0)]  = out1_32;
+        AE_S32_H_I(out1_32,(ae_int32*)&p_out[(row+0)],0);
     }
   }
   else if (p_mat1 && p_vec1 )
@@ -1016,9 +1019,9 @@ WORD32 xa_nn_matXvec_16x16_32(
         ae_int32x2 out1_32;
         ae_int32x2 out2_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2], bias_shift);
 
         multiply_three_row_one_vec_16x16
             (&accu1
@@ -1031,12 +1034,12 @@ WORD32 xa_nn_matXvec_16x16_32(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-        out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+        out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu3);
 
         p_out[(row+0)]  = AE_MOVAD32_H(out1_32);
         p_out[(row+1)]  = AE_MOVAD32_L(out1_32);
@@ -1047,7 +1050,7 @@ WORD32 xa_nn_matXvec_16x16_32(
     {
         ae_int32x2 out1_32;
 
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16
             (&accu1
@@ -1058,9 +1061,10 @@ WORD32 xa_nn_matXvec_16x16_32(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-        p_out[(row+0)]  = out1_32;
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+        //p_out[(row+0)]  = out1_32;
+        AE_S32_H_I(out1_32,(ae_int32*)&p_out[(row+0)],0);
     }
 
   }
@@ -1125,10 +1129,10 @@ WORD32 xa_nn_matXvec_16x16_64(
 
     for (row = 0; row < (rows_by_four) ; row += 1)
     {
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0 * rows_by_four], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1 * rows_by_four], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2 * rows_by_four], bias_shift);
-        ae_int64 accu4 = AE_SLAA64S(p_bias[row + 3 * rows_by_four], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0 * rows_by_four], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1 * rows_by_four], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2 * rows_by_four], bias_shift);
+        ae_int64 accu4 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 3 * rows_by_four], bias_shift);
 
         WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
         WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -1168,22 +1172,26 @@ WORD32 xa_nn_matXvec_16x16_64(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
-        accu4 = AE_SLAA64S(accu4, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+        accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-        p_out[(row+0 * rows_by_four)]  = accu1;
-        p_out[(row+1 * rows_by_four)]  = accu2;
-        p_out[(row+2 * rows_by_four)]  = accu3;
-        p_out[(row+3 * rows_by_four)]  = accu4;
+        //p_out[(row+0 * rows_by_four)]  = accu1;
+        AE_S64_I(accu1, (ae_int64 *)&p_out[(row+0 * rows_by_four)], 0);
+        //p_out[(row+1 * rows_by_four)]  = accu2;
+        AE_S64_I(accu2, (ae_int64 *)&p_out[(row+1 * rows_by_four)], 0);
+        //p_out[(row+2 * rows_by_four)]  = accu3;
+        AE_S64_I(accu3, (ae_int64 *)&p_out[(row+2 * rows_by_four)], 0);
+        //p_out[(row+3 * rows_by_four)]  = accu4;
+        AE_S64_I(accu4, (ae_int64 *)&p_out[(row+3 * rows_by_four)], 0);
     }
 
     row = rows_by_four * 4;
 
     for (; row < rows ; row++)
     {
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16_aligned
             (&accu1
@@ -1203,8 +1211,9 @@ WORD32 xa_nn_matXvec_16x16_64(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        p_out[(row+0)]  = accu1;
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        //p_out[(row+0)]  = accu1;
+        AE_S64_I(accu1, (ae_int64 *)&p_out[(row+0)], 0);
     }
   }
   else if (p_mat1 && p_vec1 && p_mat2 && p_vec2)
@@ -1213,9 +1222,9 @@ WORD32 xa_nn_matXvec_16x16_64(
 
     for (row = 0; row < (rows - 2) ; row += 3)
     {
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2], bias_shift);
 
         multiply_three_row_one_vec_16x16
             (&accu1
@@ -1239,18 +1248,21 @@ WORD32 xa_nn_matXvec_16x16_64(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-        p_out[(row+0)]  = accu1;
-        p_out[(row+1)]  = accu2;
-        p_out[(row+2)]  = accu3;
+        //p_out[(row+0)]  = accu1;
+        AE_S64_I(accu1, (ae_int64 *)&p_out[(row+0)], 0);
+        //p_out[(row+1)]  = accu2;
+        AE_S64_I(accu2, (ae_int64 *)&p_out[(row+1)], 0);
+        //p_out[(row+2)]  = accu3;
+        AE_S64_I(accu3, (ae_int64 *)&p_out[(row+2)], 0);
     }
 
     for (; row < rows ; row++)
     {
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16
             (&accu1
@@ -1270,8 +1282,9 @@ WORD32 xa_nn_matXvec_16x16_64(
             ,cols2
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        p_out[(row+0)]  = accu1;
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        //p_out[(row+0)]  = accu1;
+        AE_S64_I(accu1, (ae_int64 *)&p_out[(row+0)], 0);
     }
   }
   else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && cols1%16==0 && row_stride1%8== 0)
@@ -1281,10 +1294,10 @@ WORD32 xa_nn_matXvec_16x16_64(
 
     for (row = 0; row < (rows_by_four) ; row += 1)
     {
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0 * rows_by_four], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1 * rows_by_four], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2 * rows_by_four], bias_shift);
-        ae_int64 accu4 = AE_SLAA64S(p_bias[row + 3 * rows_by_four], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0 * rows_by_four], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1 * rows_by_four], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2 * rows_by_four], bias_shift);
+        ae_int64 accu4 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 3 * rows_by_four], bias_shift);
 
         WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
         WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -1305,22 +1318,26 @@ WORD32 xa_nn_matXvec_16x16_64(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
-        accu4 = AE_SLAA64S(accu4, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+        accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-        p_out[(row+0 * rows_by_four)]  = accu1;
-        p_out[(row+1 * rows_by_four)]  = accu2;
-        p_out[(row+2 * rows_by_four)]  = accu3;
-        p_out[(row+3 * rows_by_four)]  = accu4;
+        //p_out[(row+0 * rows_by_four)]  = accu1;
+        AE_S64_I(accu1, (ae_int64 *)&p_out[(row+0 * rows_by_four)], 0);
+        //p_out[(row+1 * rows_by_four)]  = accu2;
+        AE_S64_I(accu2, (ae_int64 *)&p_out[(row+1 * rows_by_four)], 0);
+        //p_out[(row+2 * rows_by_four)]  = accu3;
+        AE_S64_I(accu3, (ae_int64 *)&p_out[(row+2 * rows_by_four)], 0);
+        //p_out[(row+3 * rows_by_four)]  = accu4;
+        AE_S64_I(accu4, (ae_int64 *)&p_out[(row+3 * rows_by_four)], 0);
     }
 
     row = rows_by_four * 4;
 
     for (; row < rows ; row++)
     {
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16_aligned
             (&accu1
@@ -1331,8 +1348,9 @@ WORD32 xa_nn_matXvec_16x16_64(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        p_out[(row+0)]  = accu1;
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        //p_out[(row+0)]  = accu1;
+        AE_S64_I(accu1, (ae_int64 *)&p_out[(row+0)], 0);
     }
   }
   else if (p_mat1 && p_vec1 )
@@ -1341,9 +1359,9 @@ WORD32 xa_nn_matXvec_16x16_64(
 
     for (row = 0; row < (rows - 2) ; row += 3)
     {
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row + 0], bias_shift);
-        ae_int64 accu2 = AE_SLAA64S(p_bias[row + 1], bias_shift);
-        ae_int64 accu3 = AE_SLAA64S(p_bias[row + 2], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 0], bias_shift);
+        ae_int64 accu2 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 1], bias_shift);
+        ae_int64 accu3 = SW_SLAA64S_INT16PTR_INT64(p_bias[row + 2], bias_shift);
 
         multiply_three_row_one_vec_16x16
             (&accu1
@@ -1356,18 +1374,21 @@ WORD32 xa_nn_matXvec_16x16_64(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        accu2 = AE_SLAA64S(accu2, acc_shift);
-        accu3 = AE_SLAA64S(accu3, acc_shift);
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+        accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-        p_out[(row+0)]  = accu1;
-        p_out[(row+1)]  = accu2;
-        p_out[(row+2)]  = accu3;
+        //p_out[(row+0)]  = accu1;
+        AE_S64_I(accu1, (ae_int64 *)&p_out[(row+0)], 0);
+        //p_out[(row+1)]  = accu2;
+        AE_S64_I(accu2, (ae_int64 *)&p_out[(row+1)], 0);
+        //p_out[(row+2)]  = accu3;
+        AE_S64_I(accu3, (ae_int64 *)&p_out[(row+2)], 0);
     }
 
     for (; row < rows ; row++)
     {
-        ae_int64 accu1 = AE_SLAA64S(p_bias[row], bias_shift);
+        ae_int64 accu1 = SW_SLAA64S_INT16PTR_INT64(p_bias[row], bias_shift);
 
         multiply_one_row_one_vec_16x16
             (&accu1
@@ -1378,8 +1399,9 @@ WORD32 xa_nn_matXvec_16x16_64(
             ,cols1
             );
 
-        accu1 = AE_SLAA64S(accu1, acc_shift);
-        p_out[(row+0)]  = accu1;
+        accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+        //p_out[(row+0)]  = accu1;
+        AE_S64_I(accu1, (ae_int64 *)&p_out[(row+0)], 0);
     }
   }
   else
@@ -1479,10 +1501,10 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                   ae_int32x2 out1_32;
                   ae_int32x2 out2_32;
 
-                  ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 0 * rows_by_four], bias_shift);
-                  ae_int64 accu2 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 1 * rows_by_four], bias_shift);
-                  ae_int64 accu3 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 2 * rows_by_four], bias_shift);
-                  ae_int64 accu4 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 3 * rows_by_four], bias_shift);
+                  ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 0 * rows_by_four], bias_shift);
+                  ae_int64 accu2 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 1 * rows_by_four], bias_shift);
+                  ae_int64 accu3 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 2 * rows_by_four], bias_shift);
+                  ae_int64 accu4 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 3 * rows_by_four], bias_shift);
 
                   WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
                   WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -1522,13 +1544,13 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                        ,cols2
                       );
 
-                  accu1 = AE_SLAA64S(accu1, acc_shift);
-                  accu2 = AE_SLAA64S(accu2, acc_shift);
-                  accu3 = AE_SLAA64S(accu3, acc_shift);
-                  accu4 = AE_SLAA64S(accu4, acc_shift);
+                  accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                  accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+                  accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+                  accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-                  out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-                  out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
+                  out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+                  out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu4);
 
                   p_out_scratch[(row+0 * rows_by_four)]  = AE_MOVAD32_H(out1_32);
                   p_out_scratch[(row+1 * rows_by_four)]  = AE_MOVAD32_L(out1_32);
@@ -1542,7 +1564,7 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
               {
                   ae_int32x2 out1_32;
 
-                  ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                  ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row], bias_shift);
 
                   multiply_one_row_one_vec_16x16_aligned
                       (&accu1
@@ -1562,8 +1584,8 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                        ,cols2
                       );
 
-                  accu1 = AE_SLAA64S(accu1, acc_shift);
-                  out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
+                  accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                  out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
                   p_out_scratch[(row+0)]  = AE_MOVAD32_H(out1_32);
               }
           }
@@ -1577,9 +1599,9 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                   ae_int32x2 out1_32;
                   ae_int32x2 out2_32;
 
-                  ae_int64 accu1 = AE_SLAA64S(((ae_int64*)p_bias)[row + 0], bias_shift);
-                  ae_int64 accu2 = AE_SLAA64S(((ae_int64*)p_bias)[row + 1], bias_shift);
-                  ae_int64 accu3 = AE_SLAA64S(((ae_int64*)p_bias)[row + 2], bias_shift);
+                  ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64*)p_bias)[row + 0], bias_shift);
+                  ae_int64 accu2 = SW_SLAA64S_INT64PTR_INT64(((ae_int64*)p_bias)[row + 1], bias_shift);
+                  ae_int64 accu3 = SW_SLAA64S_INT64PTR_INT64(((ae_int64*)p_bias)[row + 2], bias_shift);
 
                   multiply_three_row_one_vec_16x16
                       (&accu1
@@ -1603,12 +1625,12 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                        ,cols2
                       );
 
-                  accu1 = AE_SLAA64S(accu1, acc_shift);
-                  accu2 = AE_SLAA64S(accu2, acc_shift);
-                  accu3 = AE_SLAA64S(accu3, acc_shift);
+                  accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                  accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+                  accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-                  out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-                  out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
+                  out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+                  out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu3);
 
                   p_out_scratch[(row+0)]  = AE_MOVAD32_H(out1_32);
                   p_out_scratch[(row+1)]  = AE_MOVAD32_L(out1_32);
@@ -1619,7 +1641,8 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
               {
                   ae_int32x2 out1_32;
 
-                  ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                  //ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                  ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row], bias_shift);
 
                   multiply_one_row_one_vec_16x16
                       (&accu1
@@ -1639,9 +1662,10 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                        ,cols2
                       );
 
-                  accu1 = AE_SLAA64S(accu1, acc_shift);
-                  out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-                  p_out_scratch[(row+0)]  = out1_32;
+                  accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                  out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+                  //p_out_scratch[(row+0)]  = out1_32;
+                  AE_S32_H_I(out1_32,(ae_int32*)&p_out_scratch[(row+0)],0);
               }
           }
         else if (p_mat1 && p_vec1 && !((unsigned int)p_mat1 & 15) && !((unsigned int)p_vec1 & 15) && cols1%16==0 && row_stride1 % 8 ==0)
@@ -1656,10 +1680,10 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                 ae_int32x2 out1_32;
                 ae_int32x2 out2_32;
 
-                ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 0 * rows_by_four], bias_shift);
-                ae_int64 accu2 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 1 * rows_by_four], bias_shift);
-                ae_int64 accu3 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 2 * rows_by_four], bias_shift);
-                ae_int64 accu4 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 3 * rows_by_four], bias_shift);
+                ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 0 * rows_by_four], bias_shift);
+                ae_int64 accu2 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 1 * rows_by_four], bias_shift);
+                ae_int64 accu3 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 2 * rows_by_four], bias_shift);
+                ae_int64 accu4 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 3 * rows_by_four], bias_shift);
 
                 WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
                 WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -1680,13 +1704,13 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                      ,cols1
                     );
 
-                accu1 = AE_SLAA64S(accu1, acc_shift);
-                accu2 = AE_SLAA64S(accu2, acc_shift);
-                accu3 = AE_SLAA64S(accu3, acc_shift);
-                accu4 = AE_SLAA64S(accu4, acc_shift);
+                accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+                accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+                accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-                out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-                out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
+                out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+                out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu4);
 
                 p_out_scratch[(row+0 * rows_by_four)]  = AE_MOVAD32_H(out1_32);
                 p_out_scratch[(row+1 * rows_by_four)]  = AE_MOVAD32_L(out1_32);
@@ -1700,7 +1724,7 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
             {
                 ae_int32x2 out1_32;
 
-                ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row], bias_shift);
 
                 multiply_one_row_one_vec_16x16_aligned
                     (&accu1
@@ -1711,8 +1735,8 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                      ,cols1
                     );
 
-                accu1 = AE_SLAA64S(accu1, acc_shift);
-                out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
+                accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
                 p_out_scratch[(row+0)]  = AE_MOVAD32_H(out1_32);
             }
         }
@@ -1726,9 +1750,9 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                   ae_int32x2 out1_32;
                   ae_int32x2 out2_32;
 
-                  ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 0], bias_shift);
-                  ae_int64 accu2 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 1], bias_shift);
-                  ae_int64 accu3 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 2], bias_shift);
+                  ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 0], bias_shift);
+                  ae_int64 accu2 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 1], bias_shift);
+                  ae_int64 accu3 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 2], bias_shift);
 
                   multiply_three_row_one_vec_16x16
                       (&accu1
@@ -1741,12 +1765,12 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                        ,cols1
                       );
 
-                  accu1 = AE_SLAA64S(accu1, acc_shift);
-                  accu2 = AE_SLAA64S(accu2, acc_shift);
-                  accu3 = AE_SLAA64S(accu3, acc_shift);
+                  accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                  accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+                  accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-                  out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-                  out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
+                  out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+                  out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu3);
 
                   p_out_scratch[(row+0)]  = AE_MOVAD32_H(out1_32);
                   p_out_scratch[(row+1)]  = AE_MOVAD32_L(out1_32);
@@ -1757,7 +1781,7 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
               {
                   ae_int32x2 out1_32;
 
-                  ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                  ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row], bias_shift);
 
                   multiply_one_row_one_vec_16x16
                       (&accu1
@@ -1768,9 +1792,10 @@ WORD32 xa_nn_matXvec_16x16_16_tanh(
                        ,cols1
                       );
 
-                  accu1 = AE_SLAA64S(accu1, acc_shift);
-                  out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-                  p_out_scratch[(row+0)]  = out1_32;
+                  accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                  out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+                  //p_out_scratch[(row+0)]  = out1_32;
+                  AE_S32_H_I(out1_32,(ae_int32*)&p_out_scratch[(row+0)],0);
               }
           }
         else
@@ -1877,10 +1902,10 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                       ae_int32x2 out1_32;
                       ae_int32x2 out2_32;
 
-                      ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 0 * rows_by_four], bias_shift);
-                      ae_int64 accu2 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 1 * rows_by_four], bias_shift);
-                      ae_int64 accu3 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 2 * rows_by_four], bias_shift);
-                      ae_int64 accu4 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 3 * rows_by_four], bias_shift);
+                      ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 0 * rows_by_four], bias_shift);
+                      ae_int64 accu2 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 1 * rows_by_four], bias_shift);
+                      ae_int64 accu3 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 2 * rows_by_four], bias_shift);
+                      ae_int64 accu4 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 3 * rows_by_four], bias_shift);
 
                       WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
                       WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -1920,13 +1945,13 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                            ,cols2
                           );
 
-                      accu1 = AE_SLAA64S(accu1, acc_shift);
-                      accu2 = AE_SLAA64S(accu2, acc_shift);
-                      accu3 = AE_SLAA64S(accu3, acc_shift);
-                      accu4 = AE_SLAA64S(accu4, acc_shift);
+                      accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                      accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+                      accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+                      accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-                      out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-                      out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
+                      out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+                      out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu4);
 
                       p_out_scratch[(row+0 * rows_by_four)]  = AE_MOVAD32_H(out1_32);
                       p_out_scratch[(row+1 * rows_by_four)]  = AE_MOVAD32_L(out1_32);
@@ -1940,7 +1965,7 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                   {
                       ae_int32x2 out1_32;
 
-                      ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                      ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row], bias_shift);
 
                       multiply_one_row_one_vec_16x16_aligned
                           (&accu1
@@ -1960,8 +1985,8 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                            ,cols2
                           );
 
-                      accu1 = AE_SLAA64S(accu1, acc_shift);
-                      out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
+                      accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                      out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
                       p_out_scratch[(row+0)]  = AE_MOVAD32_H(out1_32);
                   }
               }
@@ -1975,9 +2000,9 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                       ae_int32x2 out1_32;
                       ae_int32x2 out2_32;
 
-                      ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 0], bias_shift);
-                      ae_int64 accu2 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 1], bias_shift);
-                      ae_int64 accu3 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 2], bias_shift);
+                      ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 0], bias_shift);
+                      ae_int64 accu2 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 1], bias_shift);
+                      ae_int64 accu3 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 2], bias_shift);
 
                       multiply_three_row_one_vec_16x16
                           (&accu1
@@ -2001,12 +2026,12 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                            ,cols2
                           );
 
-                      accu1 = AE_SLAA64S(accu1, acc_shift);
-                      accu2 = AE_SLAA64S(accu2, acc_shift);
-                      accu3 = AE_SLAA64S(accu3, acc_shift);
+                      accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                      accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+                      accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-                      out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-                      out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
+                      out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+                      out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu3);
 
                       p_out_scratch[(row+0)]  = AE_MOVAD32_H(out1_32);
                       p_out_scratch[(row+1)]  = AE_MOVAD32_L(out1_32);
@@ -2017,7 +2042,7 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                   {
                       ae_int32x2 out1_32;
 
-                      ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                      ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row], bias_shift);
 
                       multiply_one_row_one_vec_16x16
                           (&accu1
@@ -2037,9 +2062,10 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                            ,cols2
                           );
 
-                      accu1 = AE_SLAA64S(accu1, acc_shift);
-                      out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-                      p_out_scratch[(row+0)]  = out1_32;
+                      accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                      out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+                      //p_out_scratch[(row+0)]  = out1_32;
+                      AE_S32_H_I(out1_32,(ae_int32*)&p_out_scratch[(row+0)],0);
                   }
 
               }
@@ -2055,10 +2081,10 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                       ae_int32x2 out1_32;
                       ae_int32x2 out2_32;
 
-                      ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 0 * rows_by_four], bias_shift);
-                      ae_int64 accu2 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 1 * rows_by_four], bias_shift);
-                      ae_int64 accu3 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 2 * rows_by_four], bias_shift);
-                      ae_int64 accu4 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 3 * rows_by_four], bias_shift);
+                      ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 0 * rows_by_four], bias_shift);
+                      ae_int64 accu2 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 1 * rows_by_four], bias_shift);
+                      ae_int64 accu3 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 2 * rows_by_four], bias_shift);
+                      ae_int64 accu4 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 3 * rows_by_four], bias_shift);
 
                       WORD16 * p_m1_row1 = (p_mat1 + row * row_stride1);
                       WORD16 * p_m1_row2 = (p_m1_row1 + row_stride1 * rows_by_four);
@@ -2079,13 +2105,13 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                            ,cols1
                           );
 
-                      accu1 = AE_SLAA64S(accu1, acc_shift);
-                      accu2 = AE_SLAA64S(accu2, acc_shift);
-                      accu3 = AE_SLAA64S(accu3, acc_shift);
-                      accu4 = AE_SLAA64S(accu4, acc_shift);
+                      accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                      accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+                      accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
+                      accu4 = SW_SLAA64S_INT64_INT64(accu4, acc_shift);
 
-                      out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-                      out2_32 = AE_ROUND32X2F64SSYM(accu3, accu4);
+                      out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+                      out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu4);
 
                       p_out_scratch[(row+0 * rows_by_four)]  = AE_MOVAD32_H(out1_32);
                       p_out_scratch[(row+1 * rows_by_four)]  = AE_MOVAD32_L(out1_32);
@@ -2099,7 +2125,7 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                   {
                       ae_int32x2 out1_32;
 
-                      ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                      ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row], bias_shift);
 
                       multiply_one_row_one_vec_16x16_aligned
                           (&accu1
@@ -2110,8 +2136,8 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                            ,cols1
                           );
 
-                      accu1 = AE_SLAA64S(accu1, acc_shift);
-                      out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
+                      accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                      out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
                       p_out_scratch[(row+0)]  = AE_MOVAD32_H(out1_32);
                   }
               }
@@ -2125,9 +2151,9 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                       ae_int32x2 out1_32;
                       ae_int32x2 out2_32;
 
-                      ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 0], bias_shift);
-                      ae_int64 accu2 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 1], bias_shift);
-                      ae_int64 accu3 = AE_SLAA64S(((ae_int64 *)p_bias)[row + 2], bias_shift);
+                      ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 0], bias_shift);
+                      ae_int64 accu2 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 1], bias_shift);
+                      ae_int64 accu3 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row + 2], bias_shift);
 
                       multiply_three_row_one_vec_16x16
                           (&accu1
@@ -2140,12 +2166,12 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                            ,cols1
                           );
 
-                      accu1 = AE_SLAA64S(accu1, acc_shift);
-                      accu2 = AE_SLAA64S(accu2, acc_shift);
-                      accu3 = AE_SLAA64S(accu3, acc_shift);
+                      accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                      accu2 = SW_SLAA64S_INT64_INT64(accu2, acc_shift);
+                      accu3 = SW_SLAA64S_INT64_INT64(accu3, acc_shift);
 
-                      out1_32 = AE_ROUND32X2F64SSYM(accu1, accu2);
-                      out2_32 = AE_ROUND32X2F64SSYM(accu3, accu3);
+                      out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu2);
+                      out2_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu3, accu3);
 
                       p_out_scratch[(row+0)]  = AE_MOVAD32_H(out1_32);
                       p_out_scratch[(row+1)]  = AE_MOVAD32_L(out1_32);
@@ -2156,7 +2182,7 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                   {
                       ae_int32x2 out1_32;
 
-                      ae_int64 accu1 = AE_SLAA64S(((ae_int64 *)p_bias)[row], bias_shift);
+                      ae_int64 accu1 = SW_SLAA64S_INT64PTR_INT64(((ae_int64 *)p_bias)[row], bias_shift);
 
                       multiply_one_row_one_vec_16x16
                           (&accu1
@@ -2167,9 +2193,10 @@ WORD32 xa_nn_matXvec_16x16_16_sigmoid(
                            ,cols1
                           );
 
-                      accu1 = AE_SLAA64S(accu1, acc_shift);
-                      out1_32 = AE_ROUND32X2F64SSYM(accu1, accu1);
-                      p_out_scratch[(row+0)]  = out1_32;
+                      accu1 = SW_SLAA64S_INT64_INT64(accu1, acc_shift);
+                      out1_32 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(accu1, accu1);
+                      //p_out_scratch[(row+0)]  = out1_32;
+                      AE_S32_H_I(out1_32,(ae_int32*)&p_out_scratch[(row+0)],0);
                   }
               }
               else

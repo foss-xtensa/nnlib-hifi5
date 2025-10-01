@@ -55,7 +55,9 @@ WORD32 xa_nn_memset_f32_f32(FLOAT32 * __restrict__ p_out,
   //Loading input values
   ae_valignx2 inp_a;
   if( (((unsigned)valueArray) & 15) == 0)
+  {
         AE_LSX2X2_IP(x1, x2, inp, 4*sizeof(FLOAT32));
+  }
   else
      {
     inp_a = AE_LA128_PP(inp);
@@ -88,13 +90,13 @@ WORD32 xa_nn_memset_f32_f32(FLOAT32 * __restrict__ p_out,
 #pragma loop_count min=0,max=3
     
  xtfloat a;
-
+ xtfloat *out_t = (xtfloat *)out;
  xtfloat *inp_val = (xtfloat *) valueArray;
  AE_LSIP(a, inp_val, sizeof(FLOAT32));
 
   for(i = 0; i < (num_elm&3) ; i++)
   {
-    AE_SSIP(a, (xtfloat *)out, sizeof(FLOAT32));
+    AE_SSIP(a, out_t, sizeof(FLOAT32));
   }
 
   return 0;

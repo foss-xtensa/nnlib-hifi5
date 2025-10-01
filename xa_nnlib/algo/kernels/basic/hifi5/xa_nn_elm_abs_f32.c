@@ -85,13 +85,15 @@ WORD32 xa_nn_elm_abs_f32_f32(FLOAT32 * __restrict__ p_out,
   }
 
   // Remainder Loop
+  xtfloat *inp_temp = (xtfloat *)inp;
+  xtfloat *out_temp = (xtfloat *)out;
   int rem_itr = num_elm & (7);
   for(i = 0; i < rem_itr; i++)
   {
     xtfloat a1, a;
-    AE_LSIP(a1, (xtfloat *)inp, sizeof(FLOAT32));
+    AE_LSIP(a1, inp_temp, sizeof(FLOAT32));
     a = ABS_S(a1);
-    AE_SSIP(a, (xtfloat *)out, sizeof(FLOAT32));
+    AE_SSIP(a, out_temp, sizeof(FLOAT32));
   }
 
   return 0;

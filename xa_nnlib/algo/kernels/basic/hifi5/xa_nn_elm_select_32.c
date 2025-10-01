@@ -23,6 +23,7 @@
 #include "xa_nn_common.h"
 #include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_err_chk.h"
+#include "xa_nnlib_common_macros_hifi5.h"
 WORD32 xa_nn_elm_select_32x32_32(WORD32 * __restrict__ p_out,
                                const WORD32 * __restrict__ p_inp1,
                                const WORD32 * __restrict__ p_inp2,
@@ -58,11 +59,12 @@ WORD32 xa_nn_elm_select_32x32_32(WORD32 * __restrict__ p_out,
   
   ae_int16x4 one16 = AE_MOVDA16(1);
   
+  const signed char *ptr_cond_sn = (const signed char*)ptr_cond;
   for(i=0; i<(num_elm>>2); i++)
   {
     AE_LA32X2X2_IP(x11, x12, inp1_a, ptr_inp1);
     AE_LA32X2X2_IP(x21, x22, inp2_a, ptr_inp2);
-    AE_LA8X4U_IP(cond, cond_a, (const signed char *)ptr_cond);
+    AE_LA8X4U_IP(cond, cond_a, ptr_cond_sn);
     not_cond = AE_INT16X4_XOR_INT16X4(cond, one16);
     y1 = AE_MULP32X16X2_H(x11, cond);
     y2 = AE_MULP32X16X2_L(x12, cond);
@@ -71,19 +73,24 @@ WORD32 xa_nn_elm_select_32x32_32(WORD32 * __restrict__ p_out,
     AE_SA32X2X2_IP(y1, y2, out_a, ptr_out);
   }
   AE_SA128POS_FP(out_a, ptr_out);
-  
+  ptr_cond = (const unsigned char*)ptr_cond_sn;
   ae_int32x2 x1,x2;
   xtbool2 flag;
   unsigned char flag1;
+  
+  ae_int32 *ptr32_inp1 = (ae_int32 *)ptr_inp1;
+  ae_int32 *ptr32_inp2 = (ae_int32 *)ptr_inp2;
+  ae_int32 *ptr32_out = (ae_int32 *)ptr_out;
+  
   for(i = (num_elm & 3); i>0; i--)
   {  
-    AE_L32_IP(x1, (ae_int32 *)ptr_inp1, 4);
-    AE_L32_IP(x2, (ae_int32 *)ptr_inp2, 4);
+    AE_L32_IP(x1, ptr32_inp1, 4);
+    AE_L32_IP(x2, ptr32_inp2, 4);
     flag1 = XT_L8UI(ptr_cond, 0);
     ptr_cond++;
     flag = AE_MOVBA1X2(flag1,flag1);
     AE_MOVF32X2(x1, x2, flag);
-    AE_S32_H_IP(x1,(ae_int32 *)ptr_out,4);
+    AE_S32_H_IP(x1,ptr32_out,4);
   }
   return 0;
 }
@@ -112,7 +119,7 @@ static void internal_elm_select_broadcast_32x32_32(WORD32 * __restrict__ p_out,
   xtbool2 con;
 
   /* For out = condition ? inp2 :inp1 */
-  if(sign_flag){
+  if(AE_MOVAB(sign_flag)){
     if(((((unsigned)p_a)&7) == 0) && ((((unsigned)p_c)&7) == 0))
     {
       for(i=0; i<num_simd2_ops; i++)
@@ -152,9 +159,9 @@ static void internal_elm_select_broadcast_32x32_32(WORD32 * __restrict__ p_out,
       a0_7 = AE_L_32((ae_int32 *)p_a, 0);
       con1 = XT_L8UI(condition, 0);
       xtbool s = AE_MOVBA(con1);
-      AE_MOVT_32(out, x2, s);
+      AE_MOVT_32(out, AE_MOVINT32_FROMINT32X2(x2), s);
       AE_MOVF_32(out, a0_7, s);  
-      AE_S32_L_I(out, (ae_int32 *)p_c, 0);
+      AE_S32_L_I(AE_MOVINT32X2_FROMINT32(out), (ae_int32 *)p_c, 0);
     }
   }
   /* For out = condition ? inp1 :inp2 */
@@ -200,8 +207,8 @@ static void internal_elm_select_broadcast_32x32_32(WORD32 * __restrict__ p_out,
       con1 = XT_L8UI(condition, 0);
       xtbool s = AE_MOVBA(con1);
       AE_MOVT_32(out, a0_7, s);
-      AE_MOVF_32(out, x2, s);    
-      AE_S32_L_I(out, (ae_int32 *)p_c, 0);
+      AE_MOVF_32(out, AE_MOVINT32_FROMINT32X2(x2), s);    
+      AE_S32_L_I(AE_MOVINT32X2_FROMINT32(out), (ae_int32 *)p_c, 0);
     }    
   }
 }
@@ -264,9 +271,9 @@ static void internal_elm_select_broadcast_both_32x32_32(WORD32 * __restrict__ p_
     {
       con1 = XT_L8UI(condition, 0);
       xtbool s = AE_MOVBA(con1);
-      AE_MOVT_32(out, x1, s);
-      AE_MOVF_32(out, x2, s);    
-      AE_S32_L_I(out, (ae_int32 *)p_c, 0);
+      AE_MOVT_32(out, AE_MOVINT32_FROMINT32X2(x1), s);
+      AE_MOVF_32(out, AE_MOVINT32_FROMINT32X2(x2), s);    
+      AE_S32_L_I(AE_MOVINT32X2_FROMINT32(out), (ae_int32 *)p_c, 0);
     }
 }
 
@@ -304,7 +311,7 @@ static void internal_elm_select_broadcast_2D_32x32_32(WORD32 * __restrict__ p_ou
     unsigned char con1, con2;
     xtbool2 con;
   /* For out = condition ? inp2 :inp1 */   
-  if(sign_flag){  
+  if(AE_MOVAB(sign_flag)){  
     for(i = 0; i < out_lc; i++)
     {
       p_a = (ae_int32x2 *)&p_inp1[i * in_lc];
@@ -355,7 +362,7 @@ static void internal_elm_select_broadcast_2D_32x32_32(WORD32 * __restrict__ p_ou
         xtbool s = AE_MOVBA(con1);
         AE_MOVT_32(c0, b0, s);
         AE_MOVF_32(c0, a0, s);   
-        AE_S32_L_I(c0, (ae_int32 *)p_c, 0);
+        AE_S32_L_I(AE_MOVINT32X2_FROMINT32(c0), (ae_int32 *)p_c, 0);
       }      
     }
   }
@@ -413,7 +420,7 @@ static void internal_elm_select_broadcast_2D_32x32_32(WORD32 * __restrict__ p_ou
         xtbool s = AE_MOVBA(con1);
         AE_MOVT_32(c0, a0, s);
         AE_MOVF_32(c0, b0, s);   
-        AE_S32_L_I(c0, (ae_int32 *)p_c, 0);
+        AE_S32_L_I(AE_MOVINT32X2_FROMINT32(c0), (ae_int32 *)p_c, 0);
       }      
     }  
   }
@@ -503,7 +510,7 @@ static void internal_elm_select_broadcast_both_2D_32x32_32(WORD32 * __restrict__
         xtbool s = AE_MOVBA(con1);
         AE_MOVT_32(c0, a0, s);
         AE_MOVF_32(c0, b0, s);   
-        AE_S32_L_I(c0, (ae_int32 *)p_c, 0);
+        AE_S32_L_I(AE_MOVINT32X2_FROMINT32(c0), (ae_int32 *)p_c, 0);
       }      
     }  
 }
@@ -593,7 +600,7 @@ WORD32 xa_nn_elm_select_broadcast_4D_32x32_32(WORD32 * __restrict__ p_out,
 
   if(!(need_broadcast_1 || need_broadcast_2))
   {
-    sign_flag = 0;
+    sign_flag = AE_MOVBA(0);
     internal_elm_select_broadcast_2D_32x32_32(
                 p_out,
                 p_inp1,
@@ -606,7 +613,7 @@ WORD32 xa_nn_elm_select_broadcast_4D_32x32_32(WORD32 * __restrict__ p_out,
   else if((inp1_strides[3] == 1)&& (inp2_strides[3] == 1))
   {
     WORD32 in_lc, out_lc;
-    sign_flag = 0;
+    sign_flag = AE_MOVBA(0);
     in_lc = p_out_shape[2] * p_out_shape[3];
     out_lc = 1;
     if((inp1_strides[2] == 0) && (inp2_strides[2] == 0) )
@@ -641,7 +648,7 @@ WORD32 xa_nn_elm_select_broadcast_4D_32x32_32(WORD32 * __restrict__ p_out,
         {
           const WORD32 *tmp;
           tmp = p_inp1_tmp;   p_inp1_tmp = p_inp2_tmp;    p_inp2_tmp = tmp;
-          sign_flag = 1;
+          sign_flag = AE_MOVBA(1);
           int tmp_strides[2];
           tmp_strides[0] = inp1_strides[0];
           tmp_strides[1] = inp1_strides[1];
@@ -696,10 +703,10 @@ WORD32 xa_nn_elm_select_broadcast_4D_32x32_32(WORD32 * __restrict__ p_out,
   }
   else if((inp1_const && (!need_broadcast_2))||(inp2_const && (!need_broadcast_1)))
   {
-        sign_flag = 0;
+        sign_flag = AE_MOVBA(0);
         if(inp1_const == 1)
         {
-          sign_flag = 1;
+          sign_flag = AE_MOVBA(1);
           const WORD32 *tmp;
           tmp = p_inp1_tmp;   p_inp1_tmp = p_inp2_tmp;    p_inp2_tmp = tmp;
         }
@@ -713,7 +720,7 @@ WORD32 xa_nn_elm_select_broadcast_4D_32x32_32(WORD32 * __restrict__ p_out,
   }
   else
   {
-    sign_flag = 0;
+    sign_flag = AE_MOVBA(0);
     if((inp1_strides[3] == 0) && (inp2_strides[3] == 0))
     {
         for(itr0 = 0; itr0 < p_out_shape[0]; itr0++)
@@ -752,7 +759,7 @@ WORD32 xa_nn_elm_select_broadcast_4D_32x32_32(WORD32 * __restrict__ p_out,
         {
           const WORD32 *tmp;
           tmp = p_inp1_tmp;   p_inp1_tmp = p_inp2_tmp;    p_inp2_tmp = tmp;
-          sign_flag = 1;
+          sign_flag = AE_MOVBA(1);
           int tmp_strides[3];
           tmp_strides[0] = inp1_strides[0];
           tmp_strides[1] = inp1_strides[1];

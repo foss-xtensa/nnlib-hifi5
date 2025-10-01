@@ -25,6 +25,9 @@
 #include "xa_nnlib_kernels_api.h"
 #include "xa_nnlib_quant_macros_hifi5.h"
 
+#define SW_ADD32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(inp1), AE_MOVF32X2_FROMINT32X2(inp2)))
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+
 WORD32 xa_nn_vec_leaky_relu_asym16s_asym16s( WORD16 * __restrict__ p_out,
                     const   WORD16 * __restrict__ p_vec,
                             WORD32 inp_zero_bias,
@@ -46,14 +49,13 @@ WORD32 xa_nn_vec_leaky_relu_asym16s_asym16s( WORD16 * __restrict__ p_out,
   XA_NNLIB_ARG_CHK_COND(((inp_zero_bias < -32768) || (inp_zero_bias > 32767)), -1);
   XA_NNLIB_ARG_CHK_COND(((out_shift < -31) || (out_shift > 31)), -1);
   XA_NNLIB_ARG_CHK_COND(((alpha_shift < -31) || (alpha_shift > 31)), -1);
-  XA_NNLIB_ARG_CHK_COND((alpha_multiplier < 0), -1);
   XA_NNLIB_ARG_CHK_COND((out_multiplier < 0), -1);
   XA_NNLIB_ARG_CHK_COND(((out_zero_bias < -32768) || (out_zero_bias > 32767)), -1);
 
   int rem_length = (vec_length & 7);
 
-  WORD16 *p_o = p_out;
-  WORD16 *p_v = (WORD16 *)p_vec;
+  ae_int16x8 *p_o = (ae_int16x8 *)p_out;
+  ae_int16x8 *p_v = (ae_int16x8 *)p_vec;
  
   ae_int16x4 inp_zb_16 = AE_MOVDA16(inp_zero_bias);
 #if TFLITE_SINGLE_ROUNDING
@@ -76,7 +78,7 @@ WORD32 xa_nn_vec_leaky_relu_asym16s_asym16s( WORD16 * __restrict__ p_out,
   int a_right_shift = alpha_shift>0?0:-alpha_shift;
 #endif
 
-  ae_valignx2 align_src  = AE_LA128_PP((ae_int16x8 *)p_v);
+  ae_valignx2 align_src  = AE_LA128_PP(p_v);
   ae_valignx2 align_dst = AE_ZALIGN128(); // zero alignment reg
 
   ae_int16x4 d_inp0, d_inp1;
@@ -87,7 +89,7 @@ WORD32 xa_nn_vec_leaky_relu_asym16s_asym16s( WORD16 * __restrict__ p_out,
 #pragma concurrent
   for(i=0; i<(vec_length >> 3); i++)
   {
-    AE_LA16X4X2_IP(d_inp0, d_inp1, align_src, (ae_int16x8 *)p_v);
+    AE_LA16X4X2_IP(d_inp0, d_inp1, align_src, p_v);
     
     AE_SUBW16(d_w0_0, d_w0_1, d_inp0, inp_zb_16);
     AE_SUBW16(d_w0_2, d_w0_3, d_inp1, inp_zb_16);
@@ -119,21 +121,21 @@ WORD32 xa_nn_vec_leaky_relu_asym16s_asym16s( WORD16 * __restrict__ p_out,
     AE_MOVT32X2(d_w0_2, d_alpha_w0_2, sel2);
     AE_MOVT32X2(d_w0_3, d_alpha_w0_3, sel3);
 
-    d_w0_0 = AE_ADD32S(AE_MOVDA32(out_zero_bias), d_w0_0);
-    d_w0_1 = AE_ADD32S(AE_MOVDA32(out_zero_bias), d_w0_1);
-    d_w0_2 = AE_ADD32S(AE_MOVDA32(out_zero_bias), d_w0_2);
-    d_w0_3 = AE_ADD32S(AE_MOVDA32(out_zero_bias), d_w0_3);
+    d_w0_0 = SW_ADD32S_INT32X2_INT32X2(SW_MOVDA32(out_zero_bias), d_w0_0);
+    d_w0_1 = SW_ADD32S_INT32X2_INT32X2(SW_MOVDA32(out_zero_bias), d_w0_1);
+    d_w0_2 = SW_ADD32S_INT32X2_INT32X2(SW_MOVDA32(out_zero_bias), d_w0_2);
+    d_w0_3 = SW_ADD32S_INT32X2_INT32X2(SW_MOVDA32(out_zero_bias), d_w0_3);
 
     ae_int16x4 out0,out1;
     out0 = AE_SAT16X4(d_w0_0, d_w0_1);
     out1 = AE_SAT16X4(d_w0_2, d_w0_3);
 
-    AE_SA16X4X2_IP(out0, out1, align_dst, (ae_int16x8 *)p_o);
+    AE_SA16X4X2_IP(out0, out1, align_dst, p_o);
   }
 
   if( rem_length ){
 
-    AE_LAV16X4X2_XP(d_inp0, d_inp1, align_src, (ae_int16x8 *)p_v, rem_length * 2);
+    AE_LAV16X4X2_XP(d_inp0, d_inp1, align_src, p_v, rem_length * 2);
     AE_SUBW16(d_w0_0, d_w0_1, d_inp0, inp_zb_16);
     AE_SUBW16(d_w0_2, d_w0_3, d_inp1, inp_zb_16);
 
@@ -163,16 +165,16 @@ WORD32 xa_nn_vec_leaky_relu_asym16s_asym16s( WORD16 * __restrict__ p_out,
     AE_MOVT32X2(d_w0_2, d_alpha_w0_2, sel2);
     AE_MOVT32X2(d_w0_3, d_alpha_w0_3, sel3);
 
-    d_w0_0 = AE_ADD32S(AE_MOVDA32(out_zero_bias), d_w0_0);
-    d_w0_1 = AE_ADD32S(AE_MOVDA32(out_zero_bias), d_w0_1);
-    d_w0_2 = AE_ADD32S(AE_MOVDA32(out_zero_bias), d_w0_2);
-    d_w0_3 = AE_ADD32S(AE_MOVDA32(out_zero_bias), d_w0_3);
+    d_w0_0 = SW_ADD32S_INT32X2_INT32X2(SW_MOVDA32(out_zero_bias), d_w0_0);
+    d_w0_1 = SW_ADD32S_INT32X2_INT32X2(SW_MOVDA32(out_zero_bias), d_w0_1);
+    d_w0_2 = SW_ADD32S_INT32X2_INT32X2(SW_MOVDA32(out_zero_bias), d_w0_2);
+    d_w0_3 = SW_ADD32S_INT32X2_INT32X2(SW_MOVDA32(out_zero_bias), d_w0_3);
 
     ae_int16x4 out0,out1;
     out0 = AE_SAT16X4(d_w0_0, d_w0_1);
     out1 = AE_SAT16X4(d_w0_2, d_w0_3);
 
-    AE_SAV16X4X2_XP(out0, out1, align_dst, (ae_int16x8 *)p_o, rem_length * 2);
+    AE_SAV16X4X2_XP(out0, out1, align_dst, p_o, rem_length * 2);
   }
 
   AE_SA128POS_FP(align_dst, p_o); // finalize the stream

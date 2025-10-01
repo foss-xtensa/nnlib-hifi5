@@ -25,6 +25,7 @@
 #include "xa_nn_conv2d_std_state.h"
 #include "xa_nnlib_err_chk.h"
 
+#define SW_SLAA64S_INT64_INT64(inp1, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(AE_MOVF64_FROMINT64(inp1), bias_shift))
 
 static WORD32 conv_x_left_pad(
     WORD32 x_padding,
@@ -53,12 +54,12 @@ static WORD32 conv_x_left_pad(
       for(k=0;k<out_channels;k++)
       {
 
-        ae_int64 acc = AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[k]));
-        acc = AE_SLAA64S(acc, 8);
-        acc = AE_SLAA64S(acc, -56);
-        acc = AE_SLAA64S(acc, bias_shift);
-        acc = AE_SLAA64S(acc, acc_shift);
-        ae_int8x8 res2 = AE_MOVINT8X8_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(acc),24),-24));
+        ae_int64 acc = AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[k]));
+        acc = SW_SLAA64S_INT64_INT64(acc, 8);
+        acc = SW_SLAA64S_INT64_INT64(acc, -56);
+        acc = SW_SLAA64S_INT64_INT64(acc, bias_shift);
+        acc = SW_SLAA64S_INT64_INT64(acc, acc_shift);
+        ae_int8x8 res2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVINT32X2_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(acc)),24),-24)));
         p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] =(WORD8)AE_MOVAD8(res2,0);
       }
     }
@@ -92,12 +93,12 @@ static WORD32 conv_x_right_pad(
     {
       for(k=0;k<out_channels;k++)
       {
-        ae_int64 acc = AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[k]));
-        acc = AE_SLAA64S(acc, 8);
-        acc = AE_SLAA64S(acc, -56);
-        acc = AE_SLAA64S(acc, bias_shift);
-        acc = AE_SLAA64S(acc, acc_shift);
-        ae_int8x8 res2 = AE_MOVINT8X8_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(acc),24),-24));
+        ae_int64 acc = AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[k]));
+        acc = SW_SLAA64S_INT64_INT64(acc, 8);
+        acc = SW_SLAA64S_INT64_INT64(acc, -56);
+        acc = SW_SLAA64S_INT64_INT64(acc, bias_shift);
+        acc = SW_SLAA64S_INT64_INT64(acc, acc_shift);
+        ae_int8x8 res2 = AE_MOVINT8X8_FROMINT32X2(AE_MOVINT32X2_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(acc)),24),-24)));
         p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = (WORD8)AE_MOVAD8(res2,0);
       }
     }

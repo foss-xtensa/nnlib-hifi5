@@ -27,7 +27,7 @@
 
 #if HAVE_VFPU
 static void avgpool_f32(
-    FLOAT32* __restrict__ p_out,
+    FLOAT32* __restrict__ pt_out,
     const FLOAT32* __restrict__ p_inp,
     WORD32  input_height,
     WORD32  input_width,
@@ -45,11 +45,13 @@ static void avgpool_f32(
 {
     FLOAT32 *p_scratch = (FLOAT32 *)(p_scratch_in);
 
+    xtfloat* __restrict__ p_out = (xtfloat*)pt_out;
     int itr_oh, itr_ow;
     int left_pad_aligned, right_pad, total_out_width, scratch_width;
     const xtfloatx2 * p_src1, * p_src2;
-    const xtfloatx2 * __restrict p_src1_temp, * __restrict p_src2_temp;
-    xtfloatx2 *p_dst, *p_dst_temp;
+    const xtfloatx4 * __restrict__ px4_src1_temp, * __restrict__ px4_src2_temp;
+    xtfloatx2 *p_dst;
+    xtfloatx4 *px4_dst_temp;
     ae_valignx2 align_src1, align_src2;
     int i;
     FLOAT32 *p_dst_pad;
@@ -97,25 +99,23 @@ static void avgpool_f32(
             p_src1 = (const xtfloatx2 *)p_inp;
             p_src1 = (const xtfloatx2 *)((const FLOAT32 *)p_src1 + start_row*input_width);
             pool_height--;
-            p_dst_temp = p_dst;
-            p_src1_temp = p_src1;
 
+            px4_src1_temp = (const xtfloatx4 *)p_src1;
+            px4_dst_temp = (xtfloatx4 *)p_dst;
             /* prime */
-            align_src1 = AE_LA128_PP(p_src1_temp);
-
+            align_src1 = AE_LA128_PP(px4_src1_temp);
             for(i = 0; i < (input_width >> 2); i++)
             {
                 xtfloatx2 i1, j1;
-                AE_LASX2X2_IP(i1, j1, align_src1, (const xtfloatx4 *)p_src1_temp);
-                AE_SSX2X2_IP(i1, j1, (xtfloatx4 *)p_dst_temp, 16);
+                AE_LASX2X2_IP(i1, j1, align_src1, px4_src1_temp);
+                AE_SSX2X2_IP(i1, j1, px4_dst_temp, 16);
             }
-
             /* reminder loop for input_width */
             for(i=0;i<(input_width & 3);i++)
             {
-                xtfloatx2 out;
-                out = ((const FLOAT32 *)p_src1_temp)[i];
-                ((FLOAT32 *)p_dst_temp)[i] = out;
+                xtfloat out;
+                out = ((xtfloat *)px4_src1_temp)[i];
+                ((xtfloat *)px4_dst_temp)[i] = out;
             }
 
             p_src2 = p_src1;
@@ -124,34 +124,32 @@ static void avgpool_f32(
             while(pool_height)
             {
                 p_src2 = (const xtfloatx2 *)((const FLOAT32 *)p_src2 + input_width);
-                p_dst_temp = p_dst;
-                p_src1_temp = p_src1;
-                p_src2_temp = p_src2;
 
+                px4_src1_temp = (const xtfloatx4 *)p_src1;
+                px4_src2_temp = (const xtfloatx4 *)p_src2;
+                px4_dst_temp = (xtfloatx4 *)p_dst;
                 /* prime */
-                align_src2 = AE_LA128_PP(p_src2_temp);
-
+                align_src2 = AE_LA128_PP(px4_src2_temp);
                 for(i = 0; i < (input_width >> 2); i++)
                 {
                     xtfloatx2 i1, j1, i2, j2, out, out1;
 
-                    AE_LSX2X2_IP(i1, j1, (const xtfloatx4 *)p_src1_temp, 16);
-                    AE_LASX2X2_IP(i2, j2, align_src2, (const xtfloatx4 *)p_src2_temp);
+                    AE_LSX2X2_IP(i1, j1, px4_src1_temp, 16);
+                    AE_LASX2X2_IP(i2, j2, align_src2, px4_src2_temp);
 
                     ADD_SX2X2(out, out1, i1, j1, i2, j2);
-                    AE_SSX2X2_IP(out, out1, (xtfloatx4 *)p_dst_temp, 16);
+                    AE_SSX2X2_IP(out, out1, px4_dst_temp, 16);
                 }
-
                 /* reminder loop for input_width */
                 for(i=0;i<(input_width & 3);i++)
                 {
-                    xtfloatx2 i1, i2, out;
+                    xtfloat i1, i2, out;
 
-                    i1 = ((const FLOAT32 *)p_src1_temp)[i];
-                    i2 = ((const FLOAT32 *)p_src2_temp)[i];
+                    i1 = ((xtfloat *)px4_src1_temp)[i];
+                    i2 = ((xtfloat *)px4_src2_temp)[i];
 
-                    out = ADD_SX2(i1, i2);
-                    ((FLOAT32 *)p_dst_temp)[i] = out;
+                    out = ADD_S(i1, i2);
+                    ((xtfloat *)px4_dst_temp)[i] = out;
                 }
                 pool_height--;
             };
@@ -176,25 +174,23 @@ static void avgpool_f32(
 
         p_src1 = (const xtfloatx2 *)((FLOAT32 *)p_scratch + left_pad_aligned - x_padding);
         pool_width--;
-        p_dst_temp = p_dst;
-        p_src1_temp = p_src1;
 
+        px4_src1_temp = (const xtfloatx4 *)p_src1;
+        px4_dst_temp = (xtfloatx4 *)p_dst;
         /* prime */
-        align_src1 = AE_LA128_PP(p_src1_temp);
-
+        align_src1 = AE_LA128_PP(px4_src1_temp);
         for(i = 0; i < (scratch_width >> 2); i++)
         {
             xtfloatx2 src1, src2;
-            AE_LASX2X2_IP(src1, src2, align_src1, (const xtfloatx4 *)p_src1_temp);
-            AE_SSX2X2_IP(src1, src2, (xtfloatx4 *)p_dst_temp, 16);
+            AE_LASX2X2_IP(src1, src2, align_src1, px4_src1_temp);
+            AE_SSX2X2_IP(src1, src2, px4_dst_temp, 16);
         }
-
         /* reminder loop for scratch_width */
         for(i=0;i<(scratch_width & 3);i++)
         {
-           xtfloatx2 src1;
-           src1 = ((const FLOAT32 *)p_src1_temp)[i];
-           ((FLOAT32 *)p_dst_temp)[i] = src1;
+           xtfloat src1;
+           src1 = ((xtfloat *)px4_src1_temp)[i];
+           ((xtfloat *)px4_dst_temp)[i] = src1;
         }
 
         p_src2 = p_src1;
@@ -203,38 +199,36 @@ static void avgpool_f32(
         while(pool_width > 0)
         {
             p_src2 = (const xtfloatx2 *)((const FLOAT32 *)p_src2 + 1);
-            p_dst_temp = p_dst;
-            p_src1_temp = p_src1;
-            p_src2_temp = p_src2;
 
+            px4_src1_temp = (const xtfloatx4 *)p_src1;
+            px4_src2_temp = (const xtfloatx4 *)p_src2;
+            px4_dst_temp = (xtfloatx4 *)p_dst;
             /* prime */
-            align_src2 = AE_LA128_PP(p_src2_temp);
-
+            align_src2 = AE_LA128_PP(px4_src2_temp);
             for(i = 0; i < (scratch_width >> 2); i++)
             {
                 xtfloatx2 src1, src2, src3, src4, out, out1;
-                AE_LSX2X2_IP(src1, src3, (const xtfloatx4 *)p_src1_temp, 16);
-                AE_LASX2X2_IP(src2, src4, align_src2, (const xtfloatx4 *)p_src2_temp);
+                AE_LSX2X2_IP(src1, src3, px4_src1_temp, 16);
+                AE_LASX2X2_IP(src2, src4, align_src2, px4_src2_temp);
                 ADD_SX2X2(out, out1, src1, src3, src2, src4);
-                AE_SSX2X2_IP(out, out1, (xtfloatx4 *)p_dst_temp, 16);
+                AE_SSX2X2_IP(out, out1, px4_dst_temp, 16);
             }
-
             /* remainder loop for scratch_width */
              for(i=0;i<(scratch_width & 3);i++)
              {
-                xtfloatx2 src1, src2, out;
+                xtfloat src1, src2, out;
 
-                src1 = ((const FLOAT32 *)p_src1_temp)[i];
-                src2 = ((const FLOAT32 *)p_src2_temp)[i];
+                src1 = ((xtfloat *)px4_src1_temp)[i];
+                src2 = ((xtfloat *)px4_src2_temp)[i];
 
-                out = ADD_SX2(src1, src2);
-                ((FLOAT32 *)p_dst_temp)[i] = out;
+                out = ADD_S(src1, src2);
+                ((xtfloat *)px4_dst_temp)[i] = out;
              }
              pool_width--;
         };
 
-        FLOAT32 *ptr_out1 = (FLOAT32 *)((FLOAT32 *)p_scratch + total_out_width);
-        FLOAT32 den_inv, den1_inv;
+        xtfloat *ptr_out1 = (xtfloat *)((FLOAT32 *)p_scratch + total_out_width);
+        xtfloat den_inv, den1_inv;
         if(not_last_channel)
         {
             itr_ow = 0;
@@ -299,7 +293,7 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_avgpool_f32,(
     VOID   *p_scratch))
 #else /* #if !HAVE_VFPU */
 WORD32 xa_nn_avgpool_f32(
-    FLOAT32* __restrict__ p_out,
+    FLOAT32* __restrict__ p_out_t,
     const FLOAT32* __restrict__ p_inp,
     WORD32  input_height,
     WORD32  input_width,
@@ -317,11 +311,11 @@ WORD32 xa_nn_avgpool_f32(
     VOID   *p_scratch)
 {
     /* NULL pointer checks */
-    XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_out_t, -1);
     XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
     XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
     /* Pointer alignment checks */
-    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(FLOAT32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_out_t, sizeof(FLOAT32), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(FLOAT32), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
     /* Basic Parameter checks */
@@ -339,6 +333,7 @@ WORD32 xa_nn_avgpool_f32(
     // Different I/O formats (not supported!)
     XA_NNLIB_ARG_CHK_COND((out_data_format != inp_data_format), -1);
 
+    xtfloat * __restrict__ p_out = (xtfloat*)p_out_t;
     if((input_channels == 1) || (out_data_format == 1))
     {
         xa_nn_avgpool_init(-1,
@@ -372,15 +367,15 @@ WORD32 xa_nn_avgpool_f32(
                 kernel_x_end = kernel_x_start + kernel_width;
                 LIMIT(kernel_x_start, 0, input_width)
                 LIMIT(kernel_x_end, 0, input_width)
-                FLOAT32 den = (FLOAT32)((kernel_y_end-kernel_y_start)*(kernel_x_end-kernel_x_start));
-                p_out[itr_oh*out_width+itr_ow] = MAX_S(RECIP_S(den), 0.0f);
+                xtfloat den = FLOAT_S(((kernel_y_end-kernel_y_start)*(kernel_x_end-kernel_x_start)), 0);
+                p_out[itr_oh*out_width+itr_ow] = MAX_S(RECIP_S(den), ZERO_S());
             }
         }
 
         for(itr_ic = 0; itr_ic < input_channels; itr_ic++)
         {
             pt_inp = &p_inp[itr_ic * input_height * input_width];
-            pt_out = &p_out[itr_ic * out_height * out_width];
+            pt_out = (FLOAT32 *)&p_out[itr_ic * out_height * out_width];
 
             avgpool_f32(pt_out
                     ,pt_inp
@@ -414,6 +409,7 @@ WORD32 xa_nn_avgpool_f32(
         p_den = p_rec_den;
 
         /* Calculate denominators for division */
+        xtfloat *pxt_rec_den = (xtfloat*)p_rec_den;
         for(itr_oh = 0; itr_oh < out_height; itr_oh++)
         {
             int kernel_x_start, kernel_x_end, kernel_y_start, kernel_y_end;
@@ -431,8 +427,8 @@ WORD32 xa_nn_avgpool_f32(
                 LIMIT(kernel_x_start, 0, input_width)
                 LIMIT(kernel_x_end, 0, input_width)
 
-                FLOAT32 den = (FLOAT32)((kernel_y_end-kernel_y_start)*(kernel_x_end-kernel_x_start));
-                p_rec_den[itr_oh*out_width+itr_ow] = XT_MAX_S(XT_RECIP_S(den), 0.0f);
+                xtfloat den = FLOAT_S(((kernel_y_end-kernel_y_start)*(kernel_x_end-kernel_x_start)), 0);
+                pxt_rec_den[itr_oh*out_width+itr_ow] = XT_MAX_S(XT_RECIP_S(den), ZERO_S());
             }
         }
 
@@ -443,8 +439,8 @@ WORD32 xa_nn_avgpool_f32(
             p_rec_den[itr_oh] = 0;
         }
 
-
-        xa_nn_avgpool_f32_hwc(p_out
+        FLOAT32 * __restrict__ pt_out = (FLOAT32*)p_out;
+        xa_nn_avgpool_f32_hwc(pt_out
                 ,p_inp
                 ,input_height
                 ,input_width

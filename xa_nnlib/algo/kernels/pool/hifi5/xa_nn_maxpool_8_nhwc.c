@@ -73,11 +73,8 @@ const WORD8* __restrict__ p_inp,
     int plane_size;
     WORD8 * __restrict__ p_src1, * __restrict__ p_src2, * __restrict__ p_src3;
     WORD8 * p_src1_w, * p_src2_w, * p_src3_w;
-    WORD8 * __restrict p_src1_temp, * __restrict p_src2_temp, * __restrict p_src3_temp;
-    ae_int8x8 * __restrict p_src1_temp_w, * __restrict p_src2_temp_w, * __restrict p_src3_temp_w;
-    ae_int8x8 * p_dst, *p_dst_temp;
+    ae_int8x8 * p_dst;
     WORD8 * __restrict__ p_out_temp;
-    ae_int8x8 * p_src1_scratch;
     ae_valignx2 align_src1, align_src2, align_src3, align_dst;
     int i;
     WORD8 *p_dst_pad;
@@ -131,41 +128,41 @@ const WORD8* __restrict__ p_inp,
             align_dst = AE_ZALIGN128(); // zero alignment reg
             /* 1st instance: Compare three rows per iteration */
             {
-                p_dst_temp = p_dst;
-                p_src1_temp = p_src1;
-                p_src2_temp = p_src2;
-                p_src3_temp = p_src3;
+                ae_int8x16 *p8x16_src1_temp = (ae_int8x16 *)p_src1;
+                ae_int8x16 *p8x16_src2_temp = (ae_int8x16 *)p_src2;
+                ae_int8x16 *p8x16_src3_temp = (ae_int8x16 *)p_src3;
+                ae_int8x16 *p8x16_dst_temp = (ae_int8x16 *)p_dst;
 
-                align_src1 = AE_LA128_PP(p_src1_temp);
-                align_src2 = AE_LA128_PP(p_src2_temp);
-                align_src3 = AE_LA128_PP(p_src3_temp);
+                align_src1 = AE_LA128_PP(p8x16_src1_temp);
+                align_src2 = AE_LA128_PP(p8x16_src2_temp);
+                align_src3 = AE_LA128_PP(p8x16_src3_temp);
 
                 for(i = 0; i < (plane_size >> 4); i++)
                 {
                     ae_int8x8 i1, i2, i3, j1, j2, j3;
                     ae_int8x8 out, out1;
-                    AE_LA8X8X2_IP(i1, j1, align_src1, (ae_int8x16 *)p_src1_temp);
-                    AE_LA8X8X2_IP(i2, j2, align_src2, (ae_int8x16 *)p_src2_temp);
-                    AE_LA8X8X2_IP(i3, j3, align_src3, (ae_int8x16 *)p_src3_temp);
+                    AE_LA8X8X2_IP(i1, j1, align_src1, p8x16_src1_temp);
+                    AE_LA8X8X2_IP(i2, j2, align_src2, p8x16_src2_temp);
+                    AE_LA8X8X2_IP(i3, j3, align_src3, p8x16_src3_temp);
                     out = AE_MAX8(i1, i2);
                     out = AE_MAX8(out, i3);
                     out1 = AE_MAX8(j1, j2);
                     out1 = AE_MAX8(out1, j3);
-                    AE_SA8X8X2_IP(out, out1, align_dst, (ae_int8x16 *)p_dst_temp);
+                    AE_SA8X8X2_IP(out, out1, align_dst, p8x16_dst_temp);
                 }
                 /* remainder loop */                
                 int rem_itr = (plane_size & 15);
                 ae_int8x8 i1, i2, i3, j1, j2, j3;
                 ae_int8x8 out, out1;
-                AE_LAV8X8X2_XP(i1, j1, align_src1, (ae_int8x16 *)p_src1_temp, rem_itr);
-                AE_LAV8X8X2_XP(i2, j2, align_src2, (ae_int8x16 *)p_src2_temp, rem_itr);
-                AE_LAV8X8X2_XP(i3, j3, align_src3, (ae_int8x16 *)p_src3_temp, rem_itr);
+                AE_LAV8X8X2_XP(i1, j1, align_src1, p8x16_src1_temp, rem_itr);
+                AE_LAV8X8X2_XP(i2, j2, align_src2, p8x16_src2_temp, rem_itr);
+                AE_LAV8X8X2_XP(i3, j3, align_src3, p8x16_src3_temp, rem_itr);
                 out = AE_MAX8(i1, i2);
                 out = AE_MAX8(out, i3);
                 out1 = AE_MAX8(j1, j2);
                 out1 = AE_MAX8(out1, j3);
-                AE_SAV8X8X2_XP(out, out1, align_dst, (ae_int8x16 *)p_dst_temp, rem_itr);
-                AE_SA128POS_FP(align_dst, p_dst_temp); // finalize the stream
+                AE_SAV8X8X2_XP(out, out1, align_dst, p8x16_dst_temp, rem_itr);
+                AE_SA128POS_FP(align_dst, p8x16_dst_temp); // finalize the stream
             }
 
             if(pool_height)
@@ -178,42 +175,42 @@ const WORD8* __restrict__ p_inp,
 
                 do
                 {
-                    p_dst_temp = p_dst;
-                    p_src1_scratch = p_dst;
-                    p_src2_temp = p_src2;
-                    p_src3_temp = p_src3;
+                    ae_int8x16 *p8x16_src1_scratch = (ae_int8x16 *)p_dst;
+                    ae_int8x16 *p8x16_src2_temp = (ae_int8x16 *)p_src2;
+                    ae_int8x16 *p8x16_src3_temp = (ae_int8x16 *)p_src3;
+                    ae_int8x16 *p8x16_dst_temp = (ae_int8x16 *)p_dst;
 
-                    align_src2 = AE_LA128_PP(p_src2_temp);
-                    align_src3 = AE_LA128_PP(p_src3_temp);
+                    align_src2 = AE_LA128_PP(p8x16_src2_temp);
+                    align_src3 = AE_LA128_PP(p8x16_src3_temp);
 
                     align_dst = AE_ZALIGN128(); // zero alignment reg
-                    align_src1 = AE_LA128_PP(p_src1_scratch);
+                    align_src1 = AE_LA128_PP(p8x16_src1_scratch);
 
                     for(i = 0; i < (plane_size >> 4); i++)
                     {
                         ae_int8x8 i1, i2, i3, j1, j2, j3;
                         ae_int8x8 out, out1;
-                        AE_LA8X8X2_IP(i1, j1, align_src1, (ae_int8x16 *)p_src1_scratch);
-                        AE_LA8X8X2_IP(i2, j2, align_src2, (ae_int8x16 *)p_src2_temp);
-                        AE_LA8X8X2_IP(i3, j3, align_src3, (ae_int8x16 *)p_src3_temp);
+                        AE_LA8X8X2_IP(i1, j1, align_src1, p8x16_src1_scratch);
+                        AE_LA8X8X2_IP(i2, j2, align_src2, p8x16_src2_temp);
+                        AE_LA8X8X2_IP(i3, j3, align_src3, p8x16_src3_temp);
                         out = AE_MAX8(i1, i2);
                         out = AE_MAX8(out, i3);
                         out1 = AE_MAX8(j1, j2);
                         out1 = AE_MAX8(out1, j3);
-                        AE_SA8X8X2_IP(out, out1, align_dst, (ae_int8x16 *)p_dst_temp);
+                        AE_SA8X8X2_IP(out, out1, align_dst, p8x16_dst_temp);
                     }
                     int rem_itr = (plane_size & 15);
                     ae_int8x8 i1, i2, i3, j1, j2, j3;
                     ae_int8x8 out, out1;
-                    AE_LAV8X8X2_XP(i1, j1, align_src1, (ae_int8x16 *)p_src1_scratch, rem_itr);
-                    AE_LAV8X8X2_XP(i2, j2, align_src2, (ae_int8x16 *)p_src2_temp, rem_itr);
-                    AE_LAV8X8X2_XP(i3, j3, align_src3, (ae_int8x16 *)p_src3_temp, rem_itr);
+                    AE_LAV8X8X2_XP(i1, j1, align_src1, p8x16_src1_scratch, rem_itr);
+                    AE_LAV8X8X2_XP(i2, j2, align_src2, p8x16_src2_temp, rem_itr);
+                    AE_LAV8X8X2_XP(i3, j3, align_src3, p8x16_src3_temp, rem_itr);
                     out = AE_MAX8(i1, i2);
                     out = AE_MAX8(out, i3);
                     out1 = AE_MAX8(j1, j2);
                     out1 = AE_MAX8(out1, j3);
-                    AE_SAV8X8X2_XP(out, out1, align_dst, (ae_int8x16 *)p_dst_temp, rem_itr);
-                    AE_SA128POS_FP(align_dst, p_dst_temp); // finalize the stream
+                    AE_SAV8X8X2_XP(out, out1, align_dst, p8x16_dst_temp, rem_itr);
+                    AE_SA128POS_FP(align_dst, p8x16_dst_temp); // finalize the stream
 
                     if(!pool_height)
                         break;
@@ -259,31 +256,30 @@ const WORD8* __restrict__ p_inp,
               /* Compare three rows per iteration */
               do
               {
-                  p_dst_temp = (ae_int8x8 *)p_out_temp;
-                  p_src1_temp_w = (ae_int8x8 *)p_src1_w;
-                  p_src2_temp_w = (ae_int8x8 *)p_src2_w;
-                  p_src3_temp_w = (ae_int8x8 *)p_src3_w;
-
+                  ae_int8x16 *p8x16_src1_temp_w = (ae_int8x16 *)p_src1_w;
+                  ae_int8x16 *p8x16_src2_temp_w = (ae_int8x16 *)p_src2_w;
+                  ae_int8x16 *p8x16_src3_temp_w = (ae_int8x16 *)p_src3_w;
+	          ae_int8x16 *p8x16_dst_temp = (ae_int8x16 *)p_out_temp;
                   /* prime */
-                  align_src1 = AE_LA128_PP(p_src1_temp_w);
-                  align_src2 = AE_LA128_PP(p_src2_temp_w);
-                  align_src3 = AE_LA128_PP(p_src3_temp_w);
+                  align_src1 = AE_LA128_PP(p8x16_src1_temp_w);
+                  align_src2 = AE_LA128_PP(p8x16_src2_temp_w);
+                  align_src3 = AE_LA128_PP(p8x16_src3_temp_w);
                   align_dst = AE_ZALIGN128(); // zero alignment reg
 
                   ae_int8x8 i1, i2, i3, j1, j2, j3;
                   ae_int8x8 out, out1;
                   
-                  AE_LAV8X8X2_XP(i1, j1, align_src1, (ae_int8x16 *)p_src1_temp_w, rem_inp_chan);
-                  AE_LAV8X8X2_XP(i2, j2, align_src2, (ae_int8x16 *)p_src2_temp_w, rem_inp_chan);
-                  AE_LAV8X8X2_XP(i3, j3, align_src3, (ae_int8x16 *)p_src3_temp_w, rem_inp_chan);
+                  AE_LAV8X8X2_XP(i1, j1, align_src1, p8x16_src1_temp_w, rem_inp_chan);
+                  AE_LAV8X8X2_XP(i2, j2, align_src2, p8x16_src2_temp_w, rem_inp_chan);
+                  AE_LAV8X8X2_XP(i3, j3, align_src3, p8x16_src3_temp_w, rem_inp_chan);
 
                   out = AE_MAX8(i1, i2);
                   out = AE_MAX8(out, i3);
                   out1 = AE_MAX8(j1, j2);
                   out1 = AE_MAX8(out1, j3);
 
-                  AE_SAV8X8X2_XP(out, out1, align_dst, (ae_int8x16 *)p_dst_temp, rem_inp_chan);
-                  AE_SA128POS_FP(align_dst, p_dst_temp); // finalize the stream
+                  AE_SAV8X8X2_XP(out, out1, align_dst, p8x16_dst_temp, rem_inp_chan);
+                  AE_SA128POS_FP(align_dst, p8x16_dst_temp); // finalize the stream
 
                   if(!pool_width)
                       break;
@@ -322,46 +318,45 @@ const WORD8* __restrict__ p_inp,
                   /* Compare three rows per iteration */
                   do
                   {
-                      p_dst_temp = (ae_int8x8 *)p_out_temp;
-                      p_src1_temp_w = (ae_int8x8 *)p_src1_w;
-                      p_src2_temp_w = (ae_int8x8 *)p_src2_w;
-                      p_src3_temp_w = (ae_int8x8 *)p_src3_w;
-
+                      ae_int8x16 *p8x16_src1_temp_w = (ae_int8x16 *)p_src1_w;
+                      ae_int8x16 *p8x16_src2_temp_w = (ae_int8x16 *)p_src2_w;
+                      ae_int8x16 *p8x16_src3_temp_w = (ae_int8x16 *)p_src3_w;
+                      ae_int8x16 *p8x16_dst_temp = (ae_int8x16 *)p_out_temp;
                       /* prime */
-                      align_src1 = AE_LA128_PP(p_src1_temp_w);
-                      align_src2 = AE_LA128_PP(p_src2_temp_w);
-                      align_src3 = AE_LA128_PP(p_src3_temp_w);
+                      align_src1 = AE_LA128_PP(p8x16_src1_temp_w);
+                      align_src2 = AE_LA128_PP(p8x16_src2_temp_w);
+                      align_src3 = AE_LA128_PP(p8x16_src3_temp_w);
                       align_dst = AE_ZALIGN128(); // zero alignment reg
 
                       ae_int8x8 i1, i2, i3, j1, j2, j3;
                       ae_int8x8 out, out1;
                       for(i = 0; i < (input_channels >> 4); i++)
                       {
-                          AE_LA8X8X2_IP(i1, j1, align_src1, (ae_int8x16 *)p_src1_temp_w);
-                          AE_LA8X8X2_IP(i2, j2, align_src2, (ae_int8x16 *)p_src2_temp_w);
-                          AE_LA8X8X2_IP(i3, j3, align_src3, (ae_int8x16 *)p_src3_temp_w);
+                          AE_LA8X8X2_IP(i1, j1, align_src1, p8x16_src1_temp_w);
+                          AE_LA8X8X2_IP(i2, j2, align_src2, p8x16_src2_temp_w);
+                          AE_LA8X8X2_IP(i3, j3, align_src3, p8x16_src3_temp_w);
 
                           out = AE_MAX8(i1, i2);
                           out = AE_MAX8(out, i3);
                           out1 = AE_MAX8(j1, j2);
                           out1 = AE_MAX8(out1, j3);
 
-                          AE_SA8X8X2_IP(out, out1, align_dst, (ae_int8x16 *)p_dst_temp);
+                          AE_SA8X8X2_IP(out, out1, align_dst, p8x16_dst_temp);
                       }
                       if(rem_inp_chan)
                       {
-                          AE_LAV8X8X2_XP(i1, j1, align_src1, (ae_int8x16 *)p_src1_temp_w, rem_inp_chan);
-                          AE_LAV8X8X2_XP(i2, j2, align_src2, (ae_int8x16 *)p_src2_temp_w, rem_inp_chan);
-                          AE_LAV8X8X2_XP(i3, j3, align_src3, (ae_int8x16 *)p_src3_temp_w, rem_inp_chan);
+                          AE_LAV8X8X2_XP(i1, j1, align_src1, p8x16_src1_temp_w, rem_inp_chan);
+                          AE_LAV8X8X2_XP(i2, j2, align_src2, p8x16_src2_temp_w, rem_inp_chan);
+                          AE_LAV8X8X2_XP(i3, j3, align_src3, p8x16_src3_temp_w, rem_inp_chan);
 
                           out = AE_MAX8(i1, i2);
                           out = AE_MAX8(out, i3);
                           out1 = AE_MAX8(j1, j2);
                           out1 = AE_MAX8(out1, j3);
 
-                          AE_SAV8X8X2_XP(out, out1, align_dst, (ae_int8x16 *)p_dst_temp, rem_inp_chan);
+                          AE_SAV8X8X2_XP(out, out1, align_dst, p8x16_dst_temp, rem_inp_chan);
                       }
-                      AE_SA128POS_FP(align_dst, p_dst_temp); // finalize the stream
+                      AE_SA128POS_FP(align_dst, p8x16_dst_temp); // finalize the stream
 
                       if(!pool_width)
                           break;

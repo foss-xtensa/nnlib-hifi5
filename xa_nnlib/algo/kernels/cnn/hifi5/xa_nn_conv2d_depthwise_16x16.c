@@ -77,14 +77,14 @@ static inline void conv2d_16x16_hf4_convmul
     return;
   }
 
-  ae_int64 accu_int64_0, accu_int64_1, accu_int64_2, accu_int64_3;
-  ae_int64 accu_int64_4, accu_int64_5, accu_int64_6, accu_int64_7;
+  ae_f64 accu_f64_0, accu_f64_1, accu_f64_2, accu_f64_3;
+  ae_f64 accu_f64_4, accu_f64_5, accu_f64_6, accu_f64_7;
   ae_int32x2 accu_int32x2_0;
   ae_int16x4 accu_int16x4_0;
   ae_int64 *scratch_ptr = (ae_int64 *)p_scratch;
 
   ae_int64 _ae_int64_sat_bias;
-  _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) (*((ae_int16 *) &bias))), bias_shift);
+  _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(*((ae_int16 *) &bias), bias_shift);
 
   if(kernel_width_pad==12)
   {
@@ -96,19 +96,20 @@ static inline void conv2d_16x16_hf4_convmul
        int temp=output_width_for_x_stride_1 -output_width_for_x_stride_1%8;
        for(j = 0; j < temp; j+=8)
        {
-          accu_int64_0 = AE_ZERO64();
-          accu_int64_1 = AE_ZERO64();
-          accu_int64_2 = AE_ZERO64();
-          accu_int64_3 = AE_ZERO64();
-          accu_int64_4 = AE_ZERO64();
-          accu_int64_5 = AE_ZERO64();
-          accu_int64_6 = AE_ZERO64();
-          accu_int64_7 = AE_ZERO64();
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_4 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_5 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_6 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_7 = AE_MOVF64_FROMINT64(AE_ZERO64());
 
           ae_int16x4 *pt_ker = (ae_int16x4 *)(p_ker);
           ae_valign ker_a = AE_LA64_PP(pt_ker);
-          ae_int16x8 *pt_inp = (ae_int16x8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)(p_inp);
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j)));
+          ae_int16x8 *pt_inp = (ae_int16x8 *)pt16x4_inp;
 
           for(k=0; k < kernel_height; k++)
           {
@@ -118,48 +119,51 @@ static inline void conv2d_16x16_hf4_convmul
 
               AE_L16X4X2_XC(d_inp0, d_inp1, pt_inp, 16);
               AE_L16X4X2_XC(d_inp2, d_inp3, pt_inp, 16);
-              AE_L16X4_XC(d_inp4, (ae_int16x4 *)pt_inp, sizeof(WORD16)*(input_width-16));
+              pt16x4_inp = (ae_int16x4 *)pt_inp;
+              AE_L16X4_XC(d_inp4, pt16x4_inp, sizeof(WORD16)*(input_width-16));
+              pt_inp = (ae_int16x8 *)pt16x4_inp;
 
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_3(accu_int64_4,accu_int64_5, d_inp1, d_inp2, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_6,accu_int64_7, d_inp1, d_inp2, d_ker0);
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp1, d_inp2, d_ker1);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp1, d_inp2, d_ker1);
-              AE_MULAFQ16X2_FIR_3(accu_int64_4,accu_int64_5, d_inp2, d_inp3, d_ker1);
-              AE_MULAFQ16X2_FIR_1(accu_int64_6,accu_int64_7, d_inp2, d_inp3, d_ker1);
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp2, d_inp3, d_ker2);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp2, d_inp3, d_ker2);
-              AE_MULAFQ16X2_FIR_3(accu_int64_4,accu_int64_5, d_inp3, d_inp4, d_ker2);
-              AE_MULAFQ16X2_FIR_1(accu_int64_6,accu_int64_7, d_inp3, d_inp4, d_ker2);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_3(accu_f64_4,accu_f64_5, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_6,accu_f64_7, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_3(accu_f64_4,accu_f64_5, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_1(accu_f64_6,accu_f64_7, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker2));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker2));
+              AE_MULAFQ16X2_FIR_3(accu_f64_4,accu_f64_5, AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_inp4), AE_MOVF16X4_FROMINT16X4(d_ker2));
+              AE_MULAFQ16X2_FIR_1(accu_f64_6,accu_f64_7, AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_inp4), AE_MOVF16X4_FROMINT16X4(d_ker2));
           }
           ae_int64 *scratch_j = (ae_int64 *)scratch_ptr + j;
 
-          accu_int64_0 = AE_SRAI64(accu_int64_0,1);
-          accu_int64_1 = AE_SRAI64(accu_int64_1,1);
-          accu_int64_2 = AE_SRAI64(accu_int64_2,1);
-          accu_int64_3 = AE_SRAI64(accu_int64_3,1);
-          accu_int64_4 = AE_SRAI64(accu_int64_4,1);
-          accu_int64_5 = AE_SRAI64(accu_int64_5,1);
-          accu_int64_6 = AE_SRAI64(accu_int64_6,1);
-          accu_int64_7 = AE_SRAI64(accu_int64_7,1);
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_0),1));
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_1),1));
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_2),1));
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_3),1));
+          accu_f64_4 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_4),1));
+          accu_f64_5 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_5),1));
+          accu_f64_6 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_6),1));
+          accu_f64_7 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_7),1));
 
-          AE_S64X2_I(accu_int64_0, accu_int64_1, (ae_int64x2 *)scratch_j, 0);
-          AE_S64X2_I(accu_int64_2, accu_int64_3, (ae_int64x2 *)scratch_j, 16);
-          AE_S64X2_I(accu_int64_4, accu_int64_5, (ae_int64x2 *)scratch_j, 32);
-          AE_S64X2_I(accu_int64_6, accu_int64_7, (ae_int64x2 *)scratch_j, 48);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_0), AE_MOVINT64_FROMF64(accu_f64_1), (ae_int64x2 *)scratch_j, 0);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_2), AE_MOVINT64_FROMF64(accu_f64_3), (ae_int64x2 *)scratch_j, 16);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_4), AE_MOVINT64_FROMF64(accu_f64_5), (ae_int64x2 *)scratch_j, 32);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_6), AE_MOVINT64_FROMF64(accu_f64_7), (ae_int64x2 *)scratch_j, 48);
        }
 
        for(j = temp; j < output_width_for_x_stride_1; j+=4)
        {
-         accu_int64_0 = AE_ZERO64();
-         accu_int64_1 = AE_ZERO64();
-         accu_int64_2 = AE_ZERO64();
-         accu_int64_3 = AE_ZERO64();
+         accu_f64_0 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_1 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_2 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_3 = AE_MOVF64_FROMINT64(AE_ZERO64());
 
          ae_int16x4 *pt_ker = (ae_int16x4 *)(p_ker );
-         ae_int16x8 *pt_inp = (ae_int16x8 *)(p_inp);
-         AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j )));
+         ae_int16x4 *pt16x4_inp = (ae_int16x4 *)(p_inp);
+         AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j )));
+         ae_int16x8 *pt_inp = (ae_int16x8 *)pt16x4_inp;
          ae_valign ker_a = AE_LA64_PP(pt_ker);
 
          for(k=0; k < kernel_height; k++)
@@ -170,20 +174,20 @@ static inline void conv2d_16x16_hf4_convmul
 
            AE_L16X4X2_XC(d_inp0, d_inp1, pt_inp, 16);
            AE_L16X4X2_XC(d_inp2, d_inp3, pt_inp, sizeof(WORD16)*(input_width-8));
-           AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-           AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
-           AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp1, d_inp2, d_ker1);
-           AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp1, d_inp2, d_ker1);
-           AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp2, d_inp3, d_ker2);
-           AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp2, d_inp3, d_ker2);
+           AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+           AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+           AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+           AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+           AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker2));
+           AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker2));
          }
-         accu_int64_0 = AE_SRAI64(accu_int64_0,1);
-         accu_int64_1 = AE_SRAI64(accu_int64_1,1);
-         accu_int64_2 = AE_SRAI64(accu_int64_2,1);
-         accu_int64_3 = AE_SRAI64(accu_int64_3,1);
+         accu_f64_0 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_0),1));
+         accu_f64_1 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_1),1));
+         accu_f64_2 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_2),1));
+         accu_f64_3 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_3),1));
          ae_int64 *scratch_j = (ae_int64 *)scratch_ptr + j;
-         AE_S64X2_I(accu_int64_0, accu_int64_1, (ae_int64x2 *)scratch_j, 0);
-         AE_S64X2_I(accu_int64_2, accu_int64_3, (ae_int64x2 *)scratch_j, 16);
+         AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_0), AE_MOVINT64_FROMF64(accu_f64_1), (ae_int64x2 *)scratch_j, 0);
+         AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_2), AE_MOVINT64_FROMF64(accu_f64_3), (ae_int64x2 *)scratch_j, 16);
        }
 
      }
@@ -198,18 +202,19 @@ static inline void conv2d_16x16_hf4_convmul
        int temp=output_width_for_x_stride_1 -output_width_for_x_stride_1%8;
        for(j = 0; j < temp; j+=8)
        {
-          accu_int64_0 = AE_ZERO64();
-          accu_int64_1 = AE_ZERO64();
-          accu_int64_2 = AE_ZERO64();
-          accu_int64_3 = AE_ZERO64();
-          accu_int64_4 = AE_ZERO64();
-          accu_int64_5 = AE_ZERO64();
-          accu_int64_6 = AE_ZERO64();
-          accu_int64_7 = AE_ZERO64();
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_4 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_5 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_6 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_7 = AE_MOVF64_FROMINT64(AE_ZERO64());
 
           ae_int16x4 *pt_ker = (ae_int16x4 *)(p_ker);
-          ae_int16x8 *pt_inp = (ae_int16x8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)(p_inp);
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j)));
+          ae_int16x8 *pt_inp = (ae_int16x8 *)pt16x4_inp;
 
           for(k=0; k < kernel_height; k++)
           {
@@ -218,38 +223,39 @@ static inline void conv2d_16x16_hf4_convmul
               AE_L16X4X2_XC(d_inp0, d_inp1, pt_inp, 16);
               AE_L16X4X2_XC(d_inp2, d_inp3, pt_inp, sizeof(WORD16)*(input_width-8));
 
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_3(accu_int64_4,accu_int64_5, d_inp1, d_inp2, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_6,accu_int64_7, d_inp1, d_inp2, d_ker0);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_3(accu_f64_4,accu_f64_5, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_6,accu_f64_7, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker0));
               d_ker1 = *pt_ker++;
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp1, d_inp2, d_ker1);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp1, d_inp2, d_ker1);
-              AE_MULAFQ16X2_FIR_3(accu_int64_4,accu_int64_5, d_inp2, d_inp3, d_ker1);
-              AE_MULAFQ16X2_FIR_1(accu_int64_6,accu_int64_7, d_inp2, d_inp3, d_ker1);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_3(accu_f64_4,accu_f64_5, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_1(accu_f64_6,accu_f64_7, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker1));
           }
-          accu_int64_0 = AE_SRAI64(accu_int64_0,1);
-          accu_int64_1 = AE_SRAI64(accu_int64_1,1);
-          accu_int64_2 = AE_SRAI64(accu_int64_2,1);
-          accu_int64_3 = AE_SRAI64(accu_int64_3,1);
-          accu_int64_4 = AE_SRAI64(accu_int64_4,1);
-          accu_int64_5 = AE_SRAI64(accu_int64_5,1);
-          accu_int64_6 = AE_SRAI64(accu_int64_6,1);
-          accu_int64_7 = AE_SRAI64(accu_int64_7,1);
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_0),1));
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_1),1));
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_2),1));
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_3),1));
+          accu_f64_4 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_4),1));
+          accu_f64_5 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_5),1));
+          accu_f64_6 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_6),1));
+          accu_f64_7 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_7),1));
 
           ae_int64 *scratch_j = (ae_int64 *)scratch_ptr + j;
 
-          AE_S64X2_I(accu_int64_0, accu_int64_1, (ae_int64x2 *)scratch_j, 0);
-          AE_S64X2_I(accu_int64_2, accu_int64_3, (ae_int64x2 *)scratch_j, 16);
-          AE_S64X2_I(accu_int64_4, accu_int64_5, (ae_int64x2 *)scratch_j, 32);
-          AE_S64X2_I(accu_int64_6, accu_int64_7, (ae_int64x2 *)scratch_j, 48);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_0), AE_MOVINT64_FROMF64(accu_f64_1), (ae_int64x2 *)scratch_j, 0);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_2), AE_MOVINT64_FROMF64(accu_f64_3), (ae_int64x2 *)scratch_j, 16);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_4), AE_MOVINT64_FROMF64(accu_f64_5), (ae_int64x2 *)scratch_j, 32);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_6), AE_MOVINT64_FROMF64(accu_f64_7), (ae_int64x2 *)scratch_j, 48);
+
        }
        for(j = temp; j < output_width_for_x_stride_1; j+=4)
        {
-         accu_int64_0 = AE_ZERO64();
-         accu_int64_1 = AE_ZERO64();
-         accu_int64_2 = AE_ZERO64();
-         accu_int64_3 = AE_ZERO64();
+         accu_f64_0 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_1 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_2 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_3 = AE_MOVF64_FROMINT64(AE_ZERO64());
 
          ae_int16x4 *pt_ker = (ae_int16x4 *)(p_ker);
 
@@ -260,21 +266,21 @@ static inline void conv2d_16x16_hf4_convmul
            d_inp0 = *pt_inp++;
            d_inp1 = *pt_inp++;
            d_ker0 = *pt_ker++;
-           AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-           AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
+           AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+           AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
            d_inp2 = *pt_inp++;
            d_ker1 = *pt_ker++;
-           AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp1, d_inp2, d_ker1);
-           AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp1, d_inp2, d_ker1);
+           AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+           AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
          }
-         accu_int64_0 = AE_SRAI64(accu_int64_0,1);
-         accu_int64_1 = AE_SRAI64(accu_int64_1,1);
-         accu_int64_2 = AE_SRAI64(accu_int64_2,1);
-         accu_int64_3 = AE_SRAI64(accu_int64_3,1);
+         accu_f64_0 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_0),1));
+         accu_f64_1 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_1),1));
+         accu_f64_2 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_2),1));
+         accu_f64_3 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_3),1));
 
          ae_int64 *scratch_j = (ae_int64 *)scratch_ptr + j;
-         AE_S64X2_I(accu_int64_0, accu_int64_1, (ae_int64x2 *)scratch_j, 0);
-         AE_S64X2_I(accu_int64_2, accu_int64_3, (ae_int64x2 *)scratch_j, 16);
+         AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_0), AE_MOVINT64_FROMF64(accu_f64_1), (ae_int64x2 *)scratch_j, 0);
+         AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_2), AE_MOVINT64_FROMF64(accu_f64_3), (ae_int64x2 *)scratch_j, 16);
        }
 
      }
@@ -288,10 +294,10 @@ static inline void conv2d_16x16_hf4_convmul
         scratch_ptr = (ae_int64 *) p_scratch + (i * output_width_for_x_stride_1);
         for(j = 0; j < (output_width_for_x_stride_1>>2); j++)
         {
-          accu_int64_0 = AE_ZERO64();
-          accu_int64_1 = AE_ZERO64();
-          accu_int64_2 = AE_ZERO64();
-          accu_int64_3 = AE_ZERO64();
+         accu_f64_0 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_1 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_2 = AE_MOVF64_FROMINT64(AE_ZERO64());
+         accu_f64_3 = AE_MOVF64_FROMINT64(AE_ZERO64());
 
           ae_int16x4 *pt_ker = (ae_int16x4 *)(p_ker);
           ae_int16x4 *pt_inp = (ae_int16x4 *)(p_inp);
@@ -303,16 +309,16 @@ static inline void conv2d_16x16_hf4_convmul
             AE_L16X4_XC(d_inp1, pt_inp, sizeof(WORD16)*(input_width-4));
             //AE_L16X4X2_XC(d_inp0, d_inp1, (ae_int16x8 *)pt_inp, sizeof(WORD16)*(input_width));
             d_ker0 = *pt_ker++;
-            AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-            AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
+            AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+            AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
           }
-          accu_int64_0 = AE_SRAI64(accu_int64_0,1);
-          accu_int64_1 = AE_SRAI64(accu_int64_1,1);
-          accu_int64_2 = AE_SRAI64(accu_int64_2,1);
-          accu_int64_3 = AE_SRAI64(accu_int64_3,1);
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_0),1));
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_1),1));
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_2),1));
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_3),1));
           ae_int64 *scratch_j = (ae_int64 *)scratch_ptr + (j<<2);
-          AE_S64X2_I(accu_int64_0, accu_int64_1, (ae_int64x2 *)scratch_j, 0);
-          AE_S64X2_I(accu_int64_2, accu_int64_3, (ae_int64x2 *)scratch_j, 16);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_0), AE_MOVINT64_FROMF64(accu_f64_1), (ae_int64x2 *)scratch_j, 0);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_2), AE_MOVINT64_FROMF64(accu_f64_3), (ae_int64x2 *)scratch_j, 16);
         }
       }
   }
@@ -326,18 +332,19 @@ static inline void conv2d_16x16_hf4_convmul
         int temp = output_width_for_x_stride_1 -output_width_for_x_stride_1%8;
         for(j = 0; j < temp; j+=8)
         {
-          accu_int64_0 = AE_ZERO64();
-          accu_int64_1 = AE_ZERO64();
-          accu_int64_2 = AE_ZERO64();
-          accu_int64_3 = AE_ZERO64();
-          accu_int64_4 = AE_ZERO64();
-          accu_int64_5 = AE_ZERO64();
-          accu_int64_6 = AE_ZERO64();
-          accu_int64_7 = AE_ZERO64();
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_4 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_5 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_6 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_7 = AE_MOVF64_FROMINT64(AE_ZERO64());
           for(k=0; k < kernel_height; k++)
           {
-            ae_int16x8 *pt_inp = (ae_int16x8 *)(p_inp);
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+            ae_int16x4 *pt16x4_inp = (ae_int16x4 *)(p_inp);
+            AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+            ae_int16x8 *pt_inp = (ae_int16x8 *)pt16x4_inp;
             ae_int16x4 *pt_ker = (ae_int16x4 *)(p_ker + k*kernel_width_pad);
 #pragma no_unroll
 #pragma loop_count min=1
@@ -346,53 +353,54 @@ static inline void conv2d_16x16_hf4_convmul
               AE_L16X4X2_XC(d_inp0, d_inp1, pt_inp, 16);
               AE_L16X4X2_I(d_inp2, d_inp3, pt_inp, 0);
               d_ker0 = *pt_ker++;
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_3(accu_int64_4,accu_int64_5, d_inp1, d_inp2, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_6,accu_int64_7, d_inp1, d_inp2, d_ker0);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_3(accu_f64_4,accu_f64_5, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_6,accu_f64_7, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker0));
 
               d_ker1 = *pt_ker++;
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp1, d_inp2, d_ker1);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp1, d_inp2, d_ker1);
-              AE_MULAFQ16X2_FIR_3(accu_int64_4,accu_int64_5, d_inp2, d_inp3, d_ker1);
-              AE_MULAFQ16X2_FIR_1(accu_int64_6,accu_int64_7, d_inp2, d_inp3, d_ker1);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_3(accu_f64_4,accu_f64_5, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_1(accu_f64_6,accu_f64_7, AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_inp3), AE_MOVF16X4_FROMINT16X4(d_ker1));
             }
             if(kernel_width_pad&7)
             {
               AE_L16X4X2_XC(d_inp0, d_inp1, pt_inp, 16);
               d_inp2 = AE_L16X4_I((ae_int16x4 *)pt_inp, 0);
               d_ker0 = *pt_ker;
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_3(accu_int64_4,accu_int64_5, d_inp1, d_inp2, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_6,accu_int64_7, d_inp1, d_inp2, d_ker0);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_3(accu_f64_4,accu_f64_5, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_6,accu_f64_7, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker0));
             }
 
           }
-          accu_int64_0 = AE_SRAI64(accu_int64_0,1);
-          accu_int64_1 = AE_SRAI64(accu_int64_1,1);
-          accu_int64_2 = AE_SRAI64(accu_int64_2,1);
-          accu_int64_3 = AE_SRAI64(accu_int64_3,1);
-          accu_int64_4 = AE_SRAI64(accu_int64_4,1);
-          accu_int64_5 = AE_SRAI64(accu_int64_5,1);
-          accu_int64_6 = AE_SRAI64(accu_int64_6,1);
-          accu_int64_7 = AE_SRAI64(accu_int64_7,1);
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_0),1));
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_1),1));
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_2),1));
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_3),1));
+          accu_f64_4 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_4),1));
+          accu_f64_5 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_5),1));
+          accu_f64_6 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_6),1));
+          accu_f64_7 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_7),1));
           ae_int64 *scratch_j = (ae_int64 *)scratch_ptr + j;
-          AE_S64X2_I(accu_int64_0, accu_int64_1, (ae_int64x2 *)scratch_j, 0);
-          AE_S64X2_I(accu_int64_2, accu_int64_3, (ae_int64x2 *)scratch_j, 16);
-          AE_S64X2_I(accu_int64_4, accu_int64_5, (ae_int64x2 *)scratch_j, 32);
-          AE_S64X2_I(accu_int64_6, accu_int64_7, (ae_int64x2 *)scratch_j, 48);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_0), AE_MOVINT64_FROMF64(accu_f64_1), (ae_int64x2 *)scratch_j, 0);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_2), AE_MOVINT64_FROMF64(accu_f64_3), (ae_int64x2 *)scratch_j, 16);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_4), AE_MOVINT64_FROMF64(accu_f64_5), (ae_int64x2 *)scratch_j, 32);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_6), AE_MOVINT64_FROMF64(accu_f64_7), (ae_int64x2 *)scratch_j, 48);
         }
         for(j=temp; j < output_width_for_x_stride_1; j+=4)
         {
-          accu_int64_0 = AE_ZERO64();
-          accu_int64_1 = AE_ZERO64();
-          accu_int64_2 = AE_ZERO64();
-          accu_int64_3 = AE_ZERO64();
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_ZERO64());
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_ZERO64());
           for(k=0; k < kernel_height; k++)
           {
-            ae_int16x8 *pt_inp = (ae_int16x8 *)(p_inp);
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+            ae_int16x4 *pt16x4_inp = (ae_int16x4 *)(p_inp);
+            AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+            ae_int16x8 *pt_inp = (ae_int16x8 *)pt16x4_inp;
             ae_int16x4 *pt_ker = (ae_int16x4 *)(p_ker + k*kernel_width_pad);
             for(l = 0; l < (kernel_width_pad>>3); l++)
             {
@@ -400,28 +408,29 @@ static inline void conv2d_16x16_hf4_convmul
               d_inp2 = AE_L16X4_I((ae_int16x4 *)pt_inp, 0);
 
               d_ker0 = *pt_ker++;
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
               d_ker1 = *pt_ker++;
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp1, d_inp2, d_ker1);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp1, d_inp2, d_ker1);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_inp2), AE_MOVF16X4_FROMINT16X4(d_ker1));
             }
             if(kernel_width_pad&7)
             {
               AE_L16X4X2_XC(d_inp0, d_inp1, pt_inp, 16);
               d_ker0 = *pt_ker;
-              AE_MULAFQ16X2_FIR_3(accu_int64_0,accu_int64_1, d_inp0, d_inp1, d_ker0);
-              AE_MULAFQ16X2_FIR_1(accu_int64_2,accu_int64_3, d_inp0, d_inp1, d_ker0);
+              AE_MULAFQ16X2_FIR_3(accu_f64_0,accu_f64_1, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
+              AE_MULAFQ16X2_FIR_1(accu_f64_2,accu_f64_3, AE_MOVF16X4_FROMINT16X4(d_inp0), AE_MOVF16X4_FROMINT16X4(d_inp1), AE_MOVF16X4_FROMINT16X4(d_ker0));
             }
 
           }
-          accu_int64_0 = AE_SRAI64(accu_int64_0,1);
-          accu_int64_1 = AE_SRAI64(accu_int64_1,1);
-          accu_int64_2 = AE_SRAI64(accu_int64_2,1);
-          accu_int64_3 = AE_SRAI64(accu_int64_3,1);
+          accu_f64_0 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_0),1));
+          accu_f64_1 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_1),1));
+          accu_f64_2 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_2),1));
+          accu_f64_3 = AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(accu_f64_3),1));
           ae_int64 *scratch_j = (ae_int64 *)scratch_ptr + j;
-          AE_S64X2_I(accu_int64_0, accu_int64_1, (ae_int64x2 *)scratch_j, 0);
-          AE_S64X2_I(accu_int64_2, accu_int64_3, (ae_int64x2 *)scratch_j, 16);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_0), AE_MOVINT64_FROMF64(accu_f64_1), (ae_int64x2 *)scratch_j, 0);
+          AE_S64X2_I(AE_MOVINT64_FROMF64(accu_f64_2), AE_MOVINT64_FROMF64(accu_f64_3), (ae_int64x2 *)scratch_j, 16);
+
         }
       }
   }
@@ -439,14 +448,14 @@ static inline void conv2d_16x16_hf4_convmul
 
     for(j = 0; j < actual_out_width; j++)
     {
-      accu_int64_0 = scratch_ptr[(j * x_stride)];
-      accu_int64_0 = AE_ADD64S(accu_int64_0, _ae_int64_sat_bias);
+      accu_f64_0 = AE_MOVF64_FROMINT64(scratch_ptr[(j * x_stride)]);
+      accu_f64_0 = AE_ADD64S(accu_f64_0, AE_MOVF64_FROMINT64(_ae_int64_sat_bias));
 
-      accu_int64_0 = AE_SLAA64S(accu_int64_0, acc_shift);
-      accu_int32x2_0 = AE_ROUND32F64SSYM(accu_int64_0);
+      accu_f64_0 = AE_SLAA64S(accu_f64_0, acc_shift);
+      accu_int32x2_0 = AE_MOVINT32X2_FROMF32X2(AE_ROUND32F64SSYM(accu_f64_0));
       accu_int16x4_0 = AE_SAT16X4(accu_int32x2_0, accu_int32x2_0);
 
-      out_ptr[(j * out_stride)] = accu_int16x4_0;
+      out_ptr[(j * out_stride)] = AE_MOVINT16_FROMINT16X4(accu_int16x4_0);
     }
   }
 }
@@ -756,49 +765,49 @@ static inline void conv2d_nhwc_16x16
             d64_bias1 = AE_MOVINT64_FROMINT16(pt_bias[itr_ch+1]);
             d64_bias2 = AE_MOVINT64_FROMINT16(pt_bias[itr_ch+2]);
             d64_bias3 = AE_MOVINT64_FROMINT16(pt_bias[itr_ch+3]);
-            d64_bias0 = AE_SLAA64S(AE_SRAI64(d64_bias0, 48), bias_shift);
-            d64_bias1 = AE_SLAA64S(AE_SRAI64(d64_bias1, 48), bias_shift);
-            d64_bias2 = AE_SLAA64S(AE_SRAI64(d64_bias2, 48), bias_shift);
-            d64_bias3 = AE_SLAA64S(AE_SRAI64(d64_bias3, 48), bias_shift);
+            d64_bias0 = SW_SLAA64S_INT64_INT64(AE_SRAI64(d64_bias0, 48), bias_shift);
+            d64_bias1 = SW_SLAA64S_INT64_INT64(AE_SRAI64(d64_bias1, 48), bias_shift);
+            d64_bias2 = SW_SLAA64S_INT64_INT64(AE_SRAI64(d64_bias2, 48), bias_shift);
+            d64_bias3 = SW_SLAA64S_INT64_INT64(AE_SRAI64(d64_bias3, 48), bias_shift);
 
-            d64_acc0 = AE_ADD64S(d64_acc0, d64_bias0);
-            d64_acc1 = AE_ADD64S(d64_acc1, d64_bias1);
-            d64_acc2 = AE_ADD64S(d64_acc2, d64_bias2);
-            d64_acc3 = AE_ADD64S(d64_acc3, d64_bias3);
+            d64_acc0 = SW_ADD64S_INT64_INT64(d64_acc0, d64_bias0);
+            d64_acc1 = SW_ADD64S_INT64_INT64(d64_acc1, d64_bias1);
+            d64_acc2 = SW_ADD64S_INT64_INT64(d64_acc2, d64_bias2);
+            d64_acc3 = SW_ADD64S_INT64_INT64(d64_acc3, d64_bias3);
 
-            d64_acc0 = AE_SLAA64S(d64_acc0, acc_shift+32);
-            d64_acc1 = AE_SLAA64S(d64_acc1, acc_shift+32);
-            d64_acc2 = AE_SLAA64S(d64_acc2, acc_shift+32);
-            d64_acc3 = AE_SLAA64S(d64_acc3, acc_shift+32);
+            d64_acc0 = SW_SLAA64S_INT64_INT64(d64_acc0, acc_shift+32);
+            d64_acc1 = SW_SLAA64S_INT64_INT64(d64_acc1, acc_shift+32);
+            d64_acc2 = SW_SLAA64S_INT64_INT64(d64_acc2, acc_shift+32);
+            d64_acc3 = SW_SLAA64S_INT64_INT64(d64_acc3, acc_shift+32);
 
-            d_acc0 = AE_ROUND32X2F64SSYM(d64_acc0, d64_acc1);
-            d_acc1 = AE_ROUND32X2F64SSYM(d64_acc2, d64_acc3);
+            d_acc0 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(d64_acc0, d64_acc1);
+            d_acc1 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(d64_acc2, d64_acc3);
             d_acc16x4 = AE_SAT16X4(d_acc0, d_acc1);
 #pragma no_unroll
             for(i = 0; i < XT_MIN(out_channels-itr_ch, 4); i++)
             {
                 d_acc16x4 = AE_SEL16_6543(d_acc16x4, d_acc16x4);
-                *(ae_int16 *)(&out_ptr0[itr_ch+i]) = d_acc16x4;
+                *(ae_int16 *)(&out_ptr0[itr_ch+i]) = AE_MOVINT16_FROMINT16X4(d_acc16x4);
             }
 
-            d64_acc4 = AE_ADD64S(d64_acc4, d64_bias0);
-            d64_acc5 = AE_ADD64S(d64_acc5, d64_bias1);
-            d64_acc6 = AE_ADD64S(d64_acc6, d64_bias2);
-            d64_acc7 = AE_ADD64S(d64_acc7, d64_bias3);
+            d64_acc4 = SW_ADD64S_INT64_INT64(d64_acc4, d64_bias0);
+            d64_acc5 = SW_ADD64S_INT64_INT64(d64_acc5, d64_bias1);
+            d64_acc6 = SW_ADD64S_INT64_INT64(d64_acc6, d64_bias2);
+            d64_acc7 = SW_ADD64S_INT64_INT64(d64_acc7, d64_bias3);
 
-            d64_acc4 = AE_SLAA64S(d64_acc4, acc_shift+32);
-            d64_acc5 = AE_SLAA64S(d64_acc5, acc_shift+32);
-            d64_acc6 = AE_SLAA64S(d64_acc6, acc_shift+32);
-            d64_acc7 = AE_SLAA64S(d64_acc7, acc_shift+32);
+            d64_acc4 = SW_SLAA64S_INT64_INT64(d64_acc4, acc_shift+32);
+            d64_acc5 = SW_SLAA64S_INT64_INT64(d64_acc5, acc_shift+32);
+            d64_acc6 = SW_SLAA64S_INT64_INT64(d64_acc6, acc_shift+32);
+            d64_acc7 = SW_SLAA64S_INT64_INT64(d64_acc7, acc_shift+32);
 
-            d_acc2 = AE_ROUND32X2F64SSYM(d64_acc4, d64_acc5);
-            d_acc3 = AE_ROUND32X2F64SSYM(d64_acc6, d64_acc7);
+            d_acc2 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(d64_acc4, d64_acc5);
+            d_acc3 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(d64_acc6, d64_acc7);
             d_acc16x4 = AE_SAT16X4(d_acc2, d_acc3);
 #pragma no_unroll
             for(i = 0; i < XT_MIN(out_channels-itr_ch, 4); i++)
             {
                 d_acc16x4 = AE_SEL16_6543(d_acc16x4, d_acc16x4);
-                *(ae_int16 *)(&out_ptr1[itr_ch+i]) = d_acc16x4;
+                *(ae_int16 *)(&out_ptr1[itr_ch+i]) = AE_MOVINT16_FROMINT16X4(d_acc16x4);
             }
         }
     }
@@ -844,29 +853,29 @@ static inline void conv2d_nhwc_16x16
             d64_bias1 = AE_MOVINT64_FROMINT16(pt_bias[itr_ch+1]);
             d64_bias2 = AE_MOVINT64_FROMINT16(pt_bias[itr_ch+2]);
             d64_bias3 = AE_MOVINT64_FROMINT16(pt_bias[itr_ch+3]);
-            d64_bias0 = AE_SLAA64S(AE_SRAI64(d64_bias0, 48), bias_shift);
-            d64_bias1 = AE_SLAA64S(AE_SRAI64(d64_bias1, 48), bias_shift);
-            d64_bias2 = AE_SLAA64S(AE_SRAI64(d64_bias2, 48), bias_shift);
-            d64_bias3 = AE_SLAA64S(AE_SRAI64(d64_bias3, 48), bias_shift);
+            d64_bias0 = SW_SLAA64S_INT64_INT64(AE_SRAI64(d64_bias0, 48), bias_shift);
+            d64_bias1 = SW_SLAA64S_INT64_INT64(AE_SRAI64(d64_bias1, 48), bias_shift);
+            d64_bias2 = SW_SLAA64S_INT64_INT64(AE_SRAI64(d64_bias2, 48), bias_shift);
+            d64_bias3 = SW_SLAA64S_INT64_INT64(AE_SRAI64(d64_bias3, 48), bias_shift);
 
-            d64_acc0 = AE_ADD64S(d64_acc0, d64_bias0);
-            d64_acc1 = AE_ADD64S(d64_acc1, d64_bias1);
-            d64_acc2 = AE_ADD64S(d64_acc2, d64_bias2);
-            d64_acc3 = AE_ADD64S(d64_acc3, d64_bias3);
+            d64_acc0 = SW_ADD64S_INT64_INT64(d64_acc0, d64_bias0);
+            d64_acc1 = SW_ADD64S_INT64_INT64(d64_acc1, d64_bias1);
+            d64_acc2 = SW_ADD64S_INT64_INT64(d64_acc2, d64_bias2);
+            d64_acc3 = SW_ADD64S_INT64_INT64(d64_acc3, d64_bias3);
 
-            d64_acc0 = AE_SLAA64S(d64_acc0, acc_shift+32);
-            d64_acc1 = AE_SLAA64S(d64_acc1, acc_shift+32);
-            d64_acc2 = AE_SLAA64S(d64_acc2, acc_shift+32);
-            d64_acc3 = AE_SLAA64S(d64_acc3, acc_shift+32);
+            d64_acc0 = SW_SLAA64S_INT64_INT64(d64_acc0, acc_shift+32);
+            d64_acc1 = SW_SLAA64S_INT64_INT64(d64_acc1, acc_shift+32);
+            d64_acc2 = SW_SLAA64S_INT64_INT64(d64_acc2, acc_shift+32);
+            d64_acc3 = SW_SLAA64S_INT64_INT64(d64_acc3, acc_shift+32);
 
-            d_acc0 = AE_ROUND32X2F64SSYM(d64_acc0, d64_acc1);
-            d_acc1 = AE_ROUND32X2F64SSYM(d64_acc2, d64_acc3);
+            d_acc0 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(d64_acc0, d64_acc1);
+            d_acc1 = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(d64_acc2, d64_acc3);
             d_acc16x4 = AE_SAT16X4(d_acc0, d_acc1);
 #pragma no_unroll
             for(i = 0; i < XT_MIN(out_channels-itr_ch, 4); i++)
             {
                 d_acc16x4 = AE_SEL16_6543(d_acc16x4, d_acc16x4);
-                *(ae_int16 *)(&out_ptr0[itr_ch+i]) = d_acc16x4;
+                *(ae_int16 *)(&out_ptr0[itr_ch+i]) = AE_MOVINT16_FROMINT16X4(d_acc16x4);
             }
         }
     }

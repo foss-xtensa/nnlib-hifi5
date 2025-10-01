@@ -32,7 +32,9 @@
   #define AE_SW_LAV32X2X2_XP(d1, d2, va, ptr, off) \
   { \
     ae_int16x4 d_out16_0, d_out16_1; \
-    AE_LAV16X4X2_XP(d_out16_0, d_out16_1, va, (ae_int16x8 *)ptr, off); \
+    ae_int16x8 *ptr_16x8 = (ae_int16x8 *)ptr;\
+    AE_LAV16X4X2_XP(d_out16_0, d_out16_1, va, ptr_16x8, off); \
+    ptr = (ae_int32x4 *)ptr_16x8;\
     d_out16_0 = AE_SEL16_2301(d_out16_0, d_out16_0); \
     d_out16_1 = AE_SEL16_2301(d_out16_1, d_out16_1); \
     d1 = AE_MOVINT32X2_FROMINT16X4(d_out16_0); \
@@ -45,11 +47,13 @@
   #define AE_SW_SAV32X2X2_XP(d1, d2, va, ptr, off) \
   { \
     ae_int16x4 d_in16_0, d_in16_1; \
+    ae_int16x8 *ptr_16x8 = (ae_int16x8 *)ptr;\
     d_in16_0 = AE_MOVINT16X4_FROMINT32X2(d1); \
     d_in16_1 = AE_MOVINT16X4_FROMINT32X2(d2); \
     d_in16_0 = AE_SEL16_2301(d_in16_0, d_in16_0); \
     d_in16_1 = AE_SEL16_2301(d_in16_1, d_in16_1); \
-    AE_SAV16X4X2_XP(d_in16_0, d_in16_1, va, (ae_int16x8 *)ptr, off); \
+    AE_SAV16X4X2_XP(d_in16_0, d_in16_1, va, ptr_16x8, off); \
+    ptr = (ae_int32x4 *)ptr_16x8;\
   }
 #endif
 

@@ -58,32 +58,32 @@ WORD32 xa_nn_elm_max_8x8_8( WORD8* __restrict__ p_out,
 
     const WORD16 num_elm_per_iter = num_elm_per_simd * num_simd_per_iter ;
 
-    xtbool io_pointers_aligned =    ((uintptr_t)p_in1 % num_elm_per_iter == 0) &&
+    xtbool io_pointers_aligned =    AE_MOVBA(((uintptr_t)p_in1 % num_elm_per_iter == 0) &&
                                     ((uintptr_t)p_in2 % num_elm_per_iter == 0) &&
-                                    ((uintptr_t)p_out % num_elm_per_iter == 0);
+                                    ((uintptr_t)p_out % num_elm_per_iter == 0));
 
     WORD32 num_simd_iter   = num_element / num_elm_per_iter ;
 
-    WORD8 *p_a = (WORD8 *)p_in1;
-    WORD8 *p_b = (WORD8 *)p_in2;
-    WORD8 *p_c = (WORD8 *)p_out;
+    ae_int8x16 *p_a = (ae_int8x16 *)p_in1;
+    ae_int8x16 *p_b = (ae_int8x16 *)p_in2;
+    ae_int8x16 *p_c = (ae_int8x16 *)p_out;
 
     ae_int8x8 a0_7, a8_15, b0_7, b8_15, c0_7, c8_15;
 
     WORD32 i = 0;
 
     // iterate over the simd elements
-    if(io_pointers_aligned){
+    if(AE_MOVAB(io_pointers_aligned)){
 
         for(i = 0; i<num_simd_iter; i++){
 
-            AE_L8X8X2_IP(a0_7, a8_15, (ae_int8x16 *)p_a, 16*sizeof(WORD8));
-            AE_L8X8X2_IP(b0_7, b8_15, (ae_int8x16 *)p_b, 16*sizeof(WORD8));
+            AE_L8X8X2_IP(a0_7, a8_15, p_a, 16*sizeof(WORD8));
+            AE_L8X8X2_IP(b0_7, b8_15, p_b, 16*sizeof(WORD8));
 
             c0_7  = AE_MAX8(a0_7,  b0_7);
             c8_15 = AE_MAX8(a8_15, b8_15);
 
-            AE_S8X8X2_IP(c0_7, c8_15, (ae_int8x16 *)p_c, 16*sizeof(WORD8));
+            AE_S8X8X2_IP(c0_7, c8_15, p_c, 16*sizeof(WORD8));
 
         }
 
@@ -95,13 +95,13 @@ WORD32 xa_nn_elm_max_8x8_8( WORD8* __restrict__ p_out,
 
         for(i = 0; i<num_simd_iter; i++){
 
-            AE_LA8X8X2_IP(a0_7, a8_15, va_a, (ae_int8x16 *)p_a);
-            AE_LA8X8X2_IP(b0_7, b8_15, va_b, (ae_int8x16 *)p_b);
+            AE_LA8X8X2_IP(a0_7, a8_15, va_a, p_a);
+            AE_LA8X8X2_IP(b0_7, b8_15, va_b, p_b);
 
             c0_7  = AE_MAX8(a0_7,  b0_7);
             c8_15 = AE_MAX8(a8_15, b8_15);
 
-            AE_SA8X8X2_IP(c0_7, c8_15, va_c, (ae_int8x16 *)p_c);
+            AE_SA8X8X2_IP(c0_7, c8_15, va_c, p_c);
 
         }
 
@@ -147,32 +147,32 @@ WORD32 xa_nn_elm_min_8x8_8( WORD8* __restrict__ p_out,
 
     const WORD16 num_elm_per_iter = num_elm_per_simd * num_simd_per_iter ;
 
-    xtbool io_pointers_aligned =    ((uintptr_t)p_in1 % num_elm_per_iter == 0) &&
+    xtbool io_pointers_aligned =    AE_MOVBA(((uintptr_t)p_in1 % num_elm_per_iter == 0) &&
                                     ((uintptr_t)p_in2 % num_elm_per_iter == 0) &&
-                                    ((uintptr_t)p_out % num_elm_per_iter == 0);
+                                    ((uintptr_t)p_out % num_elm_per_iter == 0));
 
     WORD32 num_simd_iter   = num_element / num_elm_per_iter ;
 
-    WORD8 *p_a = (WORD8 *)p_in1;
-    WORD8 *p_b = (WORD8 *)p_in2;
-    WORD8 *p_c = (WORD8 *)p_out;
+    ae_int8x16 *p_a = (ae_int8x16 *)p_in1;
+    ae_int8x16 *p_b = (ae_int8x16 *)p_in2;
+    ae_int8x16 *p_c = (ae_int8x16 *)p_out;
 
     ae_int8x8 a0_7, a8_15, b0_7, b8_15, c0_7, c8_15;
 
     WORD32 i = 0;
 
     // iterate over the simd elements
-    if(io_pointers_aligned){
+    if(AE_MOVAB(io_pointers_aligned)){
 
         for(i = 0; i<num_simd_iter; i++){
 
-            AE_L8X8X2_IP(a0_7, a8_15, (ae_int8x16 *)p_a, 16*sizeof(WORD8));
-            AE_L8X8X2_IP(b0_7, b8_15, (ae_int8x16 *)p_b, 16*sizeof(WORD8));
+            AE_L8X8X2_IP(a0_7, a8_15, p_a, 16*sizeof(WORD8));
+            AE_L8X8X2_IP(b0_7, b8_15, p_b, 16*sizeof(WORD8));
 
             c0_7  = AE_MIN8(a0_7,  b0_7);
             c8_15 = AE_MIN8(a8_15, b8_15);
 
-            AE_S8X8X2_IP(c0_7, c8_15, (ae_int8x16 *)p_c, 16*sizeof(WORD8));
+            AE_S8X8X2_IP(c0_7, c8_15, p_c, 16*sizeof(WORD8));
 
         }
 
@@ -184,13 +184,13 @@ WORD32 xa_nn_elm_min_8x8_8( WORD8* __restrict__ p_out,
 
         for(i = 0; i<num_simd_iter; i++){
 
-            AE_LA8X8X2_IP(a0_7, a8_15, va_a, (ae_int8x16 *)p_a);
-            AE_LA8X8X2_IP(b0_7, b8_15, va_b, (ae_int8x16 *)p_b);
+            AE_LA8X8X2_IP(a0_7, a8_15, va_a, p_a);
+            AE_LA8X8X2_IP(b0_7, b8_15, va_b, p_b);
 
             c0_7  = AE_MIN8(a0_7,  b0_7);
             c8_15 = AE_MIN8(a8_15, b8_15);
 
-            AE_SA8X8X2_IP(c0_7, c8_15, va_c, (ae_int8x16 *)p_c);
+            AE_SA8X8X2_IP(c0_7, c8_15, va_c, p_c);
 
         }
 
@@ -505,7 +505,7 @@ WORD32 xa_nn_elm_min_8D_Bcast_8x8_8(
 
                                        c0_7  = AE_MIN8(a0_7,  b0_7);   c8_15 = AE_MIN8(a8_15, b8_15);
 
-                                       AE_SA8X8X2_IP(c0_7, c8_15, out_align, (ae_int8x16 *)out);
+                                       AE_SA8X8X2_IP(c0_7, c8_15, out_align, out);
                                        num_scalars_loaded = 0;
                                     }
                                 }
@@ -524,7 +524,7 @@ WORD32 xa_nn_elm_min_8D_Bcast_8x8_8(
 
         c0_7  = AE_MIN8(a0_7,  b0_7);   c8_15 = AE_MIN8(a8_15, b8_15);
         
-        AE_SAV8X8X2_XP(c0_7, c8_15, out_align, (ae_int8x16 *)out, num_scalars_loaded);
+        AE_SAV8X8X2_XP(c0_7, c8_15, out_align, out, num_scalars_loaded);
     }
 
     AE_SA128POS_FP(out_align, out);
@@ -630,7 +630,7 @@ WORD32 xa_nn_elm_max_8D_Bcast_8x8_8(
 
                                        c0_7  = AE_MAX8(a0_7,  b0_7);   c8_15 = AE_MAX8(a8_15, b8_15);
 
-                                       AE_SA8X8X2_IP(c0_7, c8_15, out_align, (ae_int8x16 *)out);
+                                       AE_SA8X8X2_IP(c0_7, c8_15, out_align, out);
                                        num_scalars_loaded = 0;
                                     }
                                 }
@@ -649,7 +649,7 @@ WORD32 xa_nn_elm_max_8D_Bcast_8x8_8(
 
         c0_7  = AE_MAX8(a0_7,  b0_7);   c8_15 = AE_MAX8(a8_15, b8_15);
         
-        AE_SAV8X8X2_XP(c0_7, c8_15, out_align, (ae_int8x16 *)out, num_scalars_loaded);
+        AE_SAV8X8X2_XP(c0_7, c8_15, out_align, out, num_scalars_loaded);
     }
 
     AE_SA128POS_FP(out_align, out);

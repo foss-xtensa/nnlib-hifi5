@@ -41,10 +41,10 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matXvec_f16xf16_f16,(
 #else
 
 #define TRANSPOSEHX4_INPLACE(i1, i2, i3, i4){\
-  ae_int16x4 in1 = AE_MOVF16X4_FROMHALFX4(i1);\
-  ae_int16x4 in2 = AE_MOVF16X4_FROMHALFX4(i2);\
-  ae_int16x4 in3 = AE_MOVF16X4_FROMHALFX4(i3);\
-  ae_int16x4 in4 = AE_MOVF16X4_FROMHALFX4(i4);\
+  ae_int16x4 in1 = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(i1));\
+  ae_int16x4 in2 = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(i2));\
+  ae_int16x4 in3 = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(i3));\
+  ae_int16x4 in4 = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(i4));\
   ae_int16x4 out0, out1, out2, out3;\
   ae_int16x4 dsel = AE_MOVINT16X4_FROMINT32X2(AE_MOVDA32X2(0x07060302, 0x05040100));\
   AE_DSEL16X4(out0, out1, in1, in2, dsel);\
@@ -52,10 +52,10 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matXvec_f16xf16_f16,(
   dsel = AE_MOVINT16X4_FROMINT32X2(AE_MOVDA32X2(0x07050604, 0x03010200));\
   AE_DSEL16X4(in1, in3, out0, out2, dsel);\
   AE_DSEL16X4(in2, in4, out1, out3, dsel);\
-  i1 = AE_MOVHALFX4_FROMF16X4(in1);\
-  i2 = AE_MOVHALFX4_FROMF16X4(in2);\
-  i3 = AE_MOVHALFX4_FROMF16X4(in3);\
-  i4 = AE_MOVHALFX4_FROMF16X4(in4);\
+  i1 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(in1));\
+  i2 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(in2));\
+  i3 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(in3));\
+  i4 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(in4));\
 }
 
 /* Internal Function: mtx_vecmpyf_bias_add_aligned()
@@ -272,8 +272,8 @@ static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
 {
   WORD32 i, j;
 
-  const xthalfx4 *pb = (const xthalfx4 *)(pbias);
-  xthalfx4 *pout0 = (xthalfx4 *)(pout);
+  const ae_int16 *pb = (const ae_int16 *)(pbias);
+  ae_int16 *pout0 = (ae_int16 *)(pout);
   ae_valign alignb = AE_LA64_PP(pb);
   ae_valign alignout = AE_ZALIGN64();
 
@@ -281,6 +281,8 @@ static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
 
   if((unsigned)pvec%16 == 0)
   {
+    const xthalfx4 *pb_hx4 = (const xthalfx4 *)pb;
+    xthalfx4 *pout0_hx4 = (xthalfx4 *)pout0;
     /* Since vector is assumed aligned, we can process four rows at a time. */
     for(i = 0; i < rows>>2; i++)
     {
@@ -383,14 +385,16 @@ static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
       xthalfx4 b0 = ZERO_HX4();
       if(pbias != NULL)
       {
-        AE_LAHX4IP(b0, alignb, pb);
+        AE_LAHX4IP(b0, alignb, pb_hx4);
       }
       acc00 = ADD_HX4(acc00, b0);
   
-      AE_SAHX4IP(acc00, alignout, pout0);
+      AE_SAHX4IP(acc00, alignout, pout0_hx4);
     }
-    AE_SA64POS_FP(alignout, pout0);
+    AE_SA64POS_FP(alignout, pout0_hx4);
     rem_rows = rows%4;
+    pb = (const ae_int16 *)pb_hx4;
+    pout0 = (ae_int16 *)pout0_hx4;
   } else {
     /* All pointers are assumed unaligned. Process two rows at a time*/
     for(i = 0; i < rows>>1; i++)
@@ -475,16 +479,16 @@ static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
       if(pbias != NULL)
       {
         ae_int16x4 b0_tmp;
-        AE_L16_IP(b0_tmp, (ae_int16 *)pb, sizeof(xthalf));
-        b0 = AE_MOVHALFX4_FROMF16X4(b0_tmp);
-        AE_L16_IP(b0_tmp, (ae_int16 *)pb, sizeof(xthalf));
-        b1 = AE_MOVHALFX4_FROMF16X4(b0_tmp);
+        AE_L16_IP(b0_tmp, pb, sizeof(xthalf));
+        b0 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(b0_tmp));
+        AE_L16_IP(b0_tmp, pb, sizeof(xthalf));
+        b1 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(b0_tmp));
       }
       acc00 = ADD_HX4(acc00, b0);
       acc10 = ADD_HX4(acc10, b1);
   
-      AE_S16_0_IP(AE_MOVF16X4_FROMHALFX4(acc00), (ae_int16 *)pout0, sizeof(xthalf));
-      AE_S16_0_IP(AE_MOVF16X4_FROMHALFX4(acc10), (ae_int16 *)pout0, sizeof(xthalf));
+      AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(acc00)), pout0, sizeof(xthalf));
+      AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(acc10)), pout0, sizeof(xthalf));
     }
 
     rem_rows = rows%2;
@@ -535,12 +539,12 @@ static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
     if(pbias != NULL)
     {
       ae_int16x4 b0_tmp;
-      AE_L16_IP(b0_tmp, (ae_int16 *)pb, sizeof(xthalf));
-      b0 = AE_MOVHALFX4_FROMF16X4(b0_tmp);
+      AE_L16_IP(b0_tmp, pb, sizeof(xthalf));
+      b0 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(b0_tmp));
     }
     out_temp = ADD_HX4(out_temp, b0);
     
-    AE_S16_0_IP(AE_MOVF16X4_FROMHALFX4(out_temp), (ae_int16 *)pout0, sizeof(xthalf));
+    AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(out_temp)), pout0, sizeof(xthalf));
   }
 }
 

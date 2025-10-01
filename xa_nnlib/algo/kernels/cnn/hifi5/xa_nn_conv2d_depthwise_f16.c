@@ -51,11 +51,11 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_conv2d_depthwise_f16,(
 
 #define DSELHX4(out0, out1, inp0, inp1, dsel){\
   ae_int16x4 out0_tmp, out1_tmp, inp0_tmp, inp1_tmp;\
-  inp0_tmp = AE_MOVF16X4_FROMHALFX4(inp0);\
-  inp1_tmp = AE_MOVF16X4_FROMHALFX4(inp1);\
+  inp0_tmp = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(inp0));\
+  inp1_tmp = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(inp1));\
   AE_DSEL16X4(out0_tmp, out1_tmp, inp0_tmp, inp1_tmp, dsel);\
-  out0 = AE_MOVHALFX4_FROMF16X4(out0_tmp);\
-  out1 = AE_MOVHALFX4_FROMF16X4(out1_tmp);\
+  out0 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(out0_tmp));\
+  out1 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(out1_tmp));\
 }
 
 static void convolve_f16
@@ -119,13 +119,16 @@ static void convolve_f16
         CONST_HX4X2(acc6, acc7, 0);
         for(k=0; k < kernel_height; k++)
         {
-          xthalfx8 *pt_inp = (xthalfx8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(xthalf)) * ((i * y_stride * input_width) + j + k*input_width)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)p_inp;
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(xthalf)) * ((i * y_stride * input_width) + j + k*input_width)));
+          xthalfx8 *pt_inp = (xthalfx8 *)(pt16x4_inp);
           xthalfx4 *pt_ker = (xthalfx4 *)(p_ker + k*kernel_width_pad);
 
           AE_LHX4X2_XC(d_inp0, d_inp1, pt_inp, 16);
           AE_LHX4X2_XC(d_inp2, d_inp3, pt_inp, 16);
-          AE_LHX4XC(d_inp4, (xthalfx4 *)pt_inp, sizeof(xthalf)*(input_width-16));
+          xthalfx4 *ptx4_inp = (xthalfx4 *)pt_inp;
+          AE_LHX4XC(d_inp4, ptx4_inp, sizeof(xthalf)*(input_width-16));
+          pt_inp = (xthalfx8 *)(ptx4_inp);
 
           AE_LHX4IP(d_ker0, pt_ker, 8);
           
@@ -164,7 +167,7 @@ static void convolve_f16
           MADDQ_H(acc6, acc7, d_inp5432, d_inp4321, d_ker2);
         }
   
-        WORD16 *scratch_j = (WORD16 *)scratch_ptr + j;
+        xthalfx4 *scratch_j = (xthalfx4 *)((WORD16 *)scratch_ptr + j);
         
         xthalfx4 out0, out1;
         CONST_HX4X2(out0, out1, 0);
@@ -182,8 +185,8 @@ static void convolve_f16
         ADD_HX4X2(out0, out1, out0, out1, y02, y02_1);
         ADD_HX4X2(out0, out1, out0, out1, y13, y13_1);
 
-        AE_SHX4IP(out0, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
-        AE_SHX4IP(out1, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out0, scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out1, scratch_j, 4 * sizeof(xthalf));
       }
 
       for(j=temp; j < output_width_for_x_stride_1; j+=4)
@@ -192,8 +195,9 @@ static void convolve_f16
         CONST_HX4X2(acc2, acc3, 0);        
         for(k=0; k < kernel_height; k++)
         {
-          xthalfx8 *pt_inp = (xthalfx8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)p_inp;
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+          xthalfx8 *pt_inp = (xthalfx8 *)(pt16x4_inp);
           xthalfx4 *pt_ker = (xthalfx4 *)(p_ker + k*kernel_width_pad);
           AE_LHX4X2_XC(d_inp0, d_inp1, pt_inp, 16);
           AE_LHX4X2_XC(d_inp2, d_inp3, pt_inp, sizeof(WORD16)*(input_width-8));
@@ -220,7 +224,7 @@ static void convolve_f16
           MADDQ_H(acc2, acc3, d_inp5432, d_inp4321, d_ker1);           
 
         }
-        WORD16 *scratch_j = (WORD16 *)scratch_ptr + j;
+        xthalfx4 *scratch_j = (xthalfx4 *)((WORD16 *)scratch_ptr + j);
 
         xthalfx4 out0 = CONST_HX4(0);
 
@@ -231,7 +235,7 @@ static void convolve_f16
         out0 = ADD_HX4(out0, y02);
         out0 = ADD_HX4(out0, y13);
 
-        AE_SHX4IP(out0, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out0, scratch_j, 4 * sizeof(xthalf));
       }
     }
   }
@@ -249,8 +253,9 @@ static void convolve_f16
         CONST_HX4X2(acc6, acc7, 0);
         for(k=0; k < kernel_height; k++)
         {
-          xthalfx8 *pt_inp = (xthalfx8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(xthalf)) * ((i * y_stride * input_width) + j + k*input_width)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)p_inp;
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(xthalf)) * ((i * y_stride * input_width) + j + k*input_width)));
+          xthalfx8 *pt_inp = (xthalfx8 *)(pt16x4_inp);
           xthalfx4 *pt_ker = (xthalfx4 *)(p_ker + k*kernel_width_pad);
 
           AE_LHX4X2_XC(d_inp0, d_inp1, pt_inp, 16);
@@ -281,7 +286,7 @@ static void convolve_f16
           MADDQ_H(acc6, acc7, d_inp5432, d_inp4321, d_ker1);
         }
   
-        WORD16 *scratch_j = (WORD16 *)scratch_ptr + j;
+        xthalfx4 *scratch_j = (xthalfx4 *)((WORD16 *)scratch_ptr + j);
         
         xthalfx4 out0, out1;
         CONST_HX4X2(out0, out1, 0);
@@ -299,8 +304,8 @@ static void convolve_f16
         ADD_HX4X2(out0, out1, out0, out1, y02, y02_1);
         ADD_HX4X2(out0, out1, out0, out1, y13, y13_1);
 
-        AE_SHX4IP(out0, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
-        AE_SHX4IP(out1, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out0, scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out1, scratch_j, 4 * sizeof(xthalf));
       }
 
       for(j=temp; j < output_width_for_x_stride_1; j+=4)
@@ -309,8 +314,9 @@ static void convolve_f16
         CONST_HX4X2(acc2, acc3, 0);        
         for(k=0; k < kernel_height; k++)
         {
-          xthalfx8 *pt_inp = (xthalfx8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)p_inp;
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+          xthalfx8 *pt_inp = (xthalfx8 *)(pt16x4_inp);
           xthalfx4 *pt_ker = (xthalfx4 *)(p_ker + k*kernel_width_pad);
           AE_LHX4X2_XC(d_inp0, d_inp1, pt_inp, 16);
           d_inp2 = AE_LHX4I((xthalfx4 *)pt_inp, 0);
@@ -329,7 +335,7 @@ static void convolve_f16
           MADDQ_H(acc0, acc1, d_inp1, d_inp6543, d_ker1);
           MADDQ_H(acc2, acc3, d_inp5432, d_inp4321, d_ker1);         
         }
-        WORD16 *scratch_j = (WORD16 *)scratch_ptr + j;
+        xthalfx4 *scratch_j = (xthalfx4 *)((WORD16 *)scratch_ptr + j);
 
         xthalfx4 out0 = CONST_HX4(0);
         DSELHX4(y0, y1, acc0, acc1, dsel0);
@@ -339,7 +345,7 @@ static void convolve_f16
         out0 = ADD_HX4(out0, y02);
         out0 = ADD_HX4(out0, y13);
 
-        AE_SHX4IP(out0, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out0, scratch_j, 4 * sizeof(xthalf));
       }
     }
   }
@@ -354,11 +360,13 @@ static void convolve_f16
         CONST_HX4X2(acc2, acc3, 0);        
         for(k=0; k < kernel_height; k++)
         {
-          xthalfx8 *pt_inp = (xthalfx8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)p_inp;
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+          xthalfx8 *pt_inp = (xthalfx8 *)(pt16x4_inp);
           xthalfx4 *pt_ker = (xthalfx4 *)(p_ker + k*kernel_width_pad);
-          AE_LHX4XC(d_inp0, (xthalfx4 *)pt_inp, 8);
-          AE_LHX4XC(d_inp1, (xthalfx4 *)pt_inp, sizeof(xthalf)*(input_width-4)); 
+          xthalfx4 *ptx4_inp = (xthalfx4 *)pt_inp;
+          AE_LHX4XC(d_inp0, ptx4_inp, 8);
+          AE_LHX4XC(d_inp1, ptx4_inp, sizeof(xthalf)*(input_width-4)); 
 
           AE_LHX4IP(d_ker0, pt_ker, 8);
           DSELHX4(d_inp6543, d_inp5432, d_inp0, d_inp1, dsel1);
@@ -367,7 +375,7 @@ static void convolve_f16
           MADDQ_H(acc0, acc1, d_inp0, d_inp6543, d_ker0);
           MADDQ_H(acc2, acc3, d_inp5432, d_inp4321, d_ker0);       
         }
-        WORD16 *scratch_j = (WORD16 *)scratch_ptr + j;
+        xthalfx4 *scratch_j = (xthalfx4 *)((WORD16 *)scratch_ptr + j);
 
         xthalfx4 out0 = CONST_HX4(0);
         DSELHX4(y0, y1, acc0, acc1, dsel0);
@@ -376,7 +384,7 @@ static void convolve_f16
         DSELHX4(y02, y13, y01, y23, dsel0);
         out0 = ADD_HX4(out0, y02);
         out0 = ADD_HX4(out0, y13);
-        AE_SHX4IP(out0, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out0, scratch_j, 4 * sizeof(xthalf));
       }    
     }
   }
@@ -394,8 +402,9 @@ static void convolve_f16
         CONST_HX4X2(acc6, acc7, 0);    
         for(k=0; k < kernel_height; k++)
         {
-          xthalfx8 *pt_inp = (xthalfx8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(xthalf)) * ((i * y_stride * input_width) + j + k*input_width)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)p_inp;
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(xthalf)) * ((i * y_stride * input_width) + j + k*input_width)));
+          xthalfx8 *pt_inp = (xthalfx8 *)(pt16x4_inp);
           xthalfx4 *pt_ker = (xthalfx4 *)(p_ker + k*kernel_width_pad);
   #pragma no_unroll
           for(l = 0; l < (kernel_width_pad>>3); l++)
@@ -447,7 +456,7 @@ static void convolve_f16
           }
         }
   
-        WORD16 *scratch_j = (WORD16 *)scratch_ptr + j;
+        xthalfx4 *scratch_j = (xthalfx4 *)((WORD16 *)scratch_ptr + j);
         
         xthalfx4 out0, out1;
         CONST_HX4X2(out0, out1, 0);
@@ -465,8 +474,8 @@ static void convolve_f16
         ADD_HX4X2(out0, out1, out0, out1, y02, y02_1);
         ADD_HX4X2(out0, out1, out0, out1, y13, y13_1);
 
-        AE_SHX4IP(out0, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
-        AE_SHX4IP(out1, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out0, scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out1, scratch_j, 4 * sizeof(xthalf));
       }
 
       for(j=temp; j < output_width_for_x_stride_1; j+=4)
@@ -475,8 +484,9 @@ static void convolve_f16
         CONST_HX4X2(acc2, acc3, 0);
         for(k=0; k < kernel_height; k++)
         {
-          xthalfx8 *pt_inp = (xthalfx8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+          ae_int16x4 *pt16x4_inp = (ae_int16x4 *)p_inp;
+          AE_ADDCIRC16X4_XC(pt16x4_inp,((sizeof(WORD16)) * ((i * y_stride * input_width) + j + k*input_width)));
+          xthalfx8 *pt_inp = (xthalfx8 *)(pt16x4_inp);
           xthalfx4 *pt_ker = (xthalfx4 *)(p_ker + k*kernel_width_pad);
           for(l = 0; l < (kernel_width_pad>>3); l++)
           {
@@ -509,7 +519,7 @@ static void convolve_f16
             MADDQ_H(acc2, acc3, d_inp5432, d_inp4321, d_ker0);
           }
         }
-        WORD16 *scratch_j = (WORD16 *)scratch_ptr + j;
+        xthalfx4 *scratch_j = (xthalfx4 *)((WORD16 *)scratch_ptr + j);
 
         xthalfx4 out0 = CONST_HX4(0);
 
@@ -521,7 +531,7 @@ static void convolve_f16
         out0 = ADD_HX4(out0, y02);
         out0 = ADD_HX4(out0, y13);
 
-        AE_SHX4IP(out0, (xthalfx4 *)scratch_j, 4 * sizeof(xthalf));
+        AE_SHX4IP(out0, scratch_j, 4 * sizeof(xthalf));
       }
     }
   }
@@ -570,8 +580,8 @@ _Pragma("no_unroll") \
       ae_int64 d_tmp64 = AE_MOVINT64_FROMINT16X4(AE_MOVINT16X4_FROMXTHALFX4 (d_tmp0)); \
       d_tmp64 = AE_SRAA64(d_tmp64, 16 * (4 - (kw & 3))); \
       d_tmp64 = AE_SLAA64(d_tmp64, 16 * (4 - (kw & 3))); \
-      d_tmp0 = AE_MOVHALFX4_FROMF16X4(AE_MOVINT16X4_FROMINT64(d_tmp64)); \
-      AE_SHX4IP(d_tmp0, (xthalfx4 *)pae_out, 4*sizeof(xthalf)); \
+      d_tmp0 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT64(d_tmp64)); \
+      AE_SHX4IP(d_tmp0, pae_out, 4*sizeof(xthalf)); \
     } \
   } \
 }
@@ -798,10 +808,10 @@ static inline void conv2d_nhwc_f16
         for(itr_ch = 0; itr_ch < out_channels; itr_ch+=8)
         {
             xthalfx4 d_ker1;
-            pt_inp0 = (xthalfx4 *)p_inp;
-            pt_inp1 = (xthalfx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp1, (itr_ch + (itr_oh+1)*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
+            ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+            ae_int16x4 *pt16x4_inp1 = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(pt16x4_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
+            AE_ADDCIRC16X4_XC(pt16x4_inp1, (itr_ch + (itr_oh+1)*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
             xthalfx8 *pt_kerx2 = (xthalfx8 *)(&p_ker[itr_ch]);
             ae_valignx2 ker_ax2 = AE_LA128_PP(pt_kerx2);
             
@@ -811,12 +821,14 @@ static inline void conv2d_nhwc_f16
             d_acc4567 = d_bias0123;
             d_acc0123_1 = d_bias0123_1;
             d_acc4567_1 = d_bias0123_1;
-
+			
+            xthalfx8 *ptx8_inp0 = (xthalfx8 *)pt16x4_inp0;
+            xthalfx8 *ptx8_inp1 = (xthalfx8 *)pt16x4_inp1;
             for(itr_kw = 0; itr_kw < kernel_width * kernel_height; itr_kw++)
             {
                 xthalfx4 d_inp01, d_inp11;
-                AE_LHX4X2_XC(d_inp0, d_inp01, (xthalfx8 *)pt_inp0, inp_channels_pad*sizeof(xthalf));
-                AE_LHX4X2_XC(d_inp1, d_inp11, (xthalfx8 *)pt_inp1, inp_channels_pad*sizeof(xthalf));
+                AE_LHX4X2_XC(d_inp0, d_inp01, ptx8_inp0, inp_channels_pad*sizeof(xthalf));
+                AE_LHX4X2_XC(d_inp1, d_inp11, ptx8_inp1, inp_channels_pad*sizeof(xthalf));
 
                 AE_LAHX4X2_IP(d_ker, d_ker1, ker_ax2, pt_kerx2);
             
@@ -833,10 +845,12 @@ static inline void conv2d_nhwc_f16
       {
         for(itr_ch = 0; itr_ch < out_channels; itr_ch+=4)
         {
-            pt_inp0 = (xthalfx4 *)p_inp;
-            pt_inp1 = (xthalfx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp1, (itr_ch + (itr_oh+1)*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
+            ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+            ae_int16x4 *pt16x4_inp1 = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(pt16x4_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
+            AE_ADDCIRC16X4_XC(pt16x4_inp1, (itr_ch + (itr_oh+1)*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
+            pt_inp0 = (xthalfx4 *)pt16x4_inp0;
+            pt_inp1 = (xthalfx4 *)pt16x4_inp1;
             pt_ker = (xthalfx4 *)(&p_ker[itr_ch]);
             ker_a = AE_LAHX4PP(pt_ker);
             
@@ -871,8 +885,9 @@ static inline void conv2d_nhwc_f16
         out0_a = AE_ZALIGN128();     
         for(itr_ch = 0; itr_ch < out_channels; itr_ch+=4)
         {
-            pt_inp0 = (xthalfx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
+            ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(pt16x4_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(xthalf));
+            pt_inp0 = (xthalfx4 *)pt16x4_inp0;
             pt_ker = (xthalfx4 *)(&p_ker[itr_ch]);
             ker_a = AE_LAHX4PP(pt_ker);
             AE_LAHX4IP(d_bias0123, bias_a, pt_bias);

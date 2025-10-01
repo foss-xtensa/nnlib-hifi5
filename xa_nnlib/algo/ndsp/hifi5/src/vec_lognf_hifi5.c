@@ -49,6 +49,7 @@
 /* sNaN/qNaN, single precision. */
 #include "../include/nanf_tbl.h"
 
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
 #if !HAVE_VFPU && !HAVE_FPU
 DISCARD_FUN(void,xa_nnlib_vec_lognf,( float32_t * restrict y, const float32_t * restrict x, int N ))
 #elif HAVE_VFPU
@@ -118,24 +119,30 @@ void xa_nnlib_vec_lognf( float32_t * restrict y,const float32_t * restrict x, in
         float32_t ALIGN(32) xbuf[8],ybuf[8];
         pX=(xtfloatx4 *)xbuf;
         pY=(xtfloatx4 *)ybuf;
-        AE_SSX2X2_I(XT_CONST_S(0),XT_CONST_S(0),pX,0*sizeof(xtfloatx4));
-        AE_SSX2X2_I(XT_CONST_S(0),XT_CONST_S(0),pX,1*sizeof(xtfloatx4));
-        AE_SSX2X2_I(XT_CONST_S(0),XT_CONST_S(0),pY,0*sizeof(xtfloatx4));
-        AE_SSX2X2_I(XT_CONST_S(0),XT_CONST_S(0),pY,1*sizeof(xtfloatx4));
+        AE_SSX2X2_I(XT_CONST_SX2(0),XT_CONST_SX2(0),pX,0*sizeof(xtfloatx4));
+        AE_SSX2X2_I(XT_CONST_SX2(0),XT_CONST_SX2(0),pX,1*sizeof(xtfloatx4));
+        AE_SSX2X2_I(XT_CONST_SX2(0),XT_CONST_SX2(0),pY,0*sizeof(xtfloatx4));
+        AE_SSX2X2_I(XT_CONST_SX2(0),XT_CONST_SX2(0),pY,1*sizeof(xtfloatx4));
+        xtfloat* x_t = castxcc(xtfloat,x  );
+        xtfloat* pX_t = castxcc(xtfloat,pX  );
         for (n=0; n<(N&7); n++) 
         {
             xtfloat t;
-            XT_LSIP(t,castxcc(xtfloat,x  ),sizeof(float32_t));
-            XT_SSIP(t,castxcc(xtfloat,pX ),sizeof(float32_t));
+            XT_LSIP(t,x_t,sizeof(float32_t));
+            XT_SSIP(t,pX_t,sizeof(float32_t));
         }
+        x = (float32_t*)x_t;
         pX=(xtfloatx4 *)xbuf;
         __lognf((float32_t*)pY,(float32_t*)pX,8);
+        xtfloat* y_t = castxcc(xtfloat,y  );
+        xtfloat* pY_t = castxcc(xtfloat,pY  );
         for (n=0; n<(N&7); n++) 
         {
             xtfloat t;
-            XT_LSIP(t,castxcc(xtfloat,pY),sizeof(float32_t));
-            XT_SSIP(t,castxcc(xtfloat,y ),sizeof(float32_t));
+            XT_LSIP(t,pY_t,sizeof(float32_t));
+            XT_SSIP(t,y_t,sizeof(float32_t));
         }
+        y = (float32_t*)y_t;
         N&=~7;
     }
     if (N<=0) return;
@@ -239,26 +246,26 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
             xtbool2 b0_subn, b0_ltsqr, b1_subn, b1_ltsqr;
             AE_LASX2X2_IP(x0, x1, X_rd_va, X_rd);
             /* Compare with smallest positive normal number 2^-126 */
-            b0_subn = XT_OLT_SX2( x0, XT_AE_MOVXTFLOATX2_FROMINT32X2(0x00800000) );
-            b1_subn = XT_OLT_SX2( x1, XT_AE_MOVXTFLOATX2_FROMINT32X2(0x00800000) );
+            b0_subn = XT_OLT_SX2( x0, XT_AE_MOVXTFLOATX2_FROMINT32X2(SW_MOVDA32(0x00800000)) );
+            b1_subn = XT_OLT_SX2( x1, XT_AE_MOVXTFLOATX2_FROMINT32X2(SW_MOVDA32(0x00800000)) );
             CONST_SX2X2(y0,y1,1);
-            XT_MOVT_SX2(y0,XT_AE_MOVXTFLOATX2_FROMINT32X2(0x4b000000),b0_subn);
-            XT_MOVT_SX2(y1,XT_AE_MOVXTFLOATX2_FROMINT32X2(0x4b000000),b1_subn);
+            XT_MOVT_SX2(y0,XT_AE_MOVXTFLOATX2_FROMINT32X2(SW_MOVDA32(0x4b000000)),b0_subn);
+            XT_MOVT_SX2(y1,XT_AE_MOVXTFLOATX2_FROMINT32X2(SW_MOVDA32(0x4b000000)),b1_subn);
             MUL_SX2X2( y0, y1, x0, x1, y0,y1);
             FREXP_SX2(fr0,ex0,y0);
             FREXP_SX2(fr1,ex1,y1);
-            AE_MOVT32X2(ex0, AE_SUB32(ex0,23), b0_subn);
-            AE_MOVT32X2(ex1, AE_SUB32(ex1,23), b1_subn);
-            b0_ltsqr = XT_OLT_SX2(fr0, xa_nnlib_sqrt0_5f.f);
-            b1_ltsqr = XT_OLT_SX2(fr1, xa_nnlib_sqrt0_5f.f);
-            MULQ_S(tfr0, tfr1, fr0, fr1, XT_CONST_S(2));
+            AE_MOVT32X2(ex0, AE_SUB32(ex0,SW_MOVDA32(23)), b0_subn);
+            AE_MOVT32X2(ex1, AE_SUB32(ex1,SW_MOVDA32(23)), b1_subn);
+            b0_ltsqr = XT_OLT_SX2(fr0, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_sqrt0_5f.f));
+            b1_ltsqr = XT_OLT_SX2(fr1, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_sqrt0_5f.f));
+            MULQ_S(tfr0, tfr1, fr0, fr1, XT_CONST_SX2(2));
             tex0 = AE_SUB32(ex0, AE_MOVI(1));
             tex1 = AE_SUB32(ex1, AE_MOVI(1));
             XT_MOVT_SX2(fr0, tfr0, b0_ltsqr);
             XT_MOVT_SX2(fr1, tfr1, b1_ltsqr);
             AE_MOVT32X2(ex0, tex0, b0_ltsqr);
             AE_MOVT32X2(ex1, tex1, b1_ltsqr);
-            SUB_SX2X2(fr0, fr1, fr0, fr1, XT_CONST_S(1), XT_CONST_S(1));
+            SUB_SX2X2(fr0, fr1, fr0, fr1, XT_CONST_SX2(1), XT_CONST_SX2(1));
             AE_SASX2X2_IP( fr0, fr1, Y_wr_va, Y_wr );
             AE_S32X2X2_IP( ex0, ex1, SCR_wr, +4*sz_i32 );
         }
@@ -340,14 +347,14 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
             AE_L32X2X2_IP(ex0, ex1, SCR_rd, +4 * sz_i32);
 
             /* Reload coefficients on each iteration. */
-             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf0 =temp;
-             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf1 =temp;
-             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf2 =temp;
-             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf3 =temp;
-             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf4 =temp;
-             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf5 =temp;
-             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf6 =temp;
-             XT_LSXP(temp,LOG_TBL_Rd, -7* sz_f32);cf7 =temp;
+             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf0 = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf1 = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf2 = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf3 = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf4 = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf5 = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+             XT_LSIP(temp,LOG_TBL_Rd, 1 * sz_f32);cf6 = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+             XT_LSXP(temp,LOG_TBL_Rd, -7* sz_f32);cf7 = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
 
             /*
             * Use a combination of Estrin's method and Horner's scheme to evaluate
@@ -368,7 +375,7 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
             y0 = XT_FLOAT_SX2(ex0, 0);
             y1 = XT_FLOAT_SX2(ex1, 0);
 
-            MUL_SX2X2(y0, y1, y0, y1, xa_nnlib_ln2.f, xa_nnlib_ln2.f);
+            MUL_SX2X2(y0, y1, y0, y1, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_ln2.f), AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_ln2.f));
 
             CONST_SX2X2(t0,t1,1);
             MADD_SX2X2(t0, t1, x0, x1, fr0, fr1); x0 = t0; x1 = t1;
@@ -379,10 +386,10 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
             */
             AE_LASX2X2_IP( x0, x1, X_rd_va, X_rd );
             /* Reload constants. */
-            temp = XT_LSI(pconst_tbl, 0); zero = (xtfloatx2)temp;
-            temp = XT_LSI(pconst_tbl, 1*(int)sizeof(float32_t)); pInf = (xtfloatx2)temp;
-            temp = XT_LSI(pconst_tbl, 2*(int)sizeof(float32_t)); qnan = (xtfloatx2)temp;
-            temp = XT_LSI(pconst_tbl, 3*(int)sizeof(float32_t)); mInf = (xtfloatx2)temp;
+            temp = XT_LSI(pconst_tbl, 0); zero = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+            temp = XT_LSI(pconst_tbl, 1*(int)sizeof(float32_t)); pInf = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+            temp = XT_LSI(pconst_tbl, 2*(int)sizeof(float32_t)); qnan = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
+            temp = XT_LSI(pconst_tbl, 3*(int)sizeof(float32_t)); mInf = AE_MOVXTFLOATX2_FROMXTFLOAT(temp);
 
             b0_ultz = XT_ULT_SX2( x0, zero );
             b0_eqz  = XT_OEQ_SX2( x0, zero );

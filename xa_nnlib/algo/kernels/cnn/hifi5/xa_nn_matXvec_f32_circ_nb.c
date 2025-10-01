@@ -34,8 +34,8 @@
   xtfloatx2 accu1_ ##N;\
   xtfloatx2 accu1_1_ ##N;\
   xtfloatx4 *p_mat1_ ##N = (xtfloatx4*)&p_mat[(row+N)*cols]; \
-  accu1_ ##N = (xtfloatx2)0.0f; \
-  accu1_1_ ##N = (xtfloatx2)0.0f;
+  accu1_ ##N = ZERO_SX2(); \
+  accu1_1_ ##N = ZERO_SX2();
 
 #define KERNEL_ROW_S(N) \
 { \
@@ -56,7 +56,7 @@
 }
 
 #define STORE_ROW_S(N) \
-  accu1_ ##N =(accu1_ ##N + accu1_1_ ##N);\
+  accu1_ ##N = ADD_SX2(accu1_ ##N , accu1_1_ ##N);\
   xtfloat raccu1_ ##N = RADD_SX2(accu1_ ##N); \
   xtfloat bias_ ##N = p_bias[row+N]; \
   p_out[(row+N)*out_offset] = ADD_S(raccu1_ ##N , bias_ ##N);
@@ -83,14 +83,16 @@
 #endif
 
 WORD32 xa_nn_matXvec_f32_circ_nb(
-  FLOAT32 * __restrict__ p_out,
+  FLOAT32 * __restrict__ pt_out,
   FLOAT32 * __restrict__ p_mat,
   FLOAT32 * __restrict__ p_vec,
-  FLOAT32 * __restrict__ p_bias,
+  FLOAT32 * __restrict__ pt_bias,
   WORD32 rows,
   WORD32 cols,
   WORD32 out_offset)
 {
+  xtfloat *p_out = (xtfloat *)pt_out;
+  xtfloat *p_bias = (xtfloat *)pt_bias;
   WORD32 row, col;
   if ((NULL == p_out) || (NULL == p_mat) || (NULL == p_vec))
   {
@@ -128,7 +130,7 @@ WORD32 xa_nn_matXvec_f32_circ_nb(
         xtfloatx2 temp_in1;
         xtfloatx2 temp_in2;
         xtfloatx2 *p_mat1_0 = (xtfloatx2*)&p_mat[(row)*cols];
-        accu1_0 = (xtfloatx2)0.0f;
+        accu1_0 = ZERO_SX2();
         for (col = 0; col < (cols>>2); col++)
         {
             AE_LSX2IP(temp_in1,p_mat1_0,8);
@@ -155,7 +157,7 @@ WORD32 xa_nn_matXvec_f32_circ_nb(
         xtfloat temp_in1;
         xtfloat temp_in2;
         xtfloat *p_mat1_0 = (xtfloat*)&p_mat[(row)*cols];
-        accu1_0 = (xtfloat)0.0f;
+        accu1_0 = ZERO_S();
         for (col = 0; col < cols>>1; col++)
         {
             AE_LSIP(temp_in1,p_mat1_0,4);

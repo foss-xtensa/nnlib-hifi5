@@ -91,8 +91,10 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
         d_acc32_1 = AE_ZERO32();
         d_acc32_2 = AE_ZERO32();
         d_acc32_3 = AE_ZERO32();
-        ae_int8x8 *pt_inp0 = (ae_int8x8 *)(p_inp);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, sizeof(WORD8) * ((i * y_stride * input_width) + j));
+        ae_int8x8 *pt_inp0;
+        ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+        AE_ADDCIRC16X4_XC(pt16x4_inp0, sizeof(WORD8) * ((i * y_stride * input_width) + j));
+		pt_inp0 = (ae_int8x8 *)pt16x4_inp0;
         ae_int8x8 *pt_ker = (ae_int8x8 *)p_ker;
 #pragma loop_count min=1
 #pragma no_unroll
@@ -140,8 +142,10 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
         d_acc32_1 = AE_ZERO32();
         d_acc32_2 = AE_ZERO32();
         d_acc32_3 = AE_ZERO32();
-        ae_int8x8 *pt_inp0 = (ae_int8x8 *)(p_inp);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, sizeof(WORD8) * ((i * y_stride * input_width) + j));
+        ae_int8x8 *pt_inp0;
+        ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+        AE_ADDCIRC16X4_XC(pt16x4_inp0, sizeof(WORD8) * ((i * y_stride * input_width) + j));
+        pt_inp0 = (ae_int8x8 *)pt16x4_inp0;
         ae_int8x8 *pt_ker = (ae_int8x8 *)p_ker;
 #pragma loop_count min=1
 #pragma no_unroll
@@ -186,10 +190,14 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
         d_acc32_6 = AE_ZERO32();
         d_acc32_7 = AE_ZERO32();
 
-        ae_int8x8 *pt_inp0 = (ae_int8x8 *)(p_inp);
-        ae_int8x8 *pt_inp1 = (ae_int8x8 *)(p_inp);
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, sizeof(WORD8) * (((i * y_stride + 0) * input_width) + j));
-        AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp1, sizeof(WORD8) * (((i * y_stride + 0 + 1) * input_width) + j));
+        ae_int8x8 *pt_inp0;
+        ae_int8x8 *pt_inp1;
+        ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+        ae_int16x4 *pt16x4_inp1 = (ae_int16x4 *)p_inp;
+        AE_ADDCIRC16X4_XC(pt16x4_inp0, sizeof(WORD8) * (((i * y_stride + 0) * input_width) + j));
+        AE_ADDCIRC16X4_XC(pt16x4_inp1, sizeof(WORD8) * (((i * y_stride + 0 + 1) * input_width) + j));
+        pt_inp0 = (ae_int8x8 *)pt16x4_inp0;
+        pt_inp1 = (ae_int8x8 *)pt16x4_inp1;
 
         ae_int8x8 *pt_ker0 = (ae_int8x8 *)(p_ker);
 
@@ -239,10 +247,14 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
 #pragma loop_count min=1
         for(k = 0; k < kernel_height; k+=2)
         {
-          ae_int8x8 *pt_inp0 = (ae_int8x8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, sizeof(WORD8) * (((i * y_stride + k) * input_width) + j));
-          ae_int8x8 *pt_inp1 = (ae_int8x8 *)(p_inp);
-          AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp1, sizeof(WORD8) * (((i * y_stride + k + 1) * input_width) + j));
+          ae_int8x8 *pt_inp0;
+          ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;        
+          AE_ADDCIRC16X4_XC(pt16x4_inp0, sizeof(WORD8) * (((i * y_stride + k) * input_width) + j));
+          pt_inp0 = (ae_int8x8 *)pt16x4_inp0;
+          ae_int8x8 *pt_inp1;
+          ae_int16x4 *pt16x4_inp1 = (ae_int16x4 *)p_inp;
+          AE_ADDCIRC16X4_XC(pt16x4_inp1, sizeof(WORD8) * (((i * y_stride + k + 1) * input_width) + j));
+          pt_inp1 = (ae_int8x8 *)pt16x4_inp1;
           /* Start of scratch memory for padded kernel is 8-byte aligned and
            * and kernel width is padded to be multiple of 4, so every alternate
            * row is 8-byte aligned for kernel */
@@ -273,10 +285,12 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
 #pragma no_unroll
           for(k = 0; k < kernel_height; k+=2)
           {
-            ae_int8x8 *pt_inp0 = (ae_int8x8 *)(p_inp);
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, sizeof(WORD8) * (((i * y_stride + k) * input_width) + j + (kernel_width_pad & (~7))));
-            ae_int8x8 *pt_inp1 = (ae_int8x8 *)(p_inp);
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp1, sizeof(WORD8) * (((i * y_stride + k + 1) * input_width) + j + (kernel_width_pad & (~7))));
+            ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(pt16x4_inp0, sizeof(WORD8) * (((i * y_stride + k) * input_width) + j + (kernel_width_pad & (~7))));
+            ae_int8x8 *pt_inp0 = (ae_int8x8 *)(pt16x4_inp0);
+            ae_int16x4 *pt16x4_inp1 = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(pt16x4_inp1, sizeof(WORD8) * (((i * y_stride + k + 1) * input_width) + j + (kernel_width_pad & (~7))));
+            ae_int8x8 *pt_inp1 = (ae_int8x8 *)(pt16x4_inp1);
             ae_int8x8 *pt_ker0 = (ae_int8x8 *)(&p_ker[(k + 1) * kernel_width_pad - 4]);
             ae_int8x8 *pt_ker1 = (ae_int8x8 *)(&p_ker[(k + 2) * kernel_width_pad - 8]);
             AE_L8X8_XC(d_inp00, pt_inp0, 8);
@@ -324,12 +338,12 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
 
     for(j = 0; j < actual_out_width-1; j+=2)
     {
-      accu_int32_0 = AE_SEL32_LL(scratch_ptr1[(j * x_stride)], scratch_ptr1[((j + 1) * x_stride)]);
+      accu_int32_0 = AE_SEL32_LL(AE_MOVINT32X2_FROMINT32(scratch_ptr1[(j * x_stride)]), AE_MOVINT32X2_FROMINT32(scratch_ptr1[((j + 1) * x_stride)]));
 
-      accu_int32_0 = AE_ADD32S(accu_int32_0, d_bias);
+      accu_int32_0 = SW_ADD32S_INT32X2_INT32X2(accu_int32_0, d_bias);
       MPY_BY_QUANT_MULT_X2_OUT32(accu_int32_0, accu_int32_0, out_multiplier, left_shift, right_shift);
-      accu_int32_0 = AE_ADD32S(accu_int32_0, AE_MOVDA32X2(out_zero_bias, out_zero_bias));
-      AE_MINMAX32(accu_int32_0, AE_ZERO32(), AE_MOVDA32(255));
+      accu_int32_0 = SW_ADD32S_INT32X2_INT32X2(accu_int32_0, AE_MOVDA32X2(out_zero_bias, out_zero_bias));
+      AE_MINMAX32(accu_int32_0, AE_ZERO32(), SW_MOVDA32(255));
       accu_int8x8 = AE_SATU8X4X32_L(accu_int32_0, accu_int32_0);
 
       *(ae_int8 *)(&out_ptr[((j + 1) * out_stride)]) = AE_MOVINT8_FROMINT8X8(accu_int8x8);
@@ -337,12 +351,12 @@ static inline void conv2d_nchw_asym8xasym8_hf5_convmul
     }
     if(j < actual_out_width)
     {
-      accu_int32_0 = scratch_ptr1[(j * x_stride)];
+      accu_int32_0 = AE_MOVINT32X2_FROMINT32(scratch_ptr1[(j * x_stride)]);
 
-      accu_int32_0 = AE_ADD32S(accu_int32_0, d_bias);
+      accu_int32_0 = SW_ADD32S_INT32X2_INT32X2(accu_int32_0, d_bias);
       MPY_BY_QUANT_MULT_X2_OUT32(accu_int32_0, accu_int32_0, out_multiplier, left_shift, right_shift);
-      accu_int32_0 = AE_ADD32S(accu_int32_0, AE_MOVDA32X2(out_zero_bias, out_zero_bias));
-      AE_MINMAX32(accu_int32_0, AE_ZERO32(), AE_MOVDA32(255));
+      accu_int32_0 = SW_ADD32S_INT32X2_INT32X2(accu_int32_0, AE_MOVDA32X2(out_zero_bias, out_zero_bias));
+      AE_MINMAX32(accu_int32_0, AE_ZERO32(), SW_MOVDA32(255));
       accu_int8x8 = AE_SATU8X4X32_L(accu_int32_0, accu_int32_0);
 
       *(ae_int8 *)(&out_ptr[(j * out_stride)]) = AE_MOVINT8_FROMINT8X8(accu_int8x8);
@@ -562,7 +576,6 @@ static inline void conv2d_nhwc_asym8xasym8
 {
   WORD32 ker_channels_pad, inp_channels_pad;
   WORD32 i, itr_oh, itr_ch, itr_kw;
-  ae_int8x8 *pt_inp0;
   pWORD8 pt_ker;
   pUWORD8 out_ptr0, out_ptr1;
   ae_int8x8 *ae_out_ptr0, *ae_out_ptr1;
@@ -604,8 +617,9 @@ static inline void conv2d_nhwc_asym8xasym8
 #pragma loop_count min=1
     for(itr_ch = 0; itr_ch < out_channels; itr_ch += 8)
     {
-      pt_inp0 = (ae_int8x8 *)p_inp;
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, itr_ch + itr_oh * ysXkwXic);
+      ae_int16x4* pt16x4_inp0 = (ae_int16x4 *)p_inp;
+      AE_ADDCIRC16X4_XC(pt16x4_inp0, itr_ch + itr_oh * ysXkwXic);
+      ae_int8x8* pt_inp0 = (ae_int8x8*)pt16x4_inp0;
       pt_ker = (WORD8 *)(&p_ker[itr_ch]);
       d_acc0 = AE_ZERO32();
       d_acc1 = AE_ZERO32();
@@ -640,10 +654,10 @@ static inline void conv2d_nhwc_asym8xasym8
       }
       AE_LA32X2X2_IP(d_bias0, d_bias1, bias_a, pt_bias);
       AE_LA32X2X2_IP(d_bias2, d_bias3, bias_a, pt_bias);
-      d_acc0 = AE_ADD32S(d_acc0, d_bias0);
-      d_acc1 = AE_ADD32S(d_acc1, d_bias1);
-      d_acc2 = AE_ADD32S(d_acc2, d_bias2);
-      d_acc3 = AE_ADD32S(d_acc3, d_bias3);
+      d_acc0 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_acc0), AE_MOVF32X2_FROMINT32X2(d_bias0)));
+      d_acc1 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_acc1), AE_MOVF32X2_FROMINT32X2(d_bias1)));
+      d_acc2 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_acc2), AE_MOVF32X2_FROMINT32X2(d_bias2)));
+      d_acc3 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_acc3), AE_MOVF32X2_FROMINT32X2(d_bias3)));
       ae_int16x4 d_acc16_0, d_acc16_1;
       MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_acc16_0, d_acc0, d_acc1, out_multiplier, left_shift, right_shift, out_zero_bias);
       MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_acc16_1, d_acc2, d_acc3, out_multiplier, left_shift, right_shift, out_zero_bias);
@@ -672,10 +686,10 @@ static inline void conv2d_nhwc_asym8xasym8
         }
       }
 
-      d_acc4 = AE_ADD32S(d_acc4, d_bias0);
-      d_acc5 = AE_ADD32S(d_acc5, d_bias1);
-      d_acc6 = AE_ADD32S(d_acc6, d_bias2);
-      d_acc7 = AE_ADD32S(d_acc7, d_bias3);
+      d_acc4 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_acc4), AE_MOVF32X2_FROMINT32X2(d_bias0)));
+      d_acc5 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_acc5), AE_MOVF32X2_FROMINT32X2(d_bias1)));
+      d_acc6 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_acc6), AE_MOVF32X2_FROMINT32X2(d_bias2)));
+      d_acc7 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_acc7), AE_MOVF32X2_FROMINT32X2(d_bias3)));
       MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_acc16_0, d_acc4, d_acc5, out_multiplier, left_shift, right_shift, out_zero_bias);
       MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_acc16_1, d_acc6, d_acc7, out_multiplier, left_shift, right_shift, out_zero_bias);
 
@@ -781,12 +795,12 @@ static inline void conv2d_nhwc_asym8xasym8
     {
       int ysXkwXic = y_stride * kernel_width * inp_channels_pad;
       pt_ker = (WORD8 *)(&p_ker[itr_ch]);
-      ae_int8x8 *pt_inp0 = (ae_int8x8 *)p_inp;
-
+      ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
       AE_LA32X2X2_IP(d_bias0, d_bias1, bias_a, pt_bias);
       AE_LA32X2X2_IP(d_bias2, d_bias3, bias_a, pt_bias);
       
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, itr_ch);
+      AE_ADDCIRC16X4_XC(pt16x4_inp0, itr_ch);
+      ae_int8x8 *pt_inp0 = (ae_int8x8 *)pt16x4_inp0;
 
       ae_int8x8 d_inp000, d_inp010, d_inp020;
       ae_int8x8 d_ker00, d_ker10, d_ker20;
@@ -829,10 +843,10 @@ static inline void conv2d_nhwc_asym8xasym8
         AE_L8X8_XC(d_inp020, pt_inp0, ysXkwXic - 8*inp_channels_pad);
         AE_MULAUUZB3X3O8X8(d_acc0, d_acc1, d_acc2, d_acc3, d_ker60, d_ker70, d_ker80, d_inp000, d_inp010, d_inp020);
         
-        d_acc0  = AE_ADD32S(d_acc0, d_bias0);
-        d_acc1  = AE_ADD32S(d_acc1, d_bias1);
-        d_acc2  = AE_ADD32S(d_acc2, d_bias2);
-        d_acc3  = AE_ADD32S(d_acc3, d_bias3);
+        d_acc0  = SW_ADD32S_INT32X2_INT32X2(d_acc0, d_bias0);
+        d_acc1  = SW_ADD32S_INT32X2_INT32X2(d_acc1, d_bias1);
+        d_acc2  = SW_ADD32S_INT32X2_INT32X2(d_acc2, d_bias2);
+        d_acc3  = SW_ADD32S_INT32X2_INT32X2(d_acc3, d_bias3);
 
         ae_int16x4 out0, out1;
         MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out0, d_acc0, d_acc1, out_multiplier, left_shift, right_shift, out_zero_bias);
@@ -867,10 +881,13 @@ static inline void conv2d_nhwc_asym8xasym8
 #pragma loop_count min=1
     for(itr_ch = 0; itr_ch < out_channels; itr_ch += 16)
     {
-      pt_inp0 = (ae_int8x16 *)p_inp;
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, itr_ch + itr_oh * ysXkwXic);
-      pt_inp1 = (ae_int8x16 *)p_inp;
-      AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp1, itr_ch + (itr_oh + 1) * ysXkwXic);
+      ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+      AE_ADDCIRC16X4_XC(pt16x4_inp0, itr_ch + itr_oh * ysXkwXic);
+      pt_inp0 = (ae_int8x16 *)pt16x4_inp0;
+
+      ae_int16x4 *pt16x4_inp1 = (ae_int16x4 *)p_inp;
+      AE_ADDCIRC16X4_XC(pt16x4_inp1, itr_ch + (itr_oh + 1) * ysXkwXic);
+      pt_inp1 = (ae_int8x16 *)pt16x4_inp1;
       pt_ker  = (WORD8 *)(&p_ker[itr_ch]);
 
       AE_LA32X2X2_IP(d_bias0, d_bias1, bias_a, pt_bias);
@@ -930,22 +947,22 @@ static inline void conv2d_nhwc_asym8xasym8
         AE_MULAUUZB3X3O8X8(d_acc12, d_acc13, d_acc14, d_acc15, d_ker01, neg_kerzb, neg_kerzb, d_inp101, d_inp101, d_inp101);
       }
       
-      d_acc0  = AE_ADD32S(d_acc0, d_bias0);
-      d_acc1  = AE_ADD32S(d_acc1, d_bias1);
-      d_acc2  = AE_ADD32S(d_acc2, d_bias2);
-      d_acc3  = AE_ADD32S(d_acc3, d_bias3);
-      d_acc4  = AE_ADD32S(d_acc4, d_bias4);
-      d_acc5  = AE_ADD32S(d_acc5, d_bias5);
-      d_acc6  = AE_ADD32S(d_acc6, d_bias6);
-      d_acc7  = AE_ADD32S(d_acc7, d_bias7);
-      d_acc8  = AE_ADD32S(d_acc8, d_bias0);
-      d_acc9  = AE_ADD32S(d_acc9, d_bias1);
-      d_acc10 = AE_ADD32S(d_acc10, d_bias2);
-      d_acc11 = AE_ADD32S(d_acc11, d_bias3);
-      d_acc12 = AE_ADD32S(d_acc12, d_bias4);
-      d_acc13 = AE_ADD32S(d_acc13, d_bias5);
-      d_acc14 = AE_ADD32S(d_acc14, d_bias6);
-      d_acc15 = AE_ADD32S(d_acc15, d_bias7);
+      d_acc0  = SW_ADD32S_INT32X2_INT32X2(d_acc0, d_bias0);
+      d_acc1  = SW_ADD32S_INT32X2_INT32X2(d_acc1, d_bias1);
+      d_acc2  = SW_ADD32S_INT32X2_INT32X2(d_acc2, d_bias2);
+      d_acc3  = SW_ADD32S_INT32X2_INT32X2(d_acc3, d_bias3);
+      d_acc4  = SW_ADD32S_INT32X2_INT32X2(d_acc4, d_bias4);
+      d_acc5  = SW_ADD32S_INT32X2_INT32X2(d_acc5, d_bias5);
+      d_acc6  = SW_ADD32S_INT32X2_INT32X2(d_acc6, d_bias6);
+      d_acc7  = SW_ADD32S_INT32X2_INT32X2(d_acc7, d_bias7);
+      d_acc8  = SW_ADD32S_INT32X2_INT32X2(d_acc8, d_bias0);
+      d_acc9  = SW_ADD32S_INT32X2_INT32X2(d_acc9, d_bias1);
+      d_acc10 = SW_ADD32S_INT32X2_INT32X2(d_acc10, d_bias2);
+      d_acc11 = SW_ADD32S_INT32X2_INT32X2(d_acc11, d_bias3);
+      d_acc12 = SW_ADD32S_INT32X2_INT32X2(d_acc12, d_bias4);
+      d_acc13 = SW_ADD32S_INT32X2_INT32X2(d_acc13, d_bias5);
+      d_acc14 = SW_ADD32S_INT32X2_INT32X2(d_acc14, d_bias6);
+      d_acc15 = SW_ADD32S_INT32X2_INT32X2(d_acc15, d_bias7);
       
       ae_int16x4 out0, out1, out2, out3;
       MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(out0, d_acc0, d_acc1, out_multiplier, left_shift, right_shift, out_zero_bias);

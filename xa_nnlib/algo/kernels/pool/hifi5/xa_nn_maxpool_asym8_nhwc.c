@@ -149,7 +149,7 @@ const UWORD8* __restrict__ p_inp,
                 }
 
                 AE_SA64POS_FP(align_dst, p_dst_temp); // finalize the stream
-
+                ae_int16 *p16_dst_temp = (ae_int16 *)p_dst_temp;
                 /* remainder loop */
                 for(i = 0; i < (plane_size & 3); i++)
                 {
@@ -159,7 +159,7 @@ const UWORD8* __restrict__ p_inp,
                     i3 = AE_MOVDA16(((UWORD8 *)p_src3_temp)[i] );
 
                     MAX_16X4(out, i3, i2, i1)
-                    AE_S16_0_IP(out, (ae_int16 *)p_dst_temp, 2);
+                    AE_S16_0_IP(out, p16_dst_temp, 2);
                 }
             }
 
@@ -197,18 +197,19 @@ const UWORD8* __restrict__ p_inp,
                     }
 
                     AE_SA64POS_FP(align_dst, p_dst_temp); // finalize the stream
-
+                    ae_int16 *p16_src1_scratch = (ae_int16 *)p_src1_scratch;
+                    ae_int16 *p16_dst_temp = (ae_int16 *)p_dst_temp;
                     /* remainder loop */
                     for(i = 0; i < (plane_size & 3); i++)
                     {
                         ae_int16x4 i1, i2, i3, out;
 
-                        AE_L16_IP(i1,  (ae_int16 *)p_src1_scratch, 2);
+                        AE_L16_IP(i1, p16_src1_scratch, 2);
                         i2 = AE_MOVDA16(((UWORD8 *)p_src2_temp)[i] );
                         i3 = AE_MOVDA16(((UWORD8 *)p_src3_temp)[i] );
 
                         MAX_16X4(out, i3, i2, i1)
-                        AE_S16_0_IP(out, (ae_int16 *)p_dst_temp, 2);
+                        AE_S16_0_IP(out, p16_dst_temp, 2);
                     }
 
                     if(!pool_height)
@@ -286,19 +287,19 @@ const UWORD8* __restrict__ p_inp,
                     }
 
                     AE_SA64POS_FP(align_dst, p_dst_temp); // finalize the stream
-
+                    ae_int16 *p16_dst_temp = (ae_int16 *)p_dst_temp;
                     /* remainder loop */
                     for(i = 0; i < (input_channels & 3); i++)
                     {
                         ae_int16x4 i1, i2, i3, out;
 
-                        i1 = ((WORD16 *)p_src1_temp_w)[i];
-                        i2 = ((WORD16 *)p_src2_temp_w)[i];
-                        i3 = ((WORD16 *)p_src3_temp_w)[i];
+                        i1 = AE_MOVDA16(((WORD16 *)p_src1_temp_w)[i]);
+                        i2 = AE_MOVDA16(((WORD16 *)p_src2_temp_w)[i]);
+                        i3 = AE_MOVDA16(((WORD16 *)p_src3_temp_w)[i]);
 
                         MAX_16X4(out, i3, i2, i1)
 
-                        AE_S16_0_IP(out, (ae_int16 *)p_dst_temp, 2);
+                        AE_S16_0_IP(out, p16_dst_temp, 2);
                     }
 
 

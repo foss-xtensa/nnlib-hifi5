@@ -47,6 +47,7 @@
 /* sNaN/qNaN, single precision. */
 #include "../include/nanf_tbl.h"
 
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
 #if !HAVE_VFPU && !HAVE_FPU
 DISCARD_FUN(void,xa_nnlib_vec_cosinef,( float32_t * restrict y, const float32_t * restrict x, int N ))
 #elif HAVE_VFPU
@@ -77,9 +78,9 @@ static void mycosinef(float32_t* scr,
     xtfloatx2 pi2fc0, pi2fc1, pi2fc2;
 
     /* init 24bit chunks of 2/pi*/
-    pi2fc0 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOV32(0x3fc90fdb));
-    pi2fc1 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOV32(0xb33bbd2e));
-    pi2fc2 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOV32(0xa6f72ced));
+    pi2fc0 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOV32(SW_MOVDA32(0x3fc90fdb)));
+    pi2fc1 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOV32(SW_MOVDA32(0xb33bbd2e)));
+    pi2fc2 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOV32(SW_MOVDA32(0xa6f72ced)));
 
     int n, M;
     NASSERT_ALIGN16(scr);
@@ -113,7 +114,7 @@ static void mycosinef(float32_t* scr,
             AE_LASX2X2_IP(p0, p1, X_va, X);
 
             ABS_SX2X2(p0, p1, p0, p1);
-            MULQ_S(jf0, jf1, p0, p1, xa_nnlib_inv2pif.f);
+            MULQ_S(jf0, jf1, p0, p1, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_inv2pif.f));
             jf0 = FIROUND_SX2(jf0);
             jf1 = FIROUND_SX2(jf1);
             AE_SSX2X2_IP(jf0, jf1, S_firound_wr, 8 * sz_f32);
@@ -165,14 +166,18 @@ static void mycosinef(float32_t* scr,
              * reducted input value.
              */
             AE_LSX2X2_IP(p0, p1, S_rd, 8 * sz_f32);
-
+            ae_int32* psintbl_temp = castxcc(ae_int32, psintbl);
             MUL_SX2X2(p20, p21, p0, p1, p0, p1);
-            { ae_int32x2 t; AE_L32_XP(t, castxcc(ae_int32, psintbl), 0); cf_s0 = XT_AE_MOVXTFLOATX2_FROMINT32X2(t); }
-            cf_s1 = XT_LSI(psintbl, 1 * sz_f32);
-            cf_s2 = XT_LSI(psintbl, 2 * sz_f32);
-            { ae_int32x2 t; AE_L32_XP(t, castxcc(ae_int32, pcostbl), 0); cf_c0 = XT_AE_MOVXTFLOATX2_FROMINT32X2(t); }
-            cf_c1 = XT_LSI(pcostbl, 1 * sz_f32);
-            cf_c2 = XT_LSI(pcostbl, 2 * sz_f32);
+            { ae_int32x2 t; AE_L32_XP(t, psintbl_temp, 0); cf_s0 = XT_AE_MOVXTFLOATX2_FROMINT32X2(t); }
+            psintbl = (xtfloat*)psintbl_temp;
+            cf_s1 = AE_MOVXTFLOATX2_FROMXTFLOAT(XT_LSI(psintbl, 1 * sz_f32));
+            cf_s2 = AE_MOVXTFLOATX2_FROMXTFLOAT(XT_LSI(psintbl, 2 * sz_f32));
+            
+            ae_int32* pcostbl_temp = castxcc(ae_int32, pcostbl);
+            { ae_int32x2 t; AE_L32_XP(t, pcostbl_temp, 0); cf_c0 = XT_AE_MOVXTFLOATX2_FROMINT32X2(t); }
+            pcostbl = (xtfloat*)pcostbl_temp;
+            cf_c1 = AE_MOVXTFLOATX2_FROMXTFLOAT(XT_LSI(pcostbl, 1 * sz_f32));
+            cf_c2 = AE_MOVXTFLOATX2_FROMXTFLOAT(XT_LSI(pcostbl, 2 * sz_f32));
 
 
             t0 = t1 = cf_s1; MADDQ_S(t0, t1, p20, p21, cf_s0); ys0 = t0; ys1 = t1;
@@ -189,11 +194,11 @@ static void mycosinef(float32_t* scr,
             XT_MOVF_SX2(ys0, t0, AE_MOVBD1X2(ji0));
             XT_MOVF_SX2(ys1, t1, AE_MOVBD1X2(ji1));
 
-            b_ndom0 = XT_OLT_SX2(xa_nnlib_sinf_maxval.f, xn0);
-            b_ndom1 = XT_OLT_SX2(xa_nnlib_sinf_maxval.f, xn1);
+            b_ndom0 = XT_OLT_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_sinf_maxval.f), xn0);
+            b_ndom1 = XT_OLT_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_sinf_maxval.f), xn1);
             /* Set result to NaN for an out-of-domain input value. */
-            XT_MOVT_SX2(ys0, xa_nnlib_qNaNf.f, b_ndom0);
-            XT_MOVT_SX2(ys1, xa_nnlib_qNaNf.f, b_ndom1);
+            XT_MOVT_SX2(ys0, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_qNaNf.f), b_ndom0);
+            XT_MOVT_SX2(ys1, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_qNaNf.f), b_ndom1);
 
             /* Adjust the sign. */
             AE_LASX2X2_IP(xn0, xn1, X1_va, X1);
@@ -201,11 +206,11 @@ static void mycosinef(float32_t* scr,
 //            sx0 = XT_AE_MOVINT32X2_FROMXTFLOATX2(xn0);
 //            sx1 = XT_AE_MOVINT32X2_FROMXTFLOATX2(xn1);
             {
-                tmp = AE_MOV32(0x00000001);
+                tmp = AE_MOV32(SW_MOVDA32(0x00000001));
                 sy0 = AE_ADD32(ji0, tmp);   sy1 = AE_ADD32(ji1, tmp);
                 sy0 = AE_SLLI32(sy0, 30);   sy1 = AE_SLLI32(sy1, 30);
-                sy0 = AE_XOR32(XT_AE_MOVINT32X2_FROMXTFLOATX2(ys0), AE_AND32(sy0, 0x80000000));
-                sy1 = AE_XOR32(XT_AE_MOVINT32X2_FROMXTFLOATX2(ys1), AE_AND32(sy1, 0x80000000));
+                sy0 = AE_XOR32(XT_AE_MOVINT32X2_FROMXTFLOATX2(ys0), AE_AND32(sy0, SW_MOVDA32(0x80000000)));
+                sy1 = AE_XOR32(XT_AE_MOVINT32X2_FROMXTFLOATX2(ys1), AE_AND32(sy1, SW_MOVDA32(0x80000000)));
                 ys0 = XT_AE_MOVXTFLOATX2_FROMINT32X2(sy0);
                 ys1 = XT_AE_MOVXTFLOATX2_FROMINT32X2(sy1);
             }

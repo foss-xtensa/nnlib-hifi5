@@ -121,32 +121,35 @@ const UWORD8* __restrict__ p_inp,
             p_dst_temp = p_dst;
             p_src2_temp = p_src2;
             loop_count = 4 - ((WORD32)p_src2_temp & 3);
-
+            ae_int16 *p16_dst_temp = (ae_int16 *)p_dst_temp;
             for(i = 0; i < loop_count; i++)
             {
                 src2 = AE_MOVDA16(((UWORD8 *)p_src2_temp)[i]);
-                AE_S16_0_IP(src2, (ae_int16 *)p_dst_temp, 2);
+                AE_S16_0_IP(src2, p16_dst_temp, 2);
             }
             p_src2_temp = (ae_int16x4 *)((WORD8 *)p_src2_temp + loop_count);
             loop_count = input_width - loop_count;
 
             align_dst = AE_ZALIGN64();
-
+            p_dst_temp = (ae_int16x4 *)p16_dst_temp;
+            WORD8 *pw8_src2_temp = (WORD8 *)p_src2_temp;
+            ae_f16x4 src2_f16x4;
             for(i = 0; i < (loop_count >> 2); i++)
             {
-                AE_L8X4F_IP(src2, (WORD8 *)p_src2_temp, 4);
-                src2 = AE_MOVINT16X4_FROMINT64(AE_SRLI64(AE_MOVINT64_FROMINT16X4(src2), 8));
+                AE_L8X4F_IP(src2_f16x4, pw8_src2_temp, 4);
+                src2 = AE_MOVINT16X4_FROMINT64(AE_SRLI64(AE_MOVINT64_FROMF16X4(src2_f16x4), 8));
                 AE_SA16X4_IP(src2, align_dst, p_dst_temp);
             }
             AE_SA64POS_FP(align_dst, p_dst_temp); // finalize the stream
-
+            p16_dst_temp = (ae_int16 *)p_dst_temp;
+            p_src2_temp = (ae_int16x4 *)pw8_src2_temp;
             /* reminder loop for input_width */
             for(i = 0 ; i < (loop_count & 3); i++)
             {
                 src2 = AE_MOVDA16(((UWORD8 *)p_src2_temp)[0] );
                 p_src2_temp = (ae_int16x4 *)((UWORD8 *)p_src2_temp + 1);
 
-                AE_S16_0_IP(src2, (ae_int16 *)p_dst_temp, 2);
+                AE_S16_0_IP(src2, p16_dst_temp, 2);
             }
 
             /* Compare one row per iteration */
@@ -162,41 +165,48 @@ const UWORD8* __restrict__ p_inp,
                 p_src2_temp = p_src2;
                 loop_count = 4 - ((WORD32)p_src2_temp & 3);
 
+                ae_int16 *p16_src1_temp = (ae_int16 *)p_src1_temp;
+                ae_int16 *p16_dst_temp = (ae_int16 *)p_dst_temp;
                 for(i = 0; i < loop_count; i++)
                 {
-                    AE_L16_IP(src1, (ae_int16 *)p_src1_temp, 2);
+                    AE_L16_IP(src1, p16_src1_temp, 2);
                     src2 = AE_MOVDA16(((UWORD8 *)p_src2_temp)[i] );
 
                     MAX_16X4(src1, src2);
-                    AE_S16_0_IP(src1, (ae_int16 *)p_dst_temp, 2);
+                    AE_S16_0_IP(src1, p16_dst_temp, 2);
 
                 }
                 p_src2_temp = (ae_int16x4 *)((WORD8 *)p_src2_temp + loop_count);
                 loop_count = input_width - loop_count;
 
+                p_src1_temp = (ae_int16x4 *)p16_src1_temp;
+                p_dst_temp  = (ae_int16x4 *)p16_dst_temp;
                 align_dst = AE_ZALIGN64(); // zero alignment reg
                 align_src1 = AE_LA64_PP(p_src1_temp);
-
+                WORD8 *pw8_src2_temp = (WORD8 *)p_src2_temp;
+                ae_f16x4 src2_f16x4;
                 for(i = 0; i < (loop_count >> 2); i++)
                 {
                     AE_LA16X4_IP(src1, align_src1, p_src1_temp);
-                    AE_L8X4F_IP(src2, (WORD8 *)p_src2_temp, 4);
-                    src2 = AE_MOVINT16X4_FROMINT64(AE_SRLI64(AE_MOVINT64_FROMINT16X4(src2), 8));
+                    AE_L8X4F_IP(src2_f16x4, pw8_src2_temp, 4);
+                    src2 = AE_MOVINT16X4_FROMINT64(AE_SRLI64(AE_MOVINT64_FROMF16X4(src2_f16x4), 8));
 
                     MAX_16X4(src1, src2);
                     AE_SA16X4_IP(src1, align_dst, p_dst_temp);
                 }
                 AE_SA64POS_FP(align_dst, p_dst_temp); // finalize the stream
-
+                p16_src1_temp = (ae_int16 *)p_src1_temp;
+                p16_dst_temp = (ae_int16 *)p_dst_temp;
+                p_src2_temp = (ae_int16x4 *)pw8_src2_temp;
                 /* reminder loop for input_width */
                 for(i = 0 ; i < (loop_count & 3); i++)
                 {
-                    AE_L16_IP(src1,  (ae_int16 *)p_src1_temp, 2);
+                    AE_L16_IP(src1,  p16_src1_temp, 2);
                     src2 = AE_MOVDA16(((UWORD8 *)p_src2_temp)[0] );
                     p_src2_temp = (ae_int16x4 *)((WORD8 *)p_src2_temp + 1);
 
                     MAX_16X4(src1, src2);
-                    AE_S16_0_IP(src1, (ae_int16 *)p_dst_temp, 2);
+                    AE_S16_0_IP(src1, p16_dst_temp, 2);
                 }
             }
         }
@@ -207,9 +217,10 @@ const UWORD8* __restrict__ p_inp,
             {
                 AE_S16X4_IP(AE_MOVDA16(0), p_dst_temp, 8);
             }
+            ae_int16 *p16_dst_temp = (ae_int16 *)p_dst_temp;
             for(i = 0; i < (input_width & 3); i++)
             {
-                AE_S16_0_IP(AE_MOVDA16(0), (ae_int16 *)p_dst_temp, 2);
+                AE_S16_0_IP(AE_MOVDA16(0), p16_dst_temp, 2);
             }
 
         }
@@ -253,17 +264,20 @@ const UWORD8* __restrict__ p_inp,
                 MAX_16X4(src1, src3);
                 AE_S16X4_IP(src1, p_dst_temp, 8);
             }
-
+            ae_int16 *p16_src1_temp = (ae_int16 *)p_src1_temp;
+            ae_int16 *p16_src2_temp = (ae_int16 *)p_src2_temp;
+            ae_int16 *p16_src3_temp = (ae_int16 *)p_src3_temp;
+            ae_int16 *p16_dst_temp = (ae_int16 *)p_dst_temp;
             /* reminder loop for scratch_width */
             for(i = 0; i < (scratch_width & 3); i++)
             {
-                AE_L16_IP(src1, (ae_int16 *)p_src1_temp, 2);
-                AE_L16_IP(src2, (ae_int16 *)p_src2_temp, 2);
-                AE_L16_IP(src3, (ae_int16 *)p_src3_temp, 2);
+                AE_L16_IP(src1, p16_src1_temp, 2);
+                AE_L16_IP(src2, p16_src2_temp, 2);
+                AE_L16_IP(src3, p16_src3_temp, 2);
 
                 MAX_16X4(src1, src2);
                 MAX_16X4(src1, src3);
-                AE_S16_0_IP(src1, (ae_int16 *)p_dst_temp, 2);
+                AE_S16_0_IP(src1, p16_dst_temp, 2);
             }
 
             if(!pool_width)
@@ -281,7 +295,7 @@ const UWORD8* __restrict__ p_inp,
         WORD16 *ptr_out1 = p_scratch + total_out_width;
         for(itr_ow = 0; itr_ow < out_width; itr_ow++)
         {
-            p_out[itr_oh * out_width + itr_ow] = (UWORD8)AE_MOVAD16_0(*(ae_int16 *)(&ptr_out1[itr_ow * x_stride]));
+            p_out[itr_oh * out_width + itr_ow] = (UWORD8)AE_MOVAD16_0(AE_MOVINT16X4_FROMINT16(*(ae_int16 *)(&ptr_out1[itr_ow * x_stride])));
         }
     }
 }

@@ -25,6 +25,7 @@
 #include "xa_nnlib_err_chk.h"
 #include "xa_nn_basic_state.h"
 #include "xa_nnlib_kernels_api.h"
+#include "xa_nnlib_common_bcast_macro.h"
 
 #ifdef AE_LAVSX2X2_XP
   #define AE_SW_LAVSX2X2_XP(d1, d2, va, ptr, off)  AE_LAVSX2X2_XP(d1, d2, va, ptr, off)
@@ -32,11 +33,13 @@
   #define AE_SW_LAVSX2X2_XP(d1, d2, va, ptr, off) \
   { \
     ae_int16x4 d_out16_0, d_out16_1; \
-    AE_LAV16X4X2_XP(d_out16_0, d_out16_1, va, (ae_int16x8 *)ptr, off); \
+    ae_int16x8 *ptr_16x8 = (ae_int16x8 *)ptr; \
+    AE_LAV16X4X2_XP(d_out16_0, d_out16_1, va, ptr_16x8, off); \
     d_out16_0 = AE_SEL16_2301(d_out16_0, d_out16_0); \
     d_out16_1 = AE_SEL16_2301(d_out16_1, d_out16_1); \
     d1 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOVINT32X2_FROMINT16X4(d_out16_0)); \
     d2 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOVINT32X2_FROMINT16X4(d_out16_1)); \
+    ptr = (xtfloatx4 *)ptr_16x8; \
   }
 #endif
 #ifdef AE_SAVSX2X2_XP
@@ -45,11 +48,13 @@
   #define AE_SW_SAVSX2X2_XP(d1, d2, va, ptr, off) \
   { \
     ae_int16x4 d_in16_0, d_in16_1; \
+    ae_int16x8 *ptr_16x8 = (ae_int16x8 *)ptr; \
     d_in16_0 = AE_MOVINT16X4_FROMINT32X2(AE_MOVINT32X2_FROMXTFLOATX2(d1)); \
     d_in16_1 = AE_MOVINT16X4_FROMINT32X2(AE_MOVINT32X2_FROMXTFLOATX2(d2)); \
     d_in16_0 = AE_SEL16_2301(d_in16_0, d_in16_0); \
     d_in16_1 = AE_SEL16_2301(d_in16_1, d_in16_1); \
-    AE_SAV16X4X2_XP(d_in16_0, d_in16_1, va, (ae_int16x8 *)ptr, off); \
+    AE_SAV16X4X2_XP(d_in16_0, d_in16_1, va, ptr_16x8, off); \
+    ptr = (xtfloatx4 *)ptr_16x8; \
   }
 #endif
 
@@ -150,11 +155,13 @@ WORD32 xa_nn_elm_div_f32xf32_f32(FLOAT32 * __restrict__ p_out,
     XT_SASX2POSFP(out_a, out);
 
     // Remainder Loop
+    xtfloat *inp1_temp = (xtfloat *)inp1;
+    xtfloat *inp2_temp = (xtfloat *)inp2;
     if (num_elm & 1)
     {
         xtfloat a1, a2, a;
-        XT_LSIP(a1, (xtfloat *)inp1, 0);
-        XT_LSIP(a2, (xtfloat *)inp2, 0);
+        XT_LSIP(a1, inp1_temp, 0);
+        XT_LSIP(a2, inp2_temp, 0);
         a = XT_DIV_S(a1, a2);
         XT_SSI(a, (xtfloat *)out, 0);
     }
@@ -164,18 +171,22 @@ WORD32 xa_nn_elm_div_f32xf32_f32(FLOAT32 * __restrict__ p_out,
 #endif
 
 #if HAVE_VFPU
-static void internal_elm_div_broadcast_2D_f32xf32_f32(FLOAT32 * __restrict__ p_out,
-                    const    FLOAT32 * __restrict__ p_inp1,
-                    const    FLOAT32 * __restrict__ p_inp2,
-                             WORD32  out_lc,
-                             WORD32  in_lc,
-                             xtbool  sign_flag)
+static void internal_elm_div_broadcast_2D_f32xf32_f32(void * __restrict__ p_out,
+                    const    void * __restrict__ p_inp1,
+                    const    void * __restrict__ p_inp2,
+                    bcast_args_t* args)
 {
+  WORD32 out_lc = args->out_lc;
+  WORD32 in_lc = args->in_lc;
+  xtbool sign_flag = args->sign_flag;
   int i, j;
 
   xtfloatx4  * __restrict__ p_a = (xtfloatx4 *)p_inp1;
   xtfloatx4  * __restrict__ p_b = (xtfloatx4 *)p_inp2; 
   xtfloatx4  *__restrict__  p_c =  (xtfloatx4 *)p_out;
+  FLOAT32 * __restrict__ p_inp1_f32 = (FLOAT32*)p_inp1;
+  FLOAT32 * __restrict__ p_inp2_f32 = (FLOAT32*)p_inp2;
+  FLOAT32 *__restrict__ p_out_f32 = (FLOAT32*)p_out;
 
   int num_simd4_ops;
   int num_scalar_ops;
@@ -183,15 +194,15 @@ static void internal_elm_div_broadcast_2D_f32xf32_f32(FLOAT32 * __restrict__ p_o
   num_simd4_ops = in_lc >> 2;
   num_scalar_ops = in_lc & 3;
 
-  xtfloatx2 x1, x1_1, x2, x2_1, y =0 ,y_1=0;
+  xtfloatx2 x1, x1_1, x2, x2_1, y = ZERO_SX2() ,y_1= ZERO_SX2();
 
   /* For computing inp2 / inp1 */   
-  if(sign_flag){  
+  if(AE_MOVAB(sign_flag)){  
     for(i = 0; i < out_lc; i++)
     {
-      p_a = (xtfloatx4 *)&p_inp1[i * in_lc];
-      p_b = (xtfloatx4 *)p_inp2;
-      p_c = (xtfloatx4 *)&p_out[i * in_lc];
+      p_a = (xtfloatx4 *)&p_inp1_f32[i * in_lc];
+      p_b = (xtfloatx4 *)p_inp2_f32;
+      p_c = (xtfloatx4 *)&p_out_f32[i * in_lc];
       if(((((unsigned)p_a)&0xF) == 0) && ((((unsigned)p_b)&0xF) == 0) && ((((unsigned)p_c)&0xF) == 0))
       {
         for(j = 0; j < num_simd4_ops; j++)
@@ -221,10 +232,10 @@ static void internal_elm_div_broadcast_2D_f32xf32_f32(FLOAT32 * __restrict__ p_o
         ae_valignx2 vinp1, vinp2, out_a = AE_ZALIGN128();
         vinp1 = AE_LA128_PP(p_a);
         vinp2 = AE_LA128_PP(p_b);
-        AE_SW_LAVSX2X2_XP(x1, x1_1, vinp1, (xtfloatx4 *)p_a, num_scalar_ops* sizeof(FLOAT32));
-        AE_SW_LAVSX2X2_XP(x2, x2_1, vinp2, (xtfloatx4 *)p_b, num_scalar_ops* sizeof(FLOAT32));
+        AE_SW_LAVSX2X2_XP(x1, x1_1, vinp1, p_a, num_scalar_ops* sizeof(FLOAT32));
+        AE_SW_LAVSX2X2_XP(x2, x2_1, vinp2, p_b, num_scalar_ops* sizeof(FLOAT32));
         SW_DIV_SX2X2(y, y_1, x2, x2_1, x1, x1_1);
-        AE_SW_SAVSX2X2_XP(y, y_1, out_a, (xtfloatx4 *)p_c,num_scalar_ops* sizeof(FLOAT32));
+        AE_SW_SAVSX2X2_XP(y, y_1, out_a, p_c,num_scalar_ops* sizeof(FLOAT32));
         AE_SA128POS_FP(out_a, (xtfloatx4 *)p_c);
       }      
     }
@@ -234,9 +245,9 @@ static void internal_elm_div_broadcast_2D_f32xf32_f32(FLOAT32 * __restrict__ p_o
   {
     for(i = 0; i < out_lc; i++)
     {
-      p_a = (xtfloatx4 *)&p_inp1[i * in_lc];
-      p_b = (xtfloatx4 *)p_inp2;
-      p_c = (xtfloatx4 *)&p_out[i * in_lc];
+      p_a = (xtfloatx4 *)&p_inp1_f32[i * in_lc];
+      p_b = (xtfloatx4 *)p_inp2_f32;
+      p_c = (xtfloatx4 *)&p_out_f32[i * in_lc];
       if(((((unsigned)p_a)&0xF) == 0) && ((((unsigned)p_b)&0xF) == 0) && ((((unsigned)p_c)&0xF) == 0))
       {
         for(j = 0; j < num_simd4_ops; j++)
@@ -267,22 +278,24 @@ static void internal_elm_div_broadcast_2D_f32xf32_f32(FLOAT32 * __restrict__ p_o
         ae_valignx2 vinp1, vinp2, out_a = AE_ZALIGN128();
         vinp1 = AE_LA128_PP(p_a);
         vinp2 = AE_LA128_PP(p_b);
-        AE_SW_LAVSX2X2_XP(x1, x1_1, vinp1, (xtfloatx4 *)p_a, num_scalar_ops* sizeof(FLOAT32));
-        AE_SW_LAVSX2X2_XP(x2, x2_1, vinp2, (xtfloatx4 *)p_b, num_scalar_ops* sizeof(FLOAT32));
+        AE_SW_LAVSX2X2_XP(x1, x1_1, vinp1, p_a, num_scalar_ops* sizeof(FLOAT32));
+        AE_SW_LAVSX2X2_XP(x2, x2_1, vinp2, p_b, num_scalar_ops* sizeof(FLOAT32));
         SW_DIV_SX2X2(y, y_1, x1, x1_1, x2, x2_1);
-        AE_SW_SAVSX2X2_XP(y, y_1, out_a, (xtfloatx4 *)p_c,num_scalar_ops* sizeof(FLOAT32));
-        AE_SA128POS_FP(out_a, (xtfloatx4 *)p_c);
+        AE_SW_SAVSX2X2_XP(y, y_1, out_a, p_c,num_scalar_ops* sizeof(FLOAT32));
+        AE_SA128POS_FP(out_a, p_c);
       }      
     }  
   }
 }
 
-static void internal_elm_div_broadcast_f32xf32_f32(FLOAT32 * __restrict__ p_out,
-                    const    FLOAT32 * __restrict__ p_inp1,
-                    const    FLOAT32 * __restrict__ p_inp2,
-                             WORD32  num_elm,
-                             xtbool  sign_flag)
+static void internal_elm_div_broadcast_f32xf32_f32(void * __restrict__ p_out,
+                    const    void * __restrict__ p_inp1,
+                    const    void * __restrict__ p_inp2,
+                    bcast_args_t* args)
 {
+  WORD32  num_elm = args->num_elm;
+  xtbool  sign_flag = args->sign_flag;
+  
   int i;
   xtfloatx4  * __restrict__ p_a = (xtfloatx4 *)p_inp1;
   xtfloatx4  * __restrict__ p_b = (xtfloatx4 *)p_inp2; 
@@ -291,11 +304,12 @@ static void internal_elm_div_broadcast_f32xf32_f32(FLOAT32 * __restrict__ p_out,
   const int num_simd4_ops = num_elm >> 2;
   const int num_scalar_ops = num_elm & 3;
 
-  xtfloatx2 x1,x1_1, x2, y=0,y_1=0;
-  x2 = AE_LSI((xtfloat *)p_b, 0);
+  xtfloatx2 x1,x1_1, x2, y= ZERO_SX2(),y_1= ZERO_SX2();
+  xtfloat *pfloat_b = (xtfloat *)p_b;
+  x2 = AE_MOVXTFLOATX2_FROMXTFLOAT(AE_LSI(pfloat_b, 0));
         
   /* For computing inp2 - inp1 */      
-  if(sign_flag){
+  if(AE_MOVAB(sign_flag)){
     if(((((unsigned)p_a)&0xF) == 0) && ((((unsigned)p_c)&0xF) == 0))
     {
       for(i=0; i<num_simd4_ops; i++)
@@ -321,10 +335,10 @@ static void internal_elm_div_broadcast_f32xf32_f32(FLOAT32 * __restrict__ p_out,
     {
       ae_valignx2 vinp1, out_a = AE_ZALIGN128();
       vinp1 = AE_LA128_PP(p_a);
-      AE_SW_LAVSX2X2_XP(x1, x1_1, vinp1, (xtfloatx4 *)p_a, num_scalar_ops* sizeof(FLOAT32));
+      AE_SW_LAVSX2X2_XP(x1, x1_1, vinp1, p_a, num_scalar_ops* sizeof(FLOAT32));
       SW_DIV_SX2X2(y, y_1, x2, x2, x1, x1_1);
-      AE_SW_SAVSX2X2_XP(y, y_1, out_a, (xtfloatx4 *)p_c,num_scalar_ops* sizeof(FLOAT32));
-      AE_SA128POS_FP(out_a, (xtfloatx4 *)p_c);
+      AE_SW_SAVSX2X2_XP(y, y_1, out_a, p_c,num_scalar_ops* sizeof(FLOAT32));
+      AE_SA128POS_FP(out_a, p_c);
     }
   }
   /* For computing inp1 - inp2 */   
@@ -355,10 +369,10 @@ static void internal_elm_div_broadcast_f32xf32_f32(FLOAT32 * __restrict__ p_out,
     {
       ae_valignx2 vinp1, out_a = AE_ZALIGN128();
       vinp1 = AE_LA128_PP(p_a);
-      AE_SW_LAVSX2X2_XP(x1, x1_1, vinp1, (xtfloatx4 *)p_a, num_scalar_ops* sizeof(FLOAT32));
+      AE_SW_LAVSX2X2_XP(x1, x1_1, vinp1, p_a, num_scalar_ops* sizeof(FLOAT32));
       SW_DIV_SX2X2(y, y_1, x1, x1_1, x2, x2);
-      AE_SW_SAVSX2X2_XP(y, y_1, out_a, (xtfloatx4 *)p_c,num_scalar_ops* sizeof(FLOAT32));
-      AE_SA128POS_FP(out_a, (xtfloatx4 *)p_c);
+      AE_SW_SAVSX2X2_XP(y, y_1, out_a, p_c,num_scalar_ops* sizeof(FLOAT32));
+      AE_SA128POS_FP(out_a, p_c);
     }    
   }
 }
@@ -400,181 +414,18 @@ WORD32 xa_nn_elm_div_broadcast_4D_f32xf32_f32(FLOAT32 * __restrict__ p_out,
   XA_NNLIB_ARG_CHK_ALIGN(p_inp1_shape, sizeof(WORD32), -1);
   XA_NNLIB_ARG_CHK_ALIGN(p_inp2_shape, sizeof(WORD32), -1);
 
-  /* Check shapes */
-  int i;
-  xtbool sign_flag;
-  for(i = 0; i < 4; i++)
-  {
-    if((p_inp1_shape[i] != p_inp2_shape[i] && p_inp1_shape[i] != 1 && p_inp2_shape[i] != 1) ||
-       (p_out_shape[i] != (p_inp1_shape[i] > p_inp2_shape[i] ? p_inp1_shape[i] : p_inp2_shape[i])))
-    {
-      return -1;
-    }
-  }
+  bcast_args_t args = {0};
+  args.out_elm_size = args.inp_elm_size = 4;
+  args.multiplier_sign = 1;
 
-  WORD32 inp1_strides[4], inp2_strides[4];
-  inp1_strides[3] = 1;
-  inp2_strides[3] = 1;
-  for(i = 2; i >= 0; i--)
-  {
-    ae_int32x2 d_str, d_shape;
-    d_str = AE_MOVDA32X2(inp1_strides[i + 1], inp2_strides[i + 1]);
-    d_shape = AE_MOVDA32X2(p_inp1_shape[i + 1], p_inp2_shape[i + 1]);
-    d_str = AE_MULP32X2(d_str, d_shape);
-    inp1_strides[i] = AE_MOVAD32_H(d_str);
-    inp2_strides[i] = AE_MOVAD32_L(d_str);
-  }
-
-  int need_broadcast = 0;
-  int inp1_const = 1, inp2_const = 1;
-  for(i = 0; i < 4; i++)
-  {
-    if(p_inp1_shape[i] != p_inp2_shape[i])
-    {
-      if(p_inp1_shape[i] == 1)
-        inp1_strides[i] = 0;
-      else
-        inp2_strides[i] = 0;
-
-      need_broadcast = 1;
-    }
-    if(p_inp1_shape[i] != 1)
-      inp1_const &= 0;
-    if(p_inp2_shape[i] != 1)
-      inp2_const &= 0;
-  }
-  int itr0, itr1, itr2;
-
-  FLOAT32 *p_out_tmp = p_out;
-  const FLOAT32 *__restrict__ p_inp1_tmp = p_inp1;
-  const FLOAT32 *__restrict__ p_inp2_tmp = p_inp2;
-  if(need_broadcast == 0)
-  {
-    sign_flag = 0;
-    internal_elm_div_broadcast_2D_f32xf32_f32(
-                p_out,
-                p_inp1,
-                p_inp2,
-                1,
-                p_out_shape[0] * inp1_strides[0],
-                sign_flag);
-  }
-  else if(inp1_strides[3] == inp2_strides[3])
-  {
-    WORD32 in_lc, out_lc;
-    sign_flag = 0;
-    in_lc = p_out_shape[2] * p_out_shape[3];
-    out_lc = 1;
-    if(inp1_strides[2] == 0)
-    {
-      const FLOAT32 *tmp;
-      tmp = p_inp1_tmp;   p_inp1_tmp = p_inp2_tmp;    p_inp2_tmp = tmp;
-      sign_flag = 1;
-      int tmp_strides[2];
-      tmp_strides[0] = inp1_strides[0];
-      tmp_strides[1] = inp1_strides[1];
-
-      inp1_strides[0] = inp2_strides[0];
-      inp1_strides[1] = inp2_strides[1];
-
-      inp2_strides[0] = tmp_strides[0];
-      inp2_strides[1] = tmp_strides[1];
-      in_lc = p_out_shape[3];
-      out_lc = p_out_shape[2];
-    }
-    else if(inp2_strides[2] == 0)
-    {
-      in_lc = p_out_shape[3];
-      out_lc = p_out_shape[2];
-    }
-
-    for(itr0 = 0; itr0 < p_out_shape[0]; itr0++)
-    {
-      const FLOAT32 *__restrict__ p_inp1_tmp0 = p_inp1_tmp;
-      const FLOAT32 *__restrict__ p_inp2_tmp0 = p_inp2_tmp;
-      for(itr1 = 0; itr1 < p_out_shape[1]; itr1++)
-      {
-        internal_elm_div_broadcast_2D_f32xf32_f32(
-            p_out_tmp,
-            p_inp1_tmp0,
-            p_inp2_tmp0,
-            out_lc,
-            in_lc,
-            sign_flag);
-        p_out_tmp += in_lc * out_lc;
-        p_inp1_tmp0 += inp1_strides[1];
-        p_inp2_tmp0 += inp2_strides[1];
-      }
-      p_inp1_tmp += inp1_strides[0];
-      p_inp2_tmp += inp2_strides[0];
-    }
-  }
-  else if(inp1_const == 1 || inp2_const == 1)
-  {
-    sign_flag = 0;
-    if(inp1_strides[3] == 0)
-    {
-      sign_flag = 1;
-      const FLOAT32 *tmp;
-      tmp = p_inp1_tmp;   p_inp1_tmp = p_inp2_tmp;    p_inp2_tmp = tmp;
-    }
-    internal_elm_div_broadcast_f32xf32_f32(
-        p_out_tmp,
-        p_inp1_tmp,
-        p_inp2_tmp,
-        p_out_shape[0] * p_out_shape[1] * p_out_shape[2] * p_out_shape[3],
-        sign_flag);
-  }
-  else
-  {
-    sign_flag = 0;
-    if(inp1_strides[3] == 0)
-    {
-      const FLOAT32 *tmp;
-      tmp = p_inp1_tmp;   p_inp1_tmp = p_inp2_tmp;    p_inp2_tmp = tmp;
-      sign_flag = 1;
-      int tmp_strides[3];
-      tmp_strides[0] = inp1_strides[0];
-      tmp_strides[1] = inp1_strides[1];
-      tmp_strides[2] = inp1_strides[2];
-
-      inp1_strides[0] = inp2_strides[0];
-      inp1_strides[1] = inp2_strides[1];
-      inp1_strides[2] = inp2_strides[2];
-
-      inp2_strides[0] = tmp_strides[0];
-      inp2_strides[1] = tmp_strides[1];
-      inp2_strides[2] = tmp_strides[2];
-    }
-    for(itr0 = 0; itr0 < p_out_shape[0]; itr0++)
-    {
-      const FLOAT32 *__restrict__ p_inp1_tmp0 = p_inp1_tmp;
-      const FLOAT32 *__restrict__ p_inp2_tmp0 = p_inp2_tmp;
-      for(itr1 = 0; itr1 < p_out_shape[1]; itr1++)
-      {
-        const FLOAT32 *__restrict__ p_inp1_tmp1 = p_inp1_tmp0;
-        const FLOAT32 *__restrict__ p_inp2_tmp1 = p_inp2_tmp0;
-        for(itr2 = 0; itr2 < p_out_shape[2]; itr2++)
-        {
-          {
-            internal_elm_div_broadcast_f32xf32_f32(
-                p_out_tmp,
-                p_inp1_tmp1,
-                p_inp2_tmp1,
-                p_out_shape[3], 
-                sign_flag);
-          }
-          p_out_tmp += p_out_shape[3];
-          p_inp1_tmp1 += inp1_strides[2];
-          p_inp2_tmp1 += inp2_strides[2];
-        }
-        p_inp1_tmp0 += inp1_strides[1];
-        p_inp2_tmp0 += inp2_strides[1];
-      }
-      p_inp1_tmp += inp1_strides[0];
-      p_inp2_tmp += inp2_strides[0];
-    }
-  }
-  return 0;
+  return CALL_BCAST(internal_elm_div_broadcast_2D_f32xf32_f32, 
+            internal_elm_div_broadcast_f32xf32_f32,
+            p_out,
+            p_out_shape,
+            p_inp1,
+            p_inp1_shape,
+            p_inp2,
+            p_inp2_shape,
+            &args);
 }
 #endif

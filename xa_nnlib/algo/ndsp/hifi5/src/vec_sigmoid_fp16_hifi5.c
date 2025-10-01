@@ -157,7 +157,9 @@ static void __sigmoid_fp16(float16_t * y, const float16_t * x, int N, float16_t*
  
       n0 = TRUNC16_HX4(y0, 0);
       n1 = TRUNC16_HX4(y1, 0);
-      AE_S16X4X2_IP(n0, n1, castxcc(ae_int16x8, S_wr), 8 * sz_f16);
+      ae_int16x8* S_wr_temp = castxcc(ae_int16x8, S_wr);
+      AE_S16X4X2_IP(n0, n1, S_wr_temp, 8 * sz_f16);
+      S_wr = (xthalfx8*)S_wr_temp;
       AE_SHX4X2_IP(d0, d1, S_wr, 8 * sz_f16);
     }
     /* second phase: compute polynomial approximation */
@@ -177,7 +179,9 @@ static void __sigmoid_fp16(float16_t * y, const float16_t * x, int N, float16_t*
       ae_int16x4 n0, n1;
       xthalfx4 d0, d1, z0, z1, y0, y1;
       AE_LAHX4X2_IP(x0, x1, X_va, X);
-      AE_L16X4X2_IP(n0, n1, castxcc(ae_int16x8, S_rd), 8 * sz_f16);
+      ae_int16x8* S_rd_temp = castxcc(ae_int16x8, S_rd);
+      AE_L16X4X2_IP(n0, n1, S_rd_temp, 8 * sz_f16);
+      S_rd = (xthalfx8*)S_rd_temp;
       AE_LHX4X2_IP(d0, d1, S_rd, 8 * sz_f16);
       y0 = CONST_HX4(0);
       s0 = OLT_HX4(x0, y0);
@@ -204,6 +208,8 @@ static void __sigmoid_fp16(float16_t * y, const float16_t * x, int N, float16_t*
     Y    = (xthalfx8*)y;
     Y_va = AE_ZALIGN128();
     X_va = AE_LA128_PP(X);
+    
+    ae_int16x8* S_rd_temp = castxcc(ae_int16x8, S_rd);
     __Pragma("loop_count factor=2")
     for (n = 0; n<(M >> 3); n++)
     {
@@ -214,7 +220,7 @@ static void __sigmoid_fp16(float16_t * y, const float16_t * x, int N, float16_t*
      xthalfx4 x0, x1, z0, z1;
      xthalfx4 y0, y1;
      AE_LAHX4X2_IP(z0, z1, X_va, X);
-     AE_L16X4X2_IP(n0, n1, castxcc(ae_int16x8, S_rd), 2*8 * sz_f16);
+     AE_L16X4X2_IP(n0, n1, S_rd_temp, 2*8 * sz_f16);
      /* extract right sign */
      s0 = OLT_HX4(z0, CONST_HX4(0));
      s1 = OLT_HX4(z1, CONST_HX4(0));
@@ -224,12 +230,12 @@ static void __sigmoid_fp16(float16_t * y, const float16_t * x, int N, float16_t*
      e0_1 = AE_SRAI16(n1, 1);
      e1_0 = AE_SUB16(n0, e0_0);
      e1_1 = AE_SUB16(n1, e0_1);
-     n0 = AE_SLLI16S(AE_ADD16(e0_0, 15), 10);
-     n1 = AE_SLLI16S(AE_ADD16(e1_0, 15), 10);
+     n0 = AE_MOVINT16X4_FROMF16X4(AE_SLLI16S(AE_MOVF16X4_FROMINT16X4(AE_ADD16(e0_0, AE_MOVDA16(15))), 10));
+     n1 = AE_MOVINT16X4_FROMF16X4(AE_SLLI16S(AE_MOVF16X4_FROMINT16X4(AE_ADD16(e1_0, AE_MOVDA16(15))), 10));
      s0_0 = AE_MOVXTHALFX4_FROMINT16X4(n0);
      s1_0 = AE_MOVXTHALFX4_FROMINT16X4(n1);
-     n0 = AE_SLLI16S(AE_ADD16(e0_1, 15), 10);
-     n1 = AE_SLLI16S(AE_ADD16(e1_1, 15), 10);
+     n0 = AE_MOVINT16X4_FROMF16X4(AE_SLLI16S(AE_MOVF16X4_FROMINT16X4(AE_ADD16(e0_1, AE_MOVDA16(15))), 10));
+     n1 = AE_MOVINT16X4_FROMF16X4(AE_SLLI16S(AE_MOVF16X4_FROMINT16X4(AE_ADD16(e1_1, AE_MOVDA16(15))), 10));
      s0_1 = AE_MOVXTHALFX4_FROMINT16X4(n0);
      s1_1 = AE_MOVXTHALFX4_FROMINT16X4(n1);
      
@@ -278,21 +284,30 @@ void xa_nnlib_vec_sigmoid_fp16    (float16_t * restrict y, const float16_t * res
     AE_SHX4X2_I(CONST_HX4(0), CONST_HX4(0), pX, 1 * sizeof(xthalfx8));
     AE_SHX4X2_I(CONST_HX4(0), CONST_HX4(0), pY, 0 * sizeof(xthalfx8));
     AE_SHX4X2_I(CONST_HX4(0), CONST_HX4(0), pY, 1 * sizeof(xthalfx8));
+    
+    xthalf* x_t = castxcc(xthalf, x);
+    xthalf* pX_t = castxcc(xthalf, pX);
     for (n=0; n<(N&15); n++) 
     {
       xthalf t;
       
-      AE_LHIP(t, castxcc(xthalf, x), sizeof(float16_t));
-      AE_SHIP(t, castxcc(xthalf, pX), sizeof(float16_t));
+      AE_LHIP(t, x_t, sizeof(float16_t));
+      AE_SHIP(t, pX_t, sizeof(float16_t));
     }
+    x = (float16_t*)x_t;  
     pX = (xthalfx8 *)xbuf;
     __sigmoid_fp16((float16_t*)pY,(float16_t*)pX,16,scr);
+    
+    xthalf* y_t = castxcc(xthalf, y);
+    xthalf* pY_t = castxcc(xthalf, pY);
     for (n=0; n<(N&15); n++) 
     {
       xthalf t;
-      AE_LHIP(t, castxcc(xthalf, pY), sizeof(float16_t));
-      AE_SHIP(t, castxcc(xthalf, y), sizeof(float16_t));
+      AE_LHIP(t, pY_t, sizeof(float16_t));
+      AE_SHIP(t, y_t, sizeof(float16_t));
     }
+    pY = (xthalfx8*)pY_t;  
+    y = (float16_t*)y_t;
     N&=~15;
   }
   if (N<=0) return;

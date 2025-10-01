@@ -25,6 +25,7 @@
 #include "../../../ndsp/hifi5/include/NatureDSP_Signal_math.h"
 #include "xa_nnlib_err_chk.h"
 #include <math.h>
+#include "xa_nnlib_kernels_api.h"
 
 #define LIMIT_SX2(out, inp, min, max){\
         out = MAX_SX2(min, inp); \
@@ -68,8 +69,8 @@ WORD32 xa_nn_vec_activation_min_max_f32_f32(FLOAT32 * __restrict__ p_out,
     pi = (xtfloatx4 *)p_vec;
     po = (xtfloatx4 *)p_out;
 
-    min  = (xtfloatx2) activation_min;
-    max  = (xtfloatx2) activation_max;
+    min  = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&activation_min);
+    max  = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&activation_max);
 
     align_inp = AE_LA128_PP(pi);
     align_out = AE_ZALIGN128();
@@ -78,12 +79,14 @@ WORD32 xa_nn_vec_activation_min_max_f32_f32(FLOAT32 * __restrict__ p_out,
     {
         if (vec_length<=7)
         {
+            xtfloat *pi_x = (xtfloat *)pi;
+            xtfloat *po_x = (xtfloat *)po;
             __Pragma("no_unroll")
             for (i=0; i<vec_length; i++)
             {
-                AE_LSIP(z, (xtfloat *)pi, sizeof(xtfloat));
-                z = MAX_S(min, z);
-                AE_SSIP(z, (xtfloat *)po, sizeof(xtfloat));
+                AE_LSIP(z, pi_x, sizeof(xtfloat));
+                z = MAX_S(AE_MOVXTFLOAT_FROMXTFLOATX2(min), z);
+                AE_SSIP(z, po_x, sizeof(xtfloat));
             }
             return 0;
         }
@@ -121,13 +124,15 @@ WORD32 xa_nn_vec_activation_min_max_f32_f32(FLOAT32 * __restrict__ p_out,
     {
         if (vec_length<=7)
         {
+            xtfloat *pi_x = (xtfloat *)pi;
+            xtfloat *po_x = (xtfloat *)po;
             __Pragma("no_unroll")
             for (i=0; i<vec_length; i++)
             {
-                AE_LSIP(z, (xtfloat *)pi, sizeof(xtfloat));
-                z = MAX_S(min, z);
-                z = MIN_S(max, z);
-                AE_SSIP(z, (xtfloat *)po, sizeof(xtfloat));
+                AE_LSIP(z, pi_x, sizeof(xtfloat));
+                z = MAX_S(AE_MOVXTFLOAT_FROMXTFLOATX2(min), z);
+                z = MIN_S(AE_MOVXTFLOAT_FROMXTFLOATX2(max), z);
+                AE_SSIP(z, po_x, sizeof(xtfloat));
             }
             return 0;
         }

@@ -93,12 +93,14 @@ WORD32 xa_nn_elm_floor_f32_f32(FLOAT32 * __restrict__ p_out,
   }
 
   // Remainder Loop
+  xtfloat *inp_t = (xtfloat *)inp;
+  xtfloat *out_t = (xtfloat *)out;
   for(i = 0 ; i < (num_elm & 7); i++)
   {
     xtfloat a1, a;
-    AE_LSIP(a1, (xtfloat *)inp, sizeof(FLOAT32));
+    AE_LSIP(a1, inp_t, sizeof(FLOAT32));
     a = FIFLOOR_S(a1);
-    AE_SSIP(a, (xtfloat *)out, sizeof(FLOAT32));
+    AE_SSIP(a, out_t, sizeof(FLOAT32));
   }
 
   return 0;

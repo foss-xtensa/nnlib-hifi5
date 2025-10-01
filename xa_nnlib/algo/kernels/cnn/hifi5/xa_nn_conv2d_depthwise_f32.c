@@ -37,7 +37,9 @@
   d_in16_1 = AE_MOVINT16X4_FROMINT32X2(d_in32_1); \
   d_in16_0 = AE_SEL16_2301(d_in16_0, d_in16_0); \
   d_in16_1 = AE_SEL16_2301(d_in16_1, d_in16_1); \
-  AE_SAV16X4X2_XP(d_in16_0, d_in16_1, align_in, (ae_int16x8 *)p_out, off); \
+  ae_int16x8 *p16x8_out = (ae_int16x8 *)p_out; \
+  AE_SAV16X4X2_XP(d_in16_0, d_in16_1, align_in, p16x8_out, off); \
+  p_out = (xtfloatx4 *)p16x8_out; \
 }
 #endif
 
@@ -123,28 +125,29 @@ static void convolve_f32(
         ptr_out = (xtfloatx2 *)p_scratch;
         for(itr_ow=0; itr_ow<((total_out_width+3)>>2); itr_ow++)
         {
-            accu_x2_0 = CONST_S(0);
-            accu_x2_1 = CONST_S(0);
-            accu_x2_0_a = CONST_S(0);
-            accu_x2_1_a = CONST_S(0);
-            accu_x2_0_b = CONST_S(0);
-            accu_x2_1_b = CONST_S(0);
-            accu_x2_0_c = CONST_S(0);
-            accu_x2_1_c = CONST_S(0);
+            accu_x2_0 = CONST_SX2(0);
+            accu_x2_1 = CONST_SX2(0);
+            accu_x2_0_a = CONST_SX2(0);
+            accu_x2_1_a = CONST_SX2(0);
+            accu_x2_0_b = CONST_SX2(0);
+            accu_x2_1_b = CONST_SX2(0);
+            accu_x2_0_c = CONST_SX2(0);
+            accu_x2_1_c = CONST_SX2(0);
 
             ptr_ker = (xtfloatx4 *)p_ker;
-            ptr_inp = (xtfloatx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)ptr_inp, ((itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+            ae_int16x4 *ptr16x4_inp = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(ptr16x4_inp, ((itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+			ptr_inp = (xtfloatx4 *)ptr16x4_inp;
 #pragma loop_count min=1
 #pragma no_unroll
             for(itr_kh=0; itr_kh<kernel_height; itr_kh++)
             {
 
                 //Input loads
-                AE_LSX2X2_XC(id4,id8,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id12,id16,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id20,id24,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id28,id32,(xtfloatx4 *)ptr_inp,sizeof(FLOAT32)*(input_width - 12));
+                AE_LSX2X2_XC(id4,id8,ptr_inp,16);
+                AE_LSX2X2_XC(id12,id16,ptr_inp,16);
+                AE_LSX2X2_XC(id20,id24,ptr_inp,16);
+                AE_LSX2X2_XC(id28,id32,ptr_inp,sizeof(FLOAT32)*(input_width - 12));
 
                 //Kernel Loads
                 AE_LSX2X2_I(ker2,ker3, ptr_ker,16);
@@ -175,12 +178,12 @@ static void convolve_f32(
                 MADDMUX_SX2X2(accu_x2_0_c,accu_x2_1_c,ker5,ker5,id22,id23,5);
 
             }
-            accu_x2_0 += accu_x2_0_a;
-            accu_x2_0_b += accu_x2_0_c;
-            accu_x2_1 += accu_x2_1_a;
-            accu_x2_1_b += accu_x2_1_c;
-            accu_x2_0 += accu_x2_0_b;
-            accu_x2_1 += accu_x2_1_b;
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_a);
+            accu_x2_0_b = ADD_SX2(accu_x2_0_b, accu_x2_0_c);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_a);
+            accu_x2_1_b = ADD_SX2(accu_x2_1_b, accu_x2_1_c);
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_b);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_b);
 
             *ptr_out++ = accu_x2_0;
             *ptr_out++ = accu_x2_1;
@@ -200,27 +203,28 @@ static void convolve_f32(
         ptr_out = (xtfloatx2 *)p_scratch;
         for(itr_ow=0; itr_ow<((total_out_width+3)>>2); itr_ow++)
         {
-            accu_x2_0 = CONST_S(0);
-            accu_x2_1 = CONST_S(0);
-            accu_x2_0_a = CONST_S(0);
-            accu_x2_1_a = CONST_S(0);
-            accu_x2_0_b = CONST_S(0);
-            accu_x2_1_b = CONST_S(0);
-            accu_x2_0_c = CONST_S(0);
-            accu_x2_1_c = CONST_S(0);
+            accu_x2_0 = CONST_SX2(0);
+            accu_x2_1 = CONST_SX2(0);
+            accu_x2_0_a = CONST_SX2(0);
+            accu_x2_1_a = CONST_SX2(0);
+            accu_x2_0_b = CONST_SX2(0);
+            accu_x2_1_b = CONST_SX2(0);
+            accu_x2_0_c = CONST_SX2(0);
+            accu_x2_1_c = CONST_SX2(0);
 
             ptr_ker = (xtfloatx4 *)p_ker;
-            ptr_inp = (xtfloatx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)ptr_inp, ((itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+            ae_int16x4 *ptr16x4_inp = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(ptr16x4_inp, ((itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+            ptr_inp = (xtfloatx4 *)ptr16x4_inp;
 #pragma loop_count min=1
 #pragma no_unroll
             for(itr_kh=0; itr_kh<kernel_height; itr_kh++)
             {
 
                 //Input loads
-                AE_LSX2X2_XC(id4,id8,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id12,id16,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id20,id24,(xtfloatx4 *)ptr_inp,sizeof(FLOAT32)*(input_width - 8));
+                AE_LSX2X2_XC(id4,id8,ptr_inp,16);
+                AE_LSX2X2_XC(id12,id16,ptr_inp,16);
+                AE_LSX2X2_XC(id20,id24,ptr_inp,sizeof(FLOAT32)*(input_width - 8));
 
                 //Kernel Loads
                 AE_LSX2X2_I(ker2,ker3, ptr_ker,16);
@@ -243,12 +247,12 @@ static void convolve_f32(
                 MADDMUX_SX2X2(accu_x2_0_c,accu_x2_1_c,ker3,ker3,id14,id15,5);
 
             }
-            accu_x2_0 += accu_x2_0_a;
-            accu_x2_0_b += accu_x2_0_c;
-            accu_x2_1 += accu_x2_1_a;
-            accu_x2_1_b += accu_x2_1_c;
-            accu_x2_0 += accu_x2_0_b;
-            accu_x2_1 += accu_x2_1_b;
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_a);
+            accu_x2_0_b = ADD_SX2(accu_x2_0_b, accu_x2_0_c);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_a);
+            accu_x2_1_b = ADD_SX2(accu_x2_1_b, accu_x2_1_c);
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_b);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_b);
 
             *ptr_out++ = accu_x2_0;
             *ptr_out++ = accu_x2_1;
@@ -270,25 +274,26 @@ static void convolve_f32(
         ptr_out = (xtfloatx2 *)p_scratch;
         for(itr_ow=0; itr_ow<((total_out_width+3)>>2); itr_ow++)
         {
-            accu_x2_0 = CONST_S(0);
-            accu_x2_1 = CONST_S(0);
-            accu_x2_0_a = CONST_S(0);
-            accu_x2_1_a = CONST_S(0);
-            accu_x2_0_b = CONST_S(0);
-            accu_x2_1_b = CONST_S(0);
-            accu_x2_0_c = CONST_S(0);
-            accu_x2_1_c = CONST_S(0);
+            accu_x2_0 = CONST_SX2(0);
+            accu_x2_1 = CONST_SX2(0);
+            accu_x2_0_a = CONST_SX2(0);
+            accu_x2_1_a = CONST_SX2(0);
+            accu_x2_0_b = CONST_SX2(0);
+            accu_x2_1_b = CONST_SX2(0);
+            accu_x2_0_c = CONST_SX2(0);
+            accu_x2_1_c = CONST_SX2(0);
 
             ptr_ker = (xtfloatx4 *)p_ker;
 #pragma loop_count min=1
             for(itr_kh=0; itr_kh<kernel_height; itr_kh++)
             {
-                ptr_inp = (xtfloatx4 *)p_inp;
-                AE_ADDCIRC16X4_XC((ae_int16x4 *)ptr_inp, ((itr_kh+itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+                ae_int16x4 *ptr16x4_inp = (ae_int16x4 *)p_inp;
+                AE_ADDCIRC16X4_XC(ptr16x4_inp, ((itr_kh+itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+                ptr_inp = (xtfloatx4 *)ptr16x4_inp;
 #pragma loop_count min=1
 #pragma no_unroll
 
-                AE_LSX2X2_XC(id4,id8,(xtfloatx4 *)ptr_inp,16);
+                AE_LSX2X2_XC(id4,id8,ptr_inp,16);
                 for(itr_kw=0; itr_kw<(kernel_width_pad>>2); itr_kw++)
                 {
                     AE_LSX2X2_IP(ker0,ker1, ptr_ker,sizeof(xtfloatx4));
@@ -296,7 +301,7 @@ static void convolve_f32(
                   //  AE_LSX2XC(id8,ptr_inp,8);
                   //  AE_LSX2XC(id12,ptr_inp,8);
                   //  AE_LSX2XC(id16,ptr_inp,-8);
-                    AE_LSX2X2_XC(id12,id16,(xtfloatx4 *)ptr_inp,16);
+                    AE_LSX2X2_XC(id12,id16,ptr_inp,16);
                     id5 = XT_SEL32_HL_SX2(id8, id4);
                     id6 = XT_SEL32_HL_SX2(id12, id8);
                     id7 = XT_SEL32_HL_SX2(id16, id12);
@@ -309,12 +314,12 @@ static void convolve_f32(
 
                 }
             }
-            accu_x2_0 += accu_x2_0_a;
-            accu_x2_0_b += accu_x2_0_c;
-            accu_x2_1 += accu_x2_1_a;
-            accu_x2_1_b += accu_x2_1_c;
-            accu_x2_0 += accu_x2_0_b;
-            accu_x2_1 += accu_x2_1_b;
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_a);
+            accu_x2_0_b = ADD_SX2(accu_x2_0_b, accu_x2_0_c);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_a);
+            accu_x2_1_b = ADD_SX2(accu_x2_1_b, accu_x2_1_c);
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_b);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_b);
 
             *ptr_out++ = accu_x2_0;
             *ptr_out++ = accu_x2_1;
@@ -418,7 +423,7 @@ static void xa_nn_conv2d_depthwise_nchw_f32(
     xtfloatx2 *pae_ker_pad = (xtfloatx2 *)p_kernel_padded;
     for(i = 0; i < ((kernel_height_pad * kernel_width_pad) >> 1); i++)
     {
-        pae_ker_pad[i] = XT_CONST_S(0);
+        pae_ker_pad[i] = XT_CONST_SX2(0);
     }
 
     for(itr_ic = 0; itr_ic < input_channels; itr_ic++)
@@ -547,28 +552,29 @@ static void dilated_convolve_f32(
         ptr_out = (xtfloatx2 *)p_scratch;
         for(itr_ow=0; itr_ow<((total_out_width+3)>>2); itr_ow++)
         {
-            accu_x2_0 = CONST_S(0);
-            accu_x2_1 = CONST_S(0);
-            accu_x2_0_a = CONST_S(0);
-            accu_x2_1_a = CONST_S(0);
-            accu_x2_0_b = CONST_S(0);
-            accu_x2_1_b = CONST_S(0);
-            accu_x2_0_c = CONST_S(0);
-            accu_x2_1_c = CONST_S(0);
+            accu_x2_0 = CONST_SX2(0);
+            accu_x2_1 = CONST_SX2(0);
+            accu_x2_0_a = CONST_SX2(0);
+            accu_x2_1_a = CONST_SX2(0);
+            accu_x2_0_b = CONST_SX2(0);
+            accu_x2_1_b = CONST_SX2(0);
+            accu_x2_0_c = CONST_SX2(0);
+            accu_x2_1_c = CONST_SX2(0);
 
             ptr_ker = (xtfloatx4 *)p_ker;
-            ptr_inp = (xtfloatx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)ptr_inp, ((itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+            ae_int16x4 *ptr16x4_inp = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(ptr16x4_inp, ((itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+			ptr_inp = (xtfloatx4 *)ptr16x4_inp;
 #pragma loop_count min=1
 #pragma no_unroll
             for(itr_kh=0; itr_kh<kernel_height; itr_kh++)
             {
 
                 //Input loads
-                AE_LSX2X2_XC(id4,id8,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id12,id16,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id20,id24,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id28,id32,(xtfloatx4 *)ptr_inp,sizeof(FLOAT32)*(dilation_height * input_width - 12));
+                AE_LSX2X2_XC(id4,id8,ptr_inp,16);
+                AE_LSX2X2_XC(id12,id16,ptr_inp,16);
+                AE_LSX2X2_XC(id20,id24,ptr_inp,16);
+                AE_LSX2X2_XC(id28,id32,ptr_inp,sizeof(FLOAT32)*(dilation_height * input_width - 12));
 
                 //Kernel Loads
                 AE_LSX2X2_I(ker2,ker3, ptr_ker,16);
@@ -599,12 +605,12 @@ static void dilated_convolve_f32(
                 MADDMUX_SX2X2(accu_x2_0_c,accu_x2_1_c,ker5,ker5,id22,id23,5);
 
             }
-            accu_x2_0 += accu_x2_0_a;
-            accu_x2_0_b += accu_x2_0_c;
-            accu_x2_1 += accu_x2_1_a;
-            accu_x2_1_b += accu_x2_1_c;
-            accu_x2_0 += accu_x2_0_b;
-            accu_x2_1 += accu_x2_1_b;
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_a);
+            accu_x2_0_b = ADD_SX2(accu_x2_0_b, accu_x2_0_c);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_a);
+            accu_x2_1_b = ADD_SX2(accu_x2_1_b, accu_x2_1_c);
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_b);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_b);
 
             *ptr_out++ = accu_x2_0;
             *ptr_out++ = accu_x2_1;
@@ -624,27 +630,28 @@ static void dilated_convolve_f32(
         ptr_out = (xtfloatx2 *)p_scratch;
         for(itr_ow=0; itr_ow<((total_out_width+3)>>2); itr_ow++)
         {
-            accu_x2_0 = CONST_S(0);
-            accu_x2_1 = CONST_S(0);
-            accu_x2_0_a = CONST_S(0);
-            accu_x2_1_a = CONST_S(0);
-            accu_x2_0_b = CONST_S(0);
-            accu_x2_1_b = CONST_S(0);
-            accu_x2_0_c = CONST_S(0);
-            accu_x2_1_c = CONST_S(0);
+            accu_x2_0 = CONST_SX2(0);
+            accu_x2_1 = CONST_SX2(0);
+            accu_x2_0_a = CONST_SX2(0);
+            accu_x2_1_a = CONST_SX2(0);
+            accu_x2_0_b = CONST_SX2(0);
+            accu_x2_1_b = CONST_SX2(0);
+            accu_x2_0_c = CONST_SX2(0);
+            accu_x2_1_c = CONST_SX2(0);
 
             ptr_ker = (xtfloatx4 *)p_ker;
-            ptr_inp = (xtfloatx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)ptr_inp, ((itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+            ae_int16x4 *ptr16x4_inp = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(ptr16x4_inp, ((itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+            ptr_inp = (xtfloatx4 *)ptr16x4_inp;
 #pragma loop_count min=1
 #pragma no_unroll
             for(itr_kh=0; itr_kh<kernel_height; itr_kh++)
             {
 
                 //Input loads
-                AE_LSX2X2_XC(id4,id8,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id12,id16,(xtfloatx4 *)ptr_inp,16);
-                AE_LSX2X2_XC(id20,id24,(xtfloatx4 *)ptr_inp,sizeof(FLOAT32)*(dilation_height * input_width - 8));
+                AE_LSX2X2_XC(id4,id8,ptr_inp,16);
+                AE_LSX2X2_XC(id12,id16,ptr_inp,16);
+                AE_LSX2X2_XC(id20,id24,ptr_inp,sizeof(FLOAT32)*(dilation_height * input_width - 8));
 
                 //Kernel Loads
                 AE_LSX2X2_I(ker2,ker3, ptr_ker,16);
@@ -667,12 +674,12 @@ static void dilated_convolve_f32(
                 MADDMUX_SX2X2(accu_x2_0_c,accu_x2_1_c,ker3,ker3,id14,id15,5);
 
             }
-            accu_x2_0 += accu_x2_0_a;
-            accu_x2_0_b += accu_x2_0_c;
-            accu_x2_1 += accu_x2_1_a;
-            accu_x2_1_b += accu_x2_1_c;
-            accu_x2_0 += accu_x2_0_b;
-            accu_x2_1 += accu_x2_1_b;
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_a);
+            accu_x2_0_b = ADD_SX2(accu_x2_0_b, accu_x2_0_c);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_a);
+            accu_x2_1_b = ADD_SX2(accu_x2_1_b, accu_x2_1_c);
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_b);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_b);
 
             *ptr_out++ = accu_x2_0;
             *ptr_out++ = accu_x2_1;
@@ -694,25 +701,26 @@ static void dilated_convolve_f32(
         ptr_out = (xtfloatx2 *)p_scratch;
         for(itr_ow=0; itr_ow<((total_out_width+3)>>2); itr_ow++)
         {
-            accu_x2_0 = CONST_S(0);
-            accu_x2_1 = CONST_S(0);
-            accu_x2_0_a = CONST_S(0);
-            accu_x2_1_a = CONST_S(0);
-            accu_x2_0_b = CONST_S(0);
-            accu_x2_1_b = CONST_S(0);
-            accu_x2_0_c = CONST_S(0);
-            accu_x2_1_c = CONST_S(0);
+            accu_x2_0 = CONST_SX2(0);
+            accu_x2_1 = CONST_SX2(0);
+            accu_x2_0_a = CONST_SX2(0);
+            accu_x2_1_a = CONST_SX2(0);
+            accu_x2_0_b = CONST_SX2(0);
+            accu_x2_1_b = CONST_SX2(0);
+            accu_x2_0_c = CONST_SX2(0);
+            accu_x2_1_c = CONST_SX2(0);
 
             ptr_ker = (xtfloatx4 *)p_ker;
 #pragma loop_count min=1
             for(itr_kh=0; itr_kh<kernel_height; itr_kh++)
             {
-                ptr_inp = (xtfloatx4 *)p_inp;
-                AE_ADDCIRC16X4_XC((ae_int16x4 *)ptr_inp, ((itr_kh*dilation_height+itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+                ae_int16x4 *ptr16x4_inp = (ae_int16x4 *)p_inp;
+                AE_ADDCIRC16X4_XC(ptr16x4_inp, ((itr_kh*dilation_height+itr_oh*y_stride)*input_width+4*itr_ow)*sizeof(FLOAT32));
+                ptr_inp = (xtfloatx4 *)ptr16x4_inp;
 #pragma loop_count min=1
 #pragma no_unroll
 
-                AE_LSX2X2_XC(id4,id8,(xtfloatx4 *)ptr_inp,16);
+                AE_LSX2X2_XC(id4,id8,ptr_inp,16);
                 for(itr_kw=0; itr_kw<(kernel_width_pad>>2); itr_kw++)
                 {
                     AE_LSX2X2_IP(ker0,ker1, ptr_ker,sizeof(xtfloatx4));
@@ -720,7 +728,7 @@ static void dilated_convolve_f32(
                   //  AE_LSX2XC(id8,ptr_inp,8);
                   //  AE_LSX2XC(id12,ptr_inp,8);
                   //  AE_LSX2XC(id16,ptr_inp,-8);
-                    AE_LSX2X2_XC(id12,id16,(xtfloatx4 *)ptr_inp,16);
+                    AE_LSX2X2_XC(id12,id16,ptr_inp,16);
                     id5 = XT_SEL32_HL_SX2(id8, id4);
                     id6 = XT_SEL32_HL_SX2(id12, id8);
                     id7 = XT_SEL32_HL_SX2(id16, id12);
@@ -733,12 +741,12 @@ static void dilated_convolve_f32(
 
                 }
             }
-            accu_x2_0 += accu_x2_0_a;
-            accu_x2_0_b += accu_x2_0_c;
-            accu_x2_1 += accu_x2_1_a;
-            accu_x2_1_b += accu_x2_1_c;
-            accu_x2_0 += accu_x2_0_b;
-            accu_x2_1 += accu_x2_1_b;
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_a);
+            accu_x2_0_b = ADD_SX2(accu_x2_0_b, accu_x2_0_c);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_a);
+            accu_x2_1_b = ADD_SX2(accu_x2_1_b, accu_x2_1_c);
+            accu_x2_0 = ADD_SX2(accu_x2_0, accu_x2_0_b);
+            accu_x2_1 = ADD_SX2(accu_x2_1, accu_x2_1_b);
 
             *ptr_out++ = accu_x2_0;
             *ptr_out++ = accu_x2_1;
@@ -837,7 +845,7 @@ static void xa_nn_dilated_conv2d_depthwise_nchw_f32(
     xtfloatx2 *pae_ker_pad = (xtfloatx2 *)p_kernel_padded;
     for(i = 0; i < ((kernel_height_pad * kernel_width_pad) >> 1); i++)
     {
-        pae_ker_pad[i] = XT_CONST_S(0);
+        pae_ker_pad[i] = XT_CONST_SX2(0);
     }
 
     for(itr_ic = 0; itr_ic < input_channels; itr_ic++)
@@ -971,10 +979,12 @@ static inline void conv2d_nhwc_f32(
         out1_a = AE_ZALIGN128();
         for(itr_ch = 0; itr_ch < out_channels; itr_ch+=4)
         {
-            pt_inp0 = (xtfloatx4 *)p_inp;
-            pt_inp1 = (xtfloatx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(FLOAT32));
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp1, (itr_ch + (itr_oh+1)*y_stride*kernel_width*inp_channels_pad)*sizeof(FLOAT32));
+            ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+            ae_int16x4 *pt16x4_inp1 = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(pt16x4_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(FLOAT32));
+            AE_ADDCIRC16X4_XC(pt16x4_inp1, (itr_ch + (itr_oh+1)*y_stride*kernel_width*inp_channels_pad)*sizeof(FLOAT32));
+            pt_inp0 = (xtfloatx4 *)pt16x4_inp0;
+            pt_inp1 = (xtfloatx4 *)pt16x4_inp1;
             pt_ker = (xtfloatx4 *)(&p_ker[itr_ch]);
             ker_a = AE_LA128_PP(pt_ker);
 
@@ -1011,8 +1021,9 @@ static inline void conv2d_nhwc_f32(
         out0_a = AE_ZALIGN128();
         for(itr_ch = 0; itr_ch < out_channels; itr_ch+=4)
         {
-            pt_inp0 = (xtfloatx4 *)p_inp;
-            AE_ADDCIRC16X4_XC((ae_int16x4 *)pt_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(FLOAT32));
+            ae_int16x4 *pt16x4_inp0 = (ae_int16x4 *)p_inp;
+            AE_ADDCIRC16X4_XC(pt16x4_inp0, (itr_ch + itr_oh*y_stride*kernel_width*inp_channels_pad)*sizeof(FLOAT32));
+            pt_inp0 = (xtfloatx4 *)pt16x4_inp0;
             pt_ker = (xtfloatx4 *)(&p_ker[itr_ch]);
             ker_a = AE_LA128_PP(pt_ker);
 

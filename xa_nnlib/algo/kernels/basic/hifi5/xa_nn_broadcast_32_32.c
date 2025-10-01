@@ -34,11 +34,13 @@
   #define AE_SW_LAV32X2X2_XP(d1, d2, va, ptr, off) \
   { \
     ae_int16x4 d_out16_0, d_out16_1; \
-    AE_LAV16X4X2_XP(d_out16_0, d_out16_1, va, (ae_int16x8 *)ptr, off); \
+    ae_int16x8 *ptr_temp = (ae_int16x8 *)ptr; \
+    AE_LAV16X4X2_XP(d_out16_0, d_out16_1, va, ptr_temp, off); \
     d_out16_0 = AE_SEL16_2301(d_out16_0, d_out16_0); \
     d_out16_1 = AE_SEL16_2301(d_out16_1, d_out16_1); \
     d1 = AE_MOVINT32X2_FROMINT16X4(d_out16_0); \
     d2 = AE_MOVINT32X2_FROMINT16X4(d_out16_1); \
+    ptr = (ae_int32x4*)ptr_temp; \
   }
 #endif
 #ifdef AE_SAV32X2X2_XP
@@ -51,7 +53,9 @@
     d_in16_1 = AE_MOVINT16X4_FROMINT32X2(d2); \
     d_in16_0 = AE_SEL16_2301(d_in16_0, d_in16_0); \
     d_in16_1 = AE_SEL16_2301(d_in16_1, d_in16_1); \
-    AE_SAV16X4X2_XP(d_in16_0, d_in16_1, va, (ae_int16x8 *)ptr, off); \
+    ae_int16x8 *ptr_temp = (ae_int16x8 *)ptr; \
+    AE_SAV16X4X2_XP(d_in16_0, d_in16_1, va, ptr_temp, off); \
+    ptr = (ae_int32x4*)ptr_temp; \
   }
 #endif
 
@@ -140,13 +144,13 @@ static void internal_elm_broadcast_32_32(WORD32 * __restrict__ p_out,
     ae_valignx2  out_a = AE_ZALIGN128();
     for(i = 0; i < num_simd4_ops; i++)
     {
-        AE_SA32X2X2_IP(x1, x2, out_a, (ae_int32x4 *)p_o); 
+        AE_SA32X2X2_IP(x1, x2, out_a, p_o); 
     }
     if(num_scalar_ops !=0)
     {
-        AE_SW_SAV32X2X2_XP(x1, x2, out_a, (ae_int32x4 *)p_o,num_scalar_ops* sizeof(WORD32));
+        AE_SW_SAV32X2X2_XP(x1, x2, out_a, p_o,num_scalar_ops* sizeof(WORD32));
     }
-    AE_SA128POS_FP(out_a, (ae_int32x4 *)p_o);
+    AE_SA128POS_FP(out_a, p_o);
   }
 }
 

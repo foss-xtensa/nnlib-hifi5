@@ -475,11 +475,12 @@ WORD32 xa_nn_reduce_max_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
               }
 
               //Remainder Loop
+              ae_int8 *p8_src2 = (ae_int8 *)p_src2;
               for(itr_c=0; itr_c < rem_c; itr_c++)
               {
                 ae_int8x8 i1, j1, out1;
                 i1 = AE_L8_I((ae_int8 *)p_src1, 0);
-                AE_L8_IP(j1, (ae_int8 *)p_src2, 1);
+                AE_L8_IP(j1, p8_src2, 1);
                 out1 = AE_MAX8(i1, j1);
                 AE_S8_0_I(out1, (ae_int8 *)p_dst, 0);
                 p_src1 = p_dst;
@@ -580,18 +581,26 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
           }
 
           //Remainder Loop
+          ae_int8 *p8_src2 = (ae_int8 *)p_src2;
+          ae_int8 *p8_src3 = (ae_int8 *)p_src3;
+          ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+          ae_int32 *p32_dst = (ae_int32 *)p_dst;
           for(itr_hwc=0; itr_hwc < rem_hwc; itr_hwc++)
           {
             ae_int8x8 j1, j2;
             ae_int16x4 wj1, wj2;
             ae_int32x2 wout1, wout2;
-            AE_L8_IP(j1, (ae_int8 *)p_src2, sizeof(ae_int8));
-            AE_L8_IP(j2, (ae_int8 *)p_src3, sizeof(ae_int8));
+            AE_L8_IP(j1, p8_src2, sizeof(ae_int8));
+            AE_L8_IP(j2, p8_src3, sizeof(ae_int8));
             AE_ADDW8(wj1, wj2, j1, j2);
-            AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
+            AE_L32_IP(wout1, p32_src1, 4);
             AE_ACCW16(wout1, wout2, wj1, zero16);
-            AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+            AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
           }
+          p_src2 = (ae_int8x16 *)p8_src2;
+          p_src3 = (ae_int8x16 *)p8_src3;
+          p_src1 = (ae_int32x4 *)p32_src1;
+          p_dst = (ae_int32x4 *)p32_dst;
         }
 
         if(temp_inp_n & 1)
@@ -627,17 +636,23 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
           }
 
           //Remainder Loop
+          ae_int8 *p8_src2 = (ae_int8 *)p_src2;
+          ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+          ae_int32 *p32_dst = (ae_int32 *)p_dst;
           for(itr_hwc=0; itr_hwc < rem_hwc; itr_hwc++)
           {
             ae_int8x8 j1;
             ae_int16x4 wj1, wj2;
             ae_int32x2 wout1, wout2;
-            AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-            AE_L8_IP(j1, (ae_int8 *)p_src2, sizeof(ae_int8));
+            AE_L32_IP(wout1, p32_src1, 4);
+            AE_L8_IP(j1, p8_src2, sizeof(ae_int8));
             AE_ADDW8(wj1, wj2, j1, zero8);
             AE_ACCW16(wout1, wout2, wj1, zero16);
-            AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+            AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
           }
+          p_src2 = (ae_int8x16 *)p8_src2;
+          p_src1 = (ae_int32x4 *)p32_src1;
+          p_dst = (ae_int32x4 *)p32_dst;
         }
         temp_inp_n = 1;  
         }break;
@@ -684,18 +699,26 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
             AE_SA128POS_FP(align_dst, p_dst); // finalize the stream
 
             //Remainder Loop
+            ae_int8 *p8_src2 = (ae_int8 *)p_src2;
+            ae_int8 *p8_src3 = (ae_int8 *)p_src3;
+            ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+            ae_int32 *p32_dst = (ae_int32 *)p_dst;
             for(itr_wc=0; itr_wc < rem_wc; itr_wc++)
             {
               ae_int8x8 j1, j2;
               ae_int16x4 wj1, wj2;
               ae_int32x2 wout1, wout2;
-              AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-              AE_L8_IP(j1, (ae_int8 *)p_src2, sizeof(ae_int8));
-              AE_L8_IP(j2, (ae_int8 *)p_src3, sizeof(ae_int8));
+              AE_L32_IP(wout1, p32_src1, 4);
+              AE_L8_IP(j1, p8_src2, sizeof(ae_int8));
+              AE_L8_IP(j2, p8_src3, sizeof(ae_int8));
               AE_ADDW8(wj1, wj2, j1, j2);
               AE_ACCW16(wout1, wout2, wj1, zero16);
-              AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+              AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
             }
+            p_src2 = (ae_int8x16 *)p8_src2;
+            p_src3 = (ae_int8x16 *)p8_src3;
+            p_src1 = (ae_int32x4 *)p32_src1;
+            p_dst = (ae_int32x4 *)p32_dst;
             p_src1 = (ae_int32x4 *)(p_scratch + (itr_n * wc_plane_size));
           }
 
@@ -732,17 +755,23 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
             AE_SA128POS_FP(align_dst, p_dst); // finalize the stream
 
             //Remainder Loop
+            ae_int8 *p8_src2 = (ae_int8 *)p_src2;
+            ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+            ae_int32 *p32_dst = (ae_int32 *)p_dst;
             for(itr_wc=0; itr_wc < rem_wc; itr_wc++)
             {
               ae_int8x8 j1;
               ae_int16x4 wj1, wj2;
               ae_int32x2 wout1, wout2;
-              AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-              AE_L8_IP(j1, (ae_int8 *)p_src2, sizeof(ae_int8));
+              AE_L32_IP(wout1, p32_src1, 4);
+              AE_L8_IP(j1, p8_src2, sizeof(ae_int8));
               AE_ADDW8(wj1, wj2, j1, zero8);
               AE_ACCW16(wout1, wout2, wj1, zero16);
-              AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+              AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
             }
+            p_src2 = (ae_int8x16 *)p8_src2;
+            p_src1 = (ae_int32x4 *)p32_src1;
+            p_dst = (ae_int32x4 *)p32_dst;
           }
         }
         temp_inp_h = 1;
@@ -792,18 +821,26 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
               AE_SA128POS_FP(align_dst, p_dst); // finalize the stream
 
               //Remainder Loop
+              ae_int8 *p8_src2 = (ae_int8 *)p_src2;
+              ae_int8 *p8_src3 = (ae_int8 *)p_src3;
+              ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+              ae_int32 *p32_dst = (ae_int32 *)p_dst;
               for(itr_c=0; itr_c < rem_c; itr_c++)
               {
                 ae_int8x8 j1, j2;
                 ae_int16x4 wj1, wj2;
                 ae_int32x2 wout1, wout2;
-                AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-                AE_L8_IP(j1, (ae_int8 *)p_src2, sizeof(ae_int8));
-                AE_L8_IP(j2, (ae_int8 *)p_src3, sizeof(ae_int8));
+                AE_L32_IP(wout1, p32_src1, 4);
+                AE_L8_IP(j1, p8_src2, sizeof(ae_int8));
+                AE_L8_IP(j2, p8_src3, sizeof(ae_int8));
                 AE_ADDW8(wj1, wj2, j1, j2);
                 AE_ACCW16(wout1, wout2, wj1, zero16);
-                AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+                AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
               }
+              p_src2 = (ae_int8x16 *)p8_src2;
+              p_src3 = (ae_int8x16 *)p8_src3;
+              p_src1 = (ae_int32x4 *)p32_src1;
+              p_dst = (ae_int32x4 *)p32_dst;
               p_src1 = (ae_int32x4 *)(p_scratch + (itr_n * hc_plane_size) + (itr_h * temp_inp_c));
             }
 
@@ -839,17 +876,23 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
               AE_SA128POS_FP(align_dst, p_dst); // finalize the stream
 
               //Remainder Loop
+              ae_int8 *p8_src2 = (ae_int8 *)p_src2;
+              ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+              ae_int32 *p32_dst = (ae_int32 *)p_dst;
               for(itr_c=0; itr_c < rem_c; itr_c++)
               {
                 ae_int8x8 j1;
                 ae_int16x4 wj1, wj2;
                 ae_int32x2 wout1, wout2;
-                AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-                AE_L8_IP(j1, (ae_int8 *)p_src2, sizeof(ae_int8));
+                AE_L32_IP(wout1, p32_src1, 4);
+                AE_L8_IP(j1, p8_src2, sizeof(ae_int8));
                 AE_ADDW8(wj1, wj2, j1, zero8);
                 AE_ACCW16(wout1, wout2, wj1, zero16);
-                AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+                AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
               }
+              p_src2 = (ae_int8x16 *)p8_src2;
+              p_src1 = (ae_int32x4 *)p32_src1;
+              p_dst = (ae_int32x4 *)p32_dst;
             }
           }
         }
@@ -882,24 +925,33 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
                 AE_RADDA8X8_L(out1, j1);
                 out2 = AE_RADD8X8_H(j2);
                 AE_RADDA8X8_L(out2, j2);
-                i2 = AE_ADD32S(AE_MOVDA32(out1), AE_MOVDA32(out2));
-                i1 = AE_ADD32S(i1, i2);
+                i2 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32(out1), AE_MOVF32X2_FROMINT32(out2)));
+                i1 = SW_ADD32S_INT32X2_INT32X2(i1, i2);
                 AE_S32_L_I(i1, (ae_int32 *)p_dst, 0);
                 p_src1 = p_dst;
               }
 
               //Remainder Loop
+              ae_int8 *p8_src2 = (ae_int8 *)p_src2;
+              ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+              ae_int32 *p32_dst = (ae_int32 *)p_dst;
               for(itr_c=0; itr_c < rem_c; itr_c++)
               {
                 ae_int8x8 j1;
-                ae_int32x2 i1, temp0, temp1;
-                i1 = AE_L32_I((ae_int32 *)p_src1, 0);
-                AE_L8_IP(j1, (ae_int8 *)p_src2, 1);
-                AE_CVTI32X4F8_H(temp0, temp1, j1, 0);
-                i1 = AE_ADD32S(i1, temp0);
-                AE_S32_L_I(i1, (ae_int32 *)p_dst, 0);
+                ae_int32x2 i1, temp0;//, temp1;
+                i1 = AE_L32_I(p32_src1, 0);
+                AE_L8_IP(j1, p8_src2, 1);
+                ae_f32x2 temp0_t, temp1_t;
+                AE_CVTI32X4F8_H(temp0_t, temp1_t, j1, 0);
+                temp0 = AE_MOVINT32X2_FROMF32X2(temp0_t);
+                //temp1 = AE_MOVINT32X2_FROMF32X2(temp1_t);
+                i1 = SW_ADD32S_INT32X2_INT32X2(i1, temp0);
+                AE_S32_L_I(i1, p32_dst, 0);
                 p_src1 = p_dst;
               }
+              p_src2 = (ae_int8x16 *)p8_src2;
+              p_src1 = (ae_int32x4 *)p32_src1;
+              p_dst = (ae_int32x4 *)p32_dst;
             }
           }
         }
@@ -940,26 +992,34 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
             AE_L32X2X2_IP(wout1, wout2, p_src1, 16);
             AE_LA32X2X2_IP(j1, k1, align_src2, p_wsrc2);
             AE_LA32X2X2_IP(j2, k2, align_src3, p_wsrc3);
-            wj1 = AE_ADD32S(j1, j2);
-            wk1 = AE_ADD32S(k1, k2);
-            wout1 = AE_ADD32S(wout1, wj1);
-            wout2 = AE_ADD32S(wout2, wk1);
+            wj1 = SW_ADD32S_INT32X2_INT32X2(j1, j2);
+            wk1 = SW_ADD32S_INT32X2_INT32X2(k1, k2);
+            wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, wj1);
+            wout2 = SW_ADD32S_INT32X2_INT32X2(wout2, wk1);
             AE_S32X2X2_IP(wout1, wout2, p_dst, 16);
           }
 
           //Remainder Loop
+          ae_int32 *p32_wsrc2 = (ae_int32 *)p_wsrc2;
+          ae_int32 *p32_wsrc3 = (ae_int32 *)p_wsrc3;
+          ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+          ae_int32 *p32_dst = (ae_int32 *)p_dst;
           for(itr_hwc=0; itr_hwc < rem_hwc; itr_hwc++)
           {
             ae_int32x2 j1, j2;
             ae_int32x2 wj1;
             ae_int32x2 wout1;
-            AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-            AE_L32_IP(j1, (ae_int32 *)p_wsrc2, 4);
-            AE_L32_IP(j2, (ae_int32 *)p_wsrc3, 4);
-            wj1 = AE_ADD32S(j1, j2);
-            wout1 = AE_ADD32S(wout1, wj1);
-            AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+            AE_L32_IP(wout1, p32_src1, 4);
+            AE_L32_IP(j1, p32_wsrc2, 4);
+            AE_L32_IP(j2, p32_wsrc3, 4);
+            wj1 = SW_ADD32S_INT32X2_INT32X2(j1, j2);
+            wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, wj1);
+            AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
           }
+          p_wsrc2 = (ae_int32x4 *)p32_wsrc2;
+          p_wsrc3 = (ae_int32x4 *)p32_wsrc3;
+          p_src1 = (ae_int32x4 *)p32_src1;
+          p_dst = (ae_int32x4 *)p32_dst;
         }
 
         if((temp_inp_n - 1) & 1)
@@ -976,21 +1036,27 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
             ae_int32x2 wout1, wout2;
             AE_L32X2X2_IP(wout1, wout2, p_src1, 16);
             AE_LA32X2X2_IP(j1, k1, align_src2, p_wsrc2);
-            wout1 = AE_ADD32S(wout1, j1);
-            wout2 = AE_ADD32S(wout2, k1);
+            wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, j1);
+            wout2 = SW_ADD32S_INT32X2_INT32X2(wout2, k1);
             AE_S32X2X2_IP(wout1, wout2, p_dst, 16);
           }
 
           //Remainder Loop
+          ae_int32 *p32_wsrc2 = (ae_int32 *)p_wsrc2;
+          ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+          ae_int32 *p32_dst = (ae_int32 *)p_dst;
           for(itr_hwc=0; itr_hwc < rem_hwc; itr_hwc++)
           {
             ae_int32x2 j1;
             ae_int32x2 wout1;
-            AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-            AE_L32_IP(j1, (ae_int32 *)p_wsrc2, 4);
-            wout1 = AE_ADD32S(wout1, j1);
-            AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+            AE_L32_IP(wout1, p32_src1, 4);
+            AE_L32_IP(j1, p32_wsrc2, 4);
+            wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, j1);
+            AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
           }
+          p_wsrc2 = (ae_int32x4 *)p32_wsrc2;
+          p_src1 = (ae_int32x4 *)p32_src1;
+          p_dst = (ae_int32x4 *)p32_dst;
         }
         temp_inp_n = 1;
         }break;
@@ -1019,27 +1085,35 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
               AE_LA32X2X2_IP(wout1, wout2, align_src1, p_src1);
               AE_LA32X2X2_IP(j1, k1, align_src2, p_wsrc2);
               AE_LA32X2X2_IP(j2, k2, align_src3, p_wsrc3);
-              wj1 = AE_ADD32S(j1, j2);
-              wk1 = AE_ADD32S(k1, k2);
-              wout1 = AE_ADD32S(wout1, wj1);
-              wout2 = AE_ADD32S(wout2, wk1);
+              wj1 = SW_ADD32S_INT32X2_INT32X2(j1, j2);
+              wk1 = SW_ADD32S_INT32X2_INT32X2(k1, k2);
+              wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, wj1);
+              wout2 = SW_ADD32S_INT32X2_INT32X2(wout2, wk1);
               AE_SA32X2X2_IP(wout1, wout2, align_dst, p_dst);
             }
             AE_SA128POS_FP(align_dst, p_dst); // finalize the stream
 
             //Remainder Loop
+            ae_int32 *p32_wsrc2 = (ae_int32 *)p_wsrc2;
+            ae_int32 *p32_wsrc3 = (ae_int32 *)p_wsrc3;
+            ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+            ae_int32 *p32_dst = (ae_int32 *)p_dst;
             for(itr_wc=0; itr_wc < rem_wc; itr_wc++)
             {
               ae_int32x2 j1, j2;
               ae_int32x2 wj1;
               ae_int32x2 wout1;
-              AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-              AE_L32_IP(j1, (ae_int32 *)p_wsrc2, 4);
-              AE_L32_IP(j2, (ae_int32 *)p_wsrc3, 4);
-              wj1 = AE_ADD32S(j1, j2);
-              wout1 = AE_ADD32S(wout1, wj1);
-              AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+              AE_L32_IP(wout1, p32_src1, 4);
+              AE_L32_IP(j1, p32_wsrc2, 4);
+              AE_L32_IP(j2, p32_wsrc3, 4);
+              wj1 = SW_ADD32S_INT32X2_INT32X2(j1, j2);
+              wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, wj1);
+              AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
             }
+            p_wsrc2 = (ae_int32x4 *)p32_wsrc2;
+            p_wsrc3 = (ae_int32x4 *)p32_wsrc3;
+            //p_src1 = (ae_int32x4 *)p32_src1;
+            p_dst = (ae_int32x4 *)p32_dst;
             p_src1 = (ae_int32x4 *)(p_scratch + (itr_n * wc_plane_size));
           }
 
@@ -1057,22 +1131,28 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
               ae_int32x2 wout1, wout2;
               AE_LA32X2X2_IP(wout1, wout2, align_src1, p_src1);
               AE_LA32X2X2_IP(j1, k1, align_src2, p_wsrc2);
-              wout1 = AE_ADD32S(wout1, j1);
-              wout2 = AE_ADD32S(wout2, k1);
+              wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, j1);
+              wout2 = SW_ADD32S_INT32X2_INT32X2(wout2, k1);
               AE_SA32X2X2_IP(wout1, wout2, align_dst, p_dst);
             }
             AE_SA128POS_FP(align_dst, p_dst); // finalize the stream
 
             //Remainder Loop
+            ae_int32 *p32_wsrc2 = (ae_int32 *)p_wsrc2;
+            ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+            ae_int32 *p32_dst = (ae_int32 *)p_dst;
             for(itr_wc=0; itr_wc < rem_wc; itr_wc++)
             {
               ae_int32x2 j1;
               ae_int32x2 wout1;
-              AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-              AE_L32_IP(j1, (ae_int32 *)p_wsrc2, 4);
-              wout1 = AE_ADD32S(wout1, j1);
-              AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+              AE_L32_IP(wout1, p32_src1, 4);
+              AE_L32_IP(j1, p32_wsrc2, 4);
+              wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, j1);
+              AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
             }
+            p_wsrc2 = (ae_int32x4 *)p32_wsrc2;
+            p_src1 = (ae_int32x4 *)p32_src1;
+            p_dst = (ae_int32x4 *)p32_dst;
           }
         }
         temp_inp_h = 1;
@@ -1104,27 +1184,35 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
                 AE_LA32X2X2_IP(wout1, wout2, align_src1, p_src1);
                 AE_LA32X2X2_IP(j1, k1, align_src2, p_wsrc2);
                 AE_LA32X2X2_IP(j2, k2, align_src3, p_wsrc3);
-                wj1 = AE_ADD32S(j1, j2);
-                wk1 = AE_ADD32S(k1, k2);
-                wout1 = AE_ADD32S(wout1, wj1);
-                wout2 = AE_ADD32S(wout2, wk1);
+                wj1 = SW_ADD32S_INT32X2_INT32X2(j1, j2);
+                wk1 = SW_ADD32S_INT32X2_INT32X2(k1, k2);
+                wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, wj1);
+                wout2 = SW_ADD32S_INT32X2_INT32X2(wout2, wk1);
                 AE_SA32X2X2_IP(wout1, wout2, align_dst, p_dst);
               }
               AE_SA128POS_FP(align_dst, p_dst); // finalize the stream
 
               //Remainder Loop
+              ae_int32 *p32_wsrc2 = (ae_int32 *)p_wsrc2;
+              ae_int32 *p32_wsrc3 = (ae_int32 *)p_wsrc3;
+              ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+              ae_int32 *p32_dst = (ae_int32 *)p_dst;
               for(itr_c=0; itr_c < rem_c; itr_c++)
               {
                 ae_int32x2 j1, j2;
                 ae_int32x2 wj1;
                 ae_int32x2 wout1;
-                AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-                AE_L32_IP(j1, (ae_int32 *)p_wsrc2, 4);
-                AE_L32_IP(j2, (ae_int32 *)p_wsrc3, 4);
-                wj1 = AE_ADD32S(j1, j2);
-                wout1 = AE_ADD32S(wout1, wj1);
-                AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+                AE_L32_IP(wout1, p32_src1, 4);
+                AE_L32_IP(j1, p32_wsrc2, 4);
+                AE_L32_IP(j2, p32_wsrc3, 4);
+                wj1 = SW_ADD32S_INT32X2_INT32X2(j1, j2);
+                wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, wj1);
+                AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
               }
+              p_wsrc2 = (ae_int32x4 *)p32_wsrc2;
+              p_wsrc3 = (ae_int32x4 *)p32_wsrc3;
+              //p_src1 = (ae_int32x4 *)p32_src1;
+              p_dst = (ae_int32x4 *)p32_dst;
               p_src1 = (ae_int32x4 *)(p_scratch + (itr_n * hc_plane_size) + (itr_h * temp_inp_c));
             }
 
@@ -1141,22 +1229,28 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
                 ae_int32x2 wout1, wout2;
                 AE_LA32X2X2_IP(wout1, wout2, align_src1, p_src1);
                 AE_LA32X2X2_IP(j1, k1, align_src2, p_wsrc2);
-                wout1 = AE_ADD32S(wout1, j1);
-                wout2 = AE_ADD32S(wout2, k1);
+                wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, j1);
+                wout2 = SW_ADD32S_INT32X2_INT32X2(wout2, k1);
                 AE_SA32X2X2_IP(wout1, wout2, align_dst, p_dst);
               }
               AE_SA128POS_FP(align_dst, p_dst); // finalize the stream
 
               //Remainder Loop
+              ae_int32 *p32_wsrc2 = (ae_int32 *)p_wsrc2;
+              ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+              ae_int32 *p32_dst = (ae_int32 *)p_dst;
               for(itr_c=0; itr_c < rem_c; itr_c++)
               {
                 ae_int32x2 j1;
                 ae_int32x2 wout1;
-                AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-                AE_L32_IP(j1, (ae_int32 *)p_wsrc2, 4);
-                wout1 = AE_ADD32S(wout1, j1);
-                AE_S32_L_IP(wout1, (ae_int32 *)p_dst, sizeof(WORD32));
+                AE_L32_IP(wout1, p32_src1, 4);
+                AE_L32_IP(j1, p32_wsrc2, 4);
+                wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, j1);
+                AE_S32_L_IP(wout1, p32_dst, sizeof(WORD32));
               }
+              p_wsrc2 = (ae_int32x4 *)p32_wsrc2;
+              p_src1 = (ae_int32x4 *)p32_src1;
+              p_dst = (ae_int32x4 *)p32_dst;
             }
           }
         }
@@ -1178,31 +1272,38 @@ static inline void xa_nn_reduce_sum_4D_asym8s_asym8s(const WORD8 * __restrict__ 
               p_dst = (ae_int32x4 *)(p_scratch + (itr_n * hw_plane_size) + (itr_h * temp_inp_w) + itr_w);
               align_src2 = AE_LA128_PP(p_wsrc2);
 
+              ae_int32 *p32_src1 = (ae_int32 *)p_src1; //
+              ae_int32 *p32_dst = (ae_int32 *)p_dst; //
               for(itr_c = 0; itr_c < ((temp_inp_c - 1) >> 2); itr_c++)
               {
                 ae_int32x2 j1, j2;
                 ae_int32x2 i1, i2;
                 ae_int32 out1, out2;
-                i1 = AE_L32_I((ae_int32 *)p_src1, 0);
+                i1 = AE_L32_I(p32_src1, 0);
                 AE_LA32X2X2_IP(j1, j2, align_src2, p_wsrc2);
-                out1 = AE_INT32X2_RADD(j1);
-                out2 = AE_INT32X2_RADD(j2);
-                i2 = AE_ADD32S(AE_MOVDA32(out1), AE_MOVDA32(out2));
-                i1 = AE_ADD32S(i1, i2);
-                AE_S32_L_I(i1, (ae_int32 *)p_dst, 0);
-                p_src1 = p_dst;
+                out1 = AE_MOVDA32(AE_INT32X2_RADD(j1));
+                out2 = AE_MOVDA32(AE_INT32X2_RADD(j2));
+                i2 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32(out1), AE_MOVF32X2_FROMINT32(out2)));
+                i1 = SW_ADD32S_INT32X2_INT32X2(i1, i2);
+                AE_S32_L_I(i1,p32_dst, 0);
+                p32_src1 = p32_dst;
               }
 
               //Remainder Loop
+              ae_int32 *p32_wsrc2 = (ae_int32 *)p_wsrc2;
+              
               for(itr_c=0; itr_c < rem_c; itr_c++)
               {
                 ae_int32x2 i1, j1;
-                i1 = AE_L32_I((ae_int32 *)p_src1, 0);
-                AE_L32_IP(j1, (ae_int32 *)p_wsrc2, 4);
-                i1 = AE_ADD32S(i1, j1);
-                AE_S32_L_I(i1, (ae_int32 *)p_dst, 0);
-                p_src1 = p_dst;
+                i1 = AE_L32_I(p32_src1, 0);
+                AE_L32_IP(j1, p32_wsrc2, 4);
+                i1 = SW_ADD32S_INT32X2_INT32X2(i1, j1);
+                AE_S32_L_I(i1, p32_dst, 0);
+                p32_src1 = p32_dst;
               }
+               p_wsrc2 = (ae_int32x4 *)p32_wsrc2;
+               p_src1 = (ae_int32x4 *)p32_src1;
+               p_dst = (ae_int32x4 *)p32_dst;
             }
           }
         }
@@ -1251,7 +1352,7 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
   for(axis_itr=0; axis_itr < num_axis_dims; axis_itr++)
   {
     XA_NNLIB_ARG_CHK_COND(((p_axis[axis_itr] < 0) || (p_axis[axis_itr] > (num_inp_dims - 1))), -1);
-    XA_NNLIB_ARG_CHK_COND((p_inp_shape[p_axis[axis_itr]] > 1024), -1);
+    //XA_NNLIB_ARG_CHK_COND((p_inp_shape[p_axis[axis_itr]] > 1024), -1);
    
     /* Avoid calculation in case of repeated axis dims*/
     if((!axis_itr) || (p_axis[axis_itr] != p_axis[axis_itr-1]))
@@ -1351,14 +1452,16 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
                                         num_axis_dims,
                                         p_scratch);
 
-      xtbool same_quant = (inp_zero_bias == out_zero_bias) && (out_multiplier == 0x40000000) && (out_shift == 1);
+      xtbool same_quant = AE_MOVBA((inp_zero_bias == out_zero_bias) && (out_multiplier == 0x40000000) && (out_shift == 1));
 
       int itr = 0;
       ae_int32x4 *p_src1 = (ae_int32x4 *)(p_scratch);
       ae_valign align_dst = AE_ZALIGN64();
 
-      if(same_quant)
+      if(AE_MOVAB(same_quant))
       {
+        
+        ae_int8x8 *p8x8_out = (ae_int8x8 *)p_out;
         for(itr = 0; itr < (out_length >> 3); itr++)
         {
           ae_int16x4 d0_out16, d1_out16;
@@ -1370,24 +1473,30 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
           d0_out16 = AE_SEL16I(AE_MOVINT16X4_FROMINT32X2(temp1), AE_MOVINT16X4_FROMINT32X2(temp2), 8);
           d1_out16 = AE_SEL16I(AE_MOVINT16X4_FROMINT32X2(temp3), AE_MOVINT16X4_FROMINT32X2(temp4), 8);
           d0_out8 = AE_SAT8X8X16(d0_out16, d1_out16);
-          AE_SA8X8_IP(d0_out8, align_dst, (ae_int8x8 *)p_out);
+          AE_SA8X8_IP(d0_out8, align_dst, p8x8_out);
         }
-        AE_SA64POS_FP(align_dst, p_out); // finalize the stream
+        AE_SA64POS_FP(align_dst, p8x8_out); // finalize the stream        
+        ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+        ae_int8 *p8_out = (ae_int8 *)p8x8_out;
+
         for(itr = 0; itr < (out_length & 7); itr++)
         {
           ae_int16x4 d0_out16;
           ae_int8x8 d0_out8;
           ae_int32x2 temp1;
 
-          AE_L32_IP(temp1, (ae_int32 *)p_src1, 4);
+          AE_L32_IP(temp1, p32_src1, 4);
           d0_out16 = AE_SAT16X4(temp1, temp1);
           d0_out8 = AE_SAT8X8X16(d0_out16, d0_out16);
-          AE_S8_0_IP(d0_out8, (ae_int8 *)p_out, 1);
+          AE_S8_0_IP(d0_out8, p8_out, 1);
         }
+        p_out = (WORD8*)p8_out;
       }
       else
       {
-        ae_int32x2 total_bias = AE_MOVDA32(-inp_zero_bias*num_elm_in_axis);
+        
+        ae_int32x2 total_bias = SW_MOVDA32(-inp_zero_bias*num_elm_in_axis);
+        ae_int8x8 *p8x8_out = (ae_int8x8 *)p_out;
         for(itr = 0; itr < (out_length >> 3); itr++)
         {
           ae_int32x2 wout1, wout2, wout3, wout4;
@@ -1396,49 +1505,54 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
 
           AE_L32X2X2_I(wout3, wout4, p_src1, 16);
           AE_L32X2X2_IP(wout1, wout2, p_src1, 32);
-          wout1 = AE_ADD32S(wout1, total_bias);
-          wout2 = AE_ADD32S(wout2, total_bias);
-          wout3 = AE_ADD32S(wout3, total_bias);
-          wout4 = AE_ADD32S(wout4, total_bias);
+          wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, total_bias);
+          wout2 = SW_ADD32S_INT32X2_INT32X2(wout2, total_bias);
+          wout3 = SW_ADD32S_INT32X2_INT32X2(wout3, total_bias);
+          wout4 = SW_ADD32S_INT32X2_INT32X2(wout4, total_bias);
 
           MPY_BY_QUANT_MULT_SLS_X2X2_OUT32(wout1, wout2, wout1, wout2, out_multiplier, left_shift, right_shift);
           d0_out16 = AE_SAT16X4(wout1, wout2);
-          d0_out16 = AE_ADD16S(AE_MOVDA16(out_zero_bias), d0_out16);
+          d0_out16 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(out_zero_bias)), AE_MOVF16X4_FROMINT16X4(d0_out16)));
           MPY_BY_QUANT_MULT_SLS_X2X2_OUT32(wout3, wout4, wout3, wout4, out_multiplier, left_shift, right_shift);
           d1_out16 = AE_SAT16X4(wout3, wout4);
-          d1_out16 = AE_ADD16S(AE_MOVDA16(out_zero_bias), d1_out16);
+          d1_out16 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(out_zero_bias)), AE_MOVF16X4_FROMINT16X4(d1_out16)));
 
           d0_out8 = AE_SAT8X8X16(d0_out16, d1_out16);
-          AE_SA8X8_IP(d0_out8, align_dst, (ae_int8x8 *)p_out);
+          AE_SA8X8_IP(d0_out8, align_dst, p8x8_out);
         }
-        AE_SA64POS_FP(align_dst, p_out); // finalize the stream
+        AE_SA64POS_FP(align_dst, p8x8_out); // finalize the stream        
+        ae_int32 *p32_src1 = (ae_int32 *)p_src1;
+        ae_int8 *p8_out = (ae_int8 *)p8x8_out;
         for(itr = 0; itr < (out_length & 7); itr++)
         {
           ae_int32x2 wout1;
           ae_int16x4 d0_out16;
           ae_int8x8 d0_out8;
 
-          AE_L32_IP(wout1, (ae_int32 *)p_src1, 4);
-          wout1 = AE_ADD32S(wout1, total_bias);
+          AE_L32_IP(wout1, p32_src1, 4);
+          wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, total_bias);
           
           MPY_BY_QUANT_MULT_SLS_X2_OUT32(wout1, wout1, out_multiplier, left_shift, right_shift);
           d0_out16 = AE_SAT16X4(wout1, wout1);
-          d0_out16 = AE_ADD16S(AE_MOVDA16(out_zero_bias), d0_out16);
+          d0_out16 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(out_zero_bias)), AE_MOVF16X4_FROMINT16X4(d0_out16)));
 
           d0_out8 = AE_SAT8X8X16(d0_out16, d0_out16);
-          AE_S8_0_IP(d0_out8, (ae_int8 *)p_out, 1);
+          AE_S8_0_IP(d0_out8, p8_out, 1);
         }
+        p_out = (WORD8*)p8_out;
       }
     }
     else
     {
-      xtbool same_quant = (inp_zero_bias == out_zero_bias) && (out_multiplier == 0x40000000) && (out_shift == 1);
+      xtbool same_quant = AE_MOVBA((inp_zero_bias == out_zero_bias) && (out_multiplier == 0x40000000) && (out_shift == 1));
 
       int itr = 0;
-      ae_valignx2 align_inp = AE_LA128_PP(p_in);
+      ae_int8x16 *p8x16_in = (ae_int8x16 *)p_in;
+      ae_int8x16 *p8x16_out = (ae_int8x16 *)p_out;
+      ae_valignx2 align_inp = AE_LA128_PP(p8x16_in);
       ae_valignx2 align_dst = AE_ZALIGN128();
-
-      if(same_quant)
+      //ae_int32x2 out_multiplier = SW_MOVDA32(out_t_multiplier);
+      if(AE_MOVAB(same_quant))
       {
         memcpy(p_out, p_inp, inp_length); //TODO: Alternate approach?
       }
@@ -1455,7 +1569,7 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
           ae_int32x2 temp1, temp2, temp3, temp4;
           ae_int32x2 temp5, temp6, temp7, temp8;
 
-          AE_LA8X8X2_IP(wout1, wout2, align_inp, (ae_int8x16 *)p_in);
+          AE_LA8X8X2_IP(wout1, wout2, align_inp, p8x16_in);
           AE_SUBW8(d0_out16, d1_out16, wout1, total_bias);
           AE_SUBW8(d2_out16, d3_out16, wout2, total_bias);
          
@@ -1471,7 +1585,7 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
 
           d0_out8 = AE_SAT8X8X16(d0_out16, d1_out16);
           d1_out8 = AE_SAT8X8X16(d2_out16, d3_out16);
-          AE_SA8X8X2_IP(d0_out8, d1_out8, align_dst, (ae_int8x16 *)p_out);
+          AE_SA8X8X2_IP(d0_out8, d1_out8, align_dst, p8x16_out);
         }
         if(out_length & 15)
         {
@@ -1481,7 +1595,7 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
           ae_int32x2 temp1, temp2, temp3, temp4;
           ae_int32x2 temp5, temp6, temp7, temp8;
 
-          AE_LAV8X8X2_XP(wout1, wout2, align_inp, (ae_int8x16 *)p_in, rem_out);
+          AE_LAV8X8X2_XP(wout1, wout2, align_inp, p8x16_in, rem_out);
           AE_SUBW8(d0_out16, d1_out16, wout1, total_bias);
           AE_SUBW8(d2_out16, d3_out16, wout2, total_bias);
          
@@ -1499,11 +1613,12 @@ WORD32 xa_nn_reduce_mean_4D_asym8s_asym8s(WORD8 * __restrict__ p_out
           d1_out8 = AE_SAT8X8X16(d2_out16, d3_out16);
 
 
-          AE_SAV8X8X2_XP(d0_out8, d1_out8, align_dst, (ae_int8x16 *)p_out, rem_out);
+          AE_SAV8X8X2_XP(d0_out8, d1_out8, align_dst, p8x16_out, rem_out);
         }
-        AE_SA128POS_FP(align_dst, p_out); // finalize the stream
+        AE_SA128POS_FP(align_dst, p8x16_out); // finalize the stream
       }
-
+      p_in = (WORD8 *)p8x16_in;
+      p_out = (WORD8 *)p8x16_out;
     }
   }
   else

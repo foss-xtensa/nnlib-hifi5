@@ -116,6 +116,7 @@ WORD32 xa_nn_split_v_8_8(WORD8 ** __restrict__ pp_outs
       WORD32 copy_size = pp_outs_shape[j][axis] * base_inner_size;
       if(copy_size <= 16)
       {
+        ae_int8x16* output8x16_ptr = (ae_int8x16*)output_ptr;
         ae_int8x8 d_inp1, d_inp2;
         ae_valignx2 input_valign, output_valign;
         output_valign = AE_ZALIGN128();
@@ -126,9 +127,9 @@ WORD32 xa_nn_split_v_8_8(WORD8 ** __restrict__ pp_outs
           ae_int8x16 *input_ptr = (ae_int8x16*) (p_inp + next_inp_idx + i* inp_axis * base_inner_size);
           input_valign = AE_LA128_PP((ae_int8x16 *)input_ptr);
           AE_LAV8X8X2_XP(d_inp1, d_inp2, input_valign, input_ptr, copy_size);
-          AE_SAV8X8X2_XP(d_inp1, d_inp2, output_valign, (ae_int8x16*)output_ptr, copy_size);
+          AE_SAV8X8X2_XP(d_inp1, d_inp2, output_valign, output8x16_ptr, copy_size);
         }
-        AE_SA128POS_FP(output_valign, (void *)output_ptr);
+        AE_SA128POS_FP(output_valign, (void *)output8x16_ptr);
       }
       else
       {

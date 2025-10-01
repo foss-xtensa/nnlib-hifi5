@@ -68,8 +68,8 @@ const WORD8* __restrict__ p_inp,
     int itr_oh, itr_ow;
     int left_pad_aligned, right_pad, total_out_width, scratch_width;
     ae_int8x8 * p_src1, * p_src2, * p_src3;
-    ae_int8x8 * __restrict p_src1_temp, * __restrict p_src2_temp, * __restrict p_src3_temp;
-    ae_int8x8 *p_dst, *p_dst_temp;
+    ae_int8x16 * __restrict p_src1_temp, * __restrict p_src2_temp, * __restrict p_src3_temp;
+    ae_int8x16 *p_dst, *p_dst_temp;
     ae_valignx2 align_s1, align_s2, align_s3;
     int i;
     WORD8 *p_dst_pad;
@@ -109,7 +109,7 @@ const WORD8* __restrict__ p_inp,
 
         pool_height = end_row - start_row;
 
-        p_dst = (ae_int8x8 *)((WORD8 *)p_scratch + left_pad_aligned);
+        p_dst = (ae_int8x16 *)((WORD8 *)p_scratch + left_pad_aligned);
 
         if(pool_height)
         {
@@ -127,9 +127,9 @@ const WORD8* __restrict__ p_inp,
             do
             {
                 p_dst_temp = p_dst;
-                p_src1_temp = p_src1;
-                p_src2_temp = p_src2;
-                p_src3_temp = p_src3;
+                p_src1_temp = (ae_int8x16*)p_src1;
+                p_src2_temp = (ae_int8x16*)p_src2;
+                p_src3_temp = (ae_int8x16*)p_src3;
 
                 /* prime */
                 align_s1 = AE_LA128_PP(p_src1_temp);
@@ -142,16 +142,16 @@ const WORD8* __restrict__ p_inp,
                     ae_int8x8 i1, i2, i3, temp;
                     ae_int8x8 j1, j2, j3;
 
-                    AE_LA8X8X2_IP(i1, j1, align_s1, (ae_int8x16 *)p_src1_temp);
-                    AE_LA8X8X2_IP(i2, j2, align_s2, (ae_int8x16 *)p_src2_temp);
-                    AE_LA8X8X2_IP(i3, j3, align_s3, (ae_int8x16 *)p_src3_temp);
+                    AE_LA8X8X2_IP(i1, j1, align_s1, p_src1_temp);
+                    AE_LA8X8X2_IP(i2, j2, align_s2, p_src2_temp);
+                    AE_LA8X8X2_IP(i3, j3, align_s3, p_src3_temp);
 
                     temp = AE_MAX8(i2, i3);
                     i2 = AE_MAX8(temp, i1);
                     temp = AE_MAX8(j2, j3);
                     j2 = AE_MAX8(temp, j1);
 
-                    AE_S8X8X2_IP(i2, j2, (ae_int8x16 *)p_dst_temp, 16);
+                    AE_S8X8X2_IP(i2, j2, p_dst_temp, 16);
                 }
 
                 /* remainder loop for input_width */
@@ -161,23 +161,23 @@ const WORD8* __restrict__ p_inp,
                 ae_valignx2 align_dst;
                 align_dst = AE_ZALIGN128();                 
 
-                AE_LAV8X8X2_XP(i1, j1, align_s1, (ae_int8x16 *)p_src1_temp, rem_itr);
-                AE_LAV8X8X2_XP(i2, j2, align_s2, (ae_int8x16 *)p_src2_temp, rem_itr);
-                AE_LAV8X8X2_XP(i3, j3, align_s3, (ae_int8x16 *)p_src3_temp, rem_itr);
+                AE_LAV8X8X2_XP(i1, j1, align_s1, p_src1_temp, rem_itr);
+                AE_LAV8X8X2_XP(i2, j2, align_s2, p_src2_temp, rem_itr);
+                AE_LAV8X8X2_XP(i3, j3, align_s3, p_src3_temp, rem_itr);
 
                 temp = AE_MAX8(i2, i3);
                 i2 = AE_MAX8(temp, i1);
                 temp = AE_MAX8(j2, j3);
                 j2 = AE_MAX8(temp, j1);
 
-                AE_SAV8X8X2_XP(i2, j2, align_dst, (ae_int8x16 *)p_dst_temp, rem_itr);
+                AE_SAV8X8X2_XP(i2, j2, align_dst, p_dst_temp, rem_itr);
                 AE_SA128POS_FP(align_dst, p_dst_temp);                  
 
 
                 if(!pool_height)
                     break;
 
-                p_src1 = p_dst;
+                p_src1 = (ae_int8x8 *)p_dst;
 
                 p_src2 = p_src3;
                 INCR_ROW_IF_HEIGHT(p_src2, pool_height);
@@ -202,7 +202,7 @@ const WORD8* __restrict__ p_inp,
         /* On scratch, compare width-wise with padding*/
         total_out_width = ALIGNED_SIZE(left_pad_aligned + input_width + right_pad + kernel_width, ALIGNMENT/sizeof(WORD8));
         scratch_width = x_padding + input_width + right_pad;
-        p_dst = (ae_int8x8 *)((WORD8 *)p_scratch + total_out_width);
+        p_dst = (ae_int8x16 *)((WORD8 *)p_scratch + total_out_width);
         pool_width = kernel_width;
 
         p_src1 = (ae_int8x8 *)((WORD8 *)p_scratch + left_pad_aligned - x_padding);
@@ -217,9 +217,9 @@ const WORD8* __restrict__ p_inp,
         do
         {
             p_dst_temp = p_dst;
-            p_src1_temp = p_src1;
-            p_src2_temp = p_src2;
-            p_src3_temp = p_src3;
+            p_src1_temp = (ae_int8x16*)p_src1;
+            p_src2_temp = (ae_int8x16*)p_src2;
+            p_src3_temp = (ae_int8x16*)p_src3;
 
             /* prime */
             align_s1 = AE_LA128_PP(p_src1_temp);
@@ -231,16 +231,16 @@ const WORD8* __restrict__ p_inp,
                 ae_int8x8 src1, src2, src3, temp;
                 ae_int8x8 j1, j2, j3;
 
-                AE_LA8X8X2_IP(src1, j1, align_s1, (ae_int8x16 *)p_src1_temp);
-                AE_LA8X8X2_IP(src2, j2, align_s2, (ae_int8x16 *)p_src2_temp);
-                AE_LA8X8X2_IP(src3, j3, align_s3, (ae_int8x16 *)p_src3_temp);
+                AE_LA8X8X2_IP(src1, j1, align_s1, p_src1_temp);
+                AE_LA8X8X2_IP(src2, j2, align_s2, p_src2_temp);
+                AE_LA8X8X2_IP(src3, j3, align_s3, p_src3_temp);
 
                 temp = AE_MAX8(src2, src3);
                 src2 = AE_MAX8(temp, src1);
                 temp = AE_MAX8(j2, j3);
                 j2 = AE_MAX8(temp, j1);
 
-                AE_S8X8X2_IP(src2, j2, (ae_int8x16 *)p_dst_temp, 16);
+                AE_S8X8X2_IP(src2, j2, p_dst_temp, 16);
             }
 
             /* remainder loop for scratch_width */
@@ -251,16 +251,16 @@ const WORD8* __restrict__ p_inp,
             ae_valignx2 align_dst;
             align_dst = AE_ZALIGN128();                 
 
-            AE_LAV8X8X2_XP(src1, j1, align_s1, (ae_int8x16 *)p_src1_temp, rem_itr);
-            AE_LAV8X8X2_XP(src2, j2, align_s2, (ae_int8x16 *)p_src2_temp, rem_itr);
-            AE_LAV8X8X2_XP(src3, j3, align_s3, (ae_int8x16 *)p_src3_temp, rem_itr);
+            AE_LAV8X8X2_XP(src1, j1, align_s1, p_src1_temp, rem_itr);
+            AE_LAV8X8X2_XP(src2, j2, align_s2, p_src2_temp, rem_itr);
+            AE_LAV8X8X2_XP(src3, j3, align_s3, p_src3_temp, rem_itr);
 
             temp = AE_MAX8(src2, src3);
             src2 = AE_MAX8(temp, src1);
             temp = AE_MAX8(j2, j3);
             j2 = AE_MAX8(temp, j1);
 
-            AE_SAV8X8X2_XP(src2, j2, align_dst, (ae_int8x16 *)p_dst_temp, rem_itr); 
+            AE_SAV8X8X2_XP(src2, j2, align_dst, p_dst_temp, rem_itr); 
             AE_SA128POS_FP(align_dst, p_dst_temp);              
 
 
@@ -268,7 +268,7 @@ const WORD8* __restrict__ p_inp,
                 break;
 
             /* Setup next iteration */
-            p_src1 = p_dst;
+            p_src1 = (ae_int8x8 *)p_dst;
             p_src2 = p_src3;
             INC_1_IF_WIDTH(p_src2, pool_width);
             p_src3 = p_src2;

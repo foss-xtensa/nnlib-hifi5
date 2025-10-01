@@ -20,6 +20,15 @@
 
 ******************************************************************************/
 
+#if defined(__cplusplus)
+  extern "C"
+{
+#endif
+extern const int inv_256_tbl[1025];
+#if defined(__cplusplus)
+}
+#endif
+
 #define FIX_INV_Q31(x)  (int)((((unsigned int)1<<31)/((double)x)) + (double)0.999999)
 
 /* 1/num in Q31 format for num = 0 - 1024 */

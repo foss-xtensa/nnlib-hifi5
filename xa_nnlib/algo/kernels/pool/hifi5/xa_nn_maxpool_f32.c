@@ -70,8 +70,7 @@ static void maxpool_f32(
     int itr_oh, itr_ow;
     int left_pad_aligned, right_pad, total_out_width, scratch_width;
     const xtfloatx2 * p_src1, * p_src2, * p_src3;
-    const xtfloatx2 * __restrict p_src1_temp, * __restrict p_src2_temp, * __restrict p_src3_temp;
-    xtfloatx2 *p_dst, *p_dst_temp;
+    xtfloatx2 *p_dst;
     ae_valignx2 align_src1, align_src2, align_src3;
     int i;
     FLOAT32 *p_dst_pad;
@@ -129,57 +128,59 @@ static void maxpool_f32(
             /* Compare three rows per iteration */
             do
             {
-                p_dst_temp = p_dst;
-                p_src1_temp = p_src1;
-                p_src2_temp = p_src2;
-                p_src3_temp = p_src3;
-
+                const xtfloatx4 * __restrict  px4_src1_temp = (const xtfloatx4 *)p_src1;
+                const xtfloatx4 * __restrict  px4_src2_temp = (const xtfloatx4 *)p_src2;
+                const xtfloatx4 * __restrict  px4_src3_temp = (const xtfloatx4 *)p_src3;
+                xtfloatx4 *px4_dst_temp = (xtfloatx4 *)p_dst;
                 /* prime */
-                align_src1 = AE_LA128_PP(p_src1_temp);
-                align_src2 = AE_LA128_PP(p_src2_temp);
-                align_src3 = AE_LA128_PP(p_src3_temp);
+                align_src1 = AE_LA128_PP(px4_src1_temp);
+                align_src2 = AE_LA128_PP(px4_src2_temp);
+                align_src3 = AE_LA128_PP(px4_src3_temp);
 
                 for(i = 0; i < (input_width >> 2); i++)
                 {
                     xtfloatx2 temp, i1, i2, i3;
                     xtfloatx2 j1, j2, j3;
 
-                    AE_LASX2X2_IP(i1, j1, align_src1, (const xtfloatx4 *)p_src1_temp);
-                    AE_LASX2X2_IP(i2, j2, align_src2, (const xtfloatx4 *)p_src2_temp);
-                    AE_LASX2X2_IP(i3, j3, align_src3, (const xtfloatx4 *)p_src3_temp);
+                    AE_LASX2X2_IP(i1, j1, align_src1, px4_src1_temp);
+                    AE_LASX2X2_IP(i2, j2, align_src2, px4_src2_temp);
+                    AE_LASX2X2_IP(i3, j3, align_src3, px4_src3_temp);
 
                     temp = XT_MAX_SX2(i1, i2);
                     i1 = XT_MAX_SX2(temp, i3);
                     temp = XT_MAX_SX2(j1, j2);
                     j1 = XT_MAX_SX2(temp, j3);
 
-                    AE_SSX2X2_IP(i1, j1, (xtfloatx4 *)p_dst_temp, 16);
+                    AE_SSX2X2_IP(i1, j1, px4_dst_temp, 16);
                 }
-
+                xtfloat * pxtf_dst_temp =  (xtfloat *)px4_dst_temp;
+                const xtfloat * __restrict pxtf_src1_temp = (const xtfloat *)px4_src1_temp;
+                const xtfloat * __restrict pxtf_src2_temp = (const xtfloat *)px4_src2_temp;
+                const xtfloat * __restrict pxtf_src3_temp = (const xtfloat *)px4_src3_temp;
                 /* reminder loop for input_width */
                 for(i = 0; i < (input_width & 3); i++)
                 {
 #if 1
                     xtfloatx2 temp, i1, i2, i3, out;
-                    i1 = ((const FLOAT32 *)p_src1_temp)[i];
-                    i2 = ((const FLOAT32 *)p_src2_temp)[i];
-                    i3 = ((const FLOAT32 *)p_src3_temp)[i];
+                    i1 = AE_MOVXTFLOATX2_FROMXTFLOAT(pxtf_src1_temp[i]);
+                    i2 = AE_MOVXTFLOATX2_FROMXTFLOAT(pxtf_src2_temp[i]);
+                    i3 = AE_MOVXTFLOATX2_FROMXTFLOAT(pxtf_src3_temp[i]);
 
                     temp = XT_MAX_SX2(i1, i2);
                     out = XT_MAX_SX2(temp, i3);
 
-                    ((FLOAT32 *)p_dst_temp)[i] = out;
+                    pxtf_dst_temp[i] = AE_MOVXTFLOAT_FROMXTFLOATX2(out);
 #else
                     xtfloat temp, i1, i2, i3, out;
 
-                    XT_LSIP(i1, (const xtfloat *)p_src1_temp, sizeof(xtfloat));
-                    XT_LSIP(i2, (const xtfloat *)p_src2_temp, sizeof(xtfloat));
-                    XT_LSIP(i3, (const xtfloat *)p_src3_temp, sizeof(xtfloat));
+                    XT_LSIP(i1, pxtf_src1_temp, sizeof(xtfloat));
+                    XT_LSIP(i2, pxtf_src2_temp, sizeof(xtfloat));
+                    XT_LSIP(i3, pxtf_src3_temp, sizeof(xtfloat));
 
                     temp = XT_MAX_S(i1, i2);
                     out  = XT_MAX_S(temp, i3);
 
-                    XT_SSIP(i1, (xtfloat *)p_dst_temp, sizeof(xtfloat));
+                    XT_SSIP(i1, pxtf_dst_temp, sizeof(xtfloat));
 #endif
                 }
 
@@ -226,57 +227,60 @@ static void maxpool_f32(
 
         do
         {
-            p_dst_temp = p_dst;
-            p_src1_temp = p_src1;
-            p_src2_temp = p_src2;
-            p_src3_temp = p_src3;
-
+            const xtfloatx4 * __restrict px4_src1_temp = (const xtfloatx4 *)p_src1;
+            const xtfloatx4 * __restrict px4_src2_temp = (const xtfloatx4 *)p_src2;
+            const xtfloatx4 * __restrict px4_src3_temp = (const xtfloatx4 *)p_src3;
+            xtfloatx4 *px4_dst_temp = (xtfloatx4 *)p_dst;
             /* prime */
-            align_src1 = AE_LA128_PP(p_src1_temp);
-            align_src2 = AE_LA128_PP(p_src2_temp);
-            align_src3 = AE_LA128_PP(p_src3_temp);
+            align_src1 = AE_LA128_PP(px4_src1_temp);
+            align_src2 = AE_LA128_PP(px4_src2_temp);
+            align_src3 = AE_LA128_PP(px4_src3_temp);
 
             for(i = 0; i < (scratch_width >> 2); i++)
             {
                 xtfloatx2 temp , src1, src2, src3;
                 xtfloatx2 j1, j2, j3;
 
-                AE_LASX2X2_IP(src1, j1, align_src1, (const xtfloatx4 *)p_src1_temp);
-                AE_LASX2X2_IP(src2, j2, align_src2, (const xtfloatx4 *)p_src2_temp);
-                AE_LASX2X2_IP(src3, j3, align_src3, (const xtfloatx4 *)p_src3_temp);
+                AE_LASX2X2_IP(src1, j1, align_src1, px4_src1_temp);
+                AE_LASX2X2_IP(src2, j2, align_src2, px4_src2_temp);
+                AE_LASX2X2_IP(src3, j3, align_src3, px4_src3_temp);
 
                 temp = XT_MAX_SX2(src1, src2);
                 src1 = XT_MAX_SX2(temp, src3);
                 temp = XT_MAX_SX2(j1, j2);
                 j1 = XT_MAX_SX2(temp, j3);
 
-                AE_SSX2X2_IP(src1, j1, (xtfloatx4 *)p_dst_temp, 16);
+                AE_SSX2X2_IP(src1, j1, px4_dst_temp, 16);
             }
 
+             xtfloat * pxtf_dst_temp =  (xtfloat *)px4_dst_temp;
+             const xtfloat * __restrict pxtf_src1_temp = (const xtfloat *)px4_src1_temp;
+             const xtfloat * __restrict pxtf_src2_temp = (const xtfloat *)px4_src2_temp;
+             const xtfloat * __restrict pxtf_src3_temp = (const xtfloat *)px4_src3_temp;
             /* reminder loop for scratch_width */
              for(i = 0; i < (scratch_width & 3); i++)
              {
 #if 1
                 xtfloatx2 temp , src1, src2, src3, out;
 
-                src1 = ((const FLOAT32 *)p_src1_temp)[i];
-                src2 = ((const FLOAT32 *)p_src2_temp)[i];
-                src3 = ((const FLOAT32 *)p_src3_temp)[i];
+                src1 = AE_MOVXTFLOATX2_FROMXTFLOAT(pxtf_src1_temp[i]);
+                src2 = AE_MOVXTFLOATX2_FROMXTFLOAT(pxtf_src2_temp[i]);
+                src3 = AE_MOVXTFLOATX2_FROMXTFLOAT(pxtf_src3_temp[i]);
 
                 temp = XT_MAX_SX2(src1, src2);
                 out = XT_MAX_SX2(temp, src3);
-                ((FLOAT32 *)p_dst_temp)[i] = out;
+                pxtf_dst_temp[i] = AE_MOVXTFLOAT_FROMXTFLOATX2(out);
 #else
                 xtfloat temp, i1, i2, i3, out;
 
-                XT_LSIP(i1, (const xtfloat *)p_src1_temp, sizeof(xtfloat));
-                XT_LSIP(i2, (const xtfloat *)p_src2_temp, sizeof(xtfloat));
-                XT_LSIP(i3, (const xtfloat *)p_src3_temp, sizeof(xtfloat));
+                XT_LSIP(i1, pxtf_src1_temp, sizeof(xtfloat));
+                XT_LSIP(i2, pxtf_src2_temp, sizeof(xtfloat));
+                XT_LSIP(i3, pxtf_src3_temp, sizeof(xtfloat));
 
                 temp = XT_MAX_S(i1, i2);
                 out  = XT_MAX_S(temp, i3);
 
-                XT_SSIP(i1, (xtfloat *)p_dst_temp, sizeof(xtfloat));
+                XT_SSIP(i1, pxtf_dst_temp, sizeof(xtfloat));
 #endif
              }
 

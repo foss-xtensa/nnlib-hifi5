@@ -79,29 +79,33 @@ void xa_nnlib_vec_reluf     (float32_t * y, const float32_t * x, float32_t K, in
     ae_valignx2 aX,aY;
     const xtfloatx4* restrict pX=(const xtfloatx4*)x;
           xtfloatx4* restrict pY=(      xtfloatx4*)y;
-    xtfloatx2 zero=XT_CONST_S(0);
+    xtfloatx2 zero=XT_CONST_SX2(0);
     if (N<=7)
     {
+    xtfloat* pX_t = castxcc(xtfloat,pX);
+    xtfloat* pY_t = castxcc(xtfloat,pY);
         __Pragma("no_unroll")
         __Pragma("loop_count max=7")
         for (n=0; n<N; n++)
         {
             xtfloat t;
-            XT_LSIP(t,castxcc(xtfloat,pX),sizeof(xtfloat));
-            t=XT_MIN_S(K,t);
-            t=XT_MAX_S(t,zero);
-            XT_SSIP(t,castxcc(xtfloat,pY),sizeof(xtfloat));
+            XT_LSIP(t,pX_t,sizeof(xtfloat));
+            t=XT_MIN_S(*(xtfloat*)&(K),t);
+            t=XT_MAX_S(t,AE_MOVXTFLOAT_FROMXTFLOATX2(zero));
+            XT_SSIP(t,pY_t,sizeof(xtfloat));
         }
+        pX = (xtfloatx4*)pX_t;
+        pY = (xtfloatx4*)pY_t;
         return;
     }
     aX=AE_LA128_PP(pX);
     aY=AE_ZALIGN128();
     AE_LASX2X2_IP(x0,x1,aX,pX);
     AE_LASX2X2_IP(x2,x3,aX,pX);
-    x0=XT_MAX_SX2(XT_MIN_SX2(K,x0),zero);
-    x1=XT_MAX_SX2(XT_MIN_SX2(K,x1),zero);
-    x2=XT_MAX_SX2(XT_MIN_SX2(K,x2),zero);
-    x3=XT_MAX_SX2(XT_MIN_SX2(K,x3),zero);
+    x0=XT_MAX_SX2(XT_MIN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&K),x0),zero);
+    x1=XT_MAX_SX2(XT_MIN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&K),x1),zero);
+    x2=XT_MAX_SX2(XT_MIN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&K),x2),zero);
+    x3=XT_MAX_SX2(XT_MIN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&K),x3),zero);
     AE_SASX2X2_IP(x0,x1,aY,pY);
     AE_SASX2X2_IP(x2,x3,aY,pY);
     AE_SA128POS_FP(aY,pY);
@@ -115,10 +119,10 @@ void xa_nnlib_vec_reluf     (float32_t * y, const float32_t * x, float32_t K, in
     {
         AE_LASX2X2_IP(x0,x1,aX,pX);
         AE_LASX2X2_IP(x2,x3,aX,pX);
-        x0=XT_MAX_SX2(XT_MIN_SX2(K,x0),zero);
-        x1=XT_MAX_SX2(XT_MIN_SX2(K,x1),zero);
-        x2=XT_MAX_SX2(XT_MIN_SX2(K,x2),zero);
-        x3=XT_MAX_SX2(XT_MIN_SX2(K,x3),zero);
+        x0=XT_MAX_SX2(XT_MIN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&K),x0),zero);
+        x1=XT_MAX_SX2(XT_MIN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&K),x1),zero);
+        x2=XT_MAX_SX2(XT_MIN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&K),x2),zero);
+        x3=XT_MAX_SX2(XT_MIN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&K),x3),zero);
         AE_SASX2X2_IP(x0,x1,aY,pY);
         AE_SASX2X2_IP(x2,x3,aY,pY);
     }

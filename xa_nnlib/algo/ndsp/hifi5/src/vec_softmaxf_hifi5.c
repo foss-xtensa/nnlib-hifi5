@@ -46,6 +46,8 @@
 #include "xa_nnlib_common_fpu.h"
 #include "../include/inff_tbl.h"
 #include "../include/nanf_tbl.h"
+
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
 /*-------------------------------------------------------------------------
   Softmax
   The function computes the softmax (normalized exponential function) of 
@@ -94,7 +96,7 @@ void xa_nnlib_vec_softmaxf    (float32_t * y, const float32_t * x,int N)
     {
         xtfloat xmax,ysum;
         /* compute maximum of x */
-        xmax=xa_nnlib_minusInff.f;
+        xmax= *(xtfloat*)&(xa_nnlib_minusInff.f);
         px=(const xtfloat *)x;
         py=(      xtfloat *)y;
         __Pragma("loop_count min=1,max=7")
@@ -145,10 +147,10 @@ void xa_nnlib_vec_softmaxf    (float32_t * y, const float32_t * x,int N)
     NASSERT(N>=8);
     N0=((N-1)&7)+1;
     N-=N0;
-    b01=AE_LT32(s01,N0);    // mask unnessesary elements on the first iteration
-    b23=AE_LT32(s23,N0);
-    b45=AE_LT32(s45,N0);
-    b67=AE_LT32(s67,N0);
+    b01=AE_LT32(s01,SW_MOVDA32(N0));    // mask unnessesary elements on the first iteration
+    b23=AE_LT32(s23,SW_MOVDA32(N0));
+    b45=AE_LT32(s45,SW_MOVDA32(N0));
+    b67=AE_LT32(s67,SW_MOVDA32(N0));
 
     /* compute maximum of x */
     {
@@ -187,10 +189,10 @@ void xa_nnlib_vec_softmaxf    (float32_t * y, const float32_t * x,int N)
             AE_LASX2X2_IP(x2,x3,aX,pX);
             MOV_SX2X2(y0,y1,xmax,xmax);
             MOV_SX2X2(y2,y3,xmax,xmax);
-            XT_MOVF_SX2(y0,0,b01);
-            XT_MOVF_SX2(y1,0,b23);
-            XT_MOVF_SX2(y2,0,b45);
-            XT_MOVF_SX2(y3,0,b67);
+            XT_MOVF_SX2(y0,XT_CONST_SX2(0),b01);
+            XT_MOVF_SX2(y1,XT_CONST_SX2(0),b23);
+            XT_MOVF_SX2(y2,XT_CONST_SX2(0),b45);
+            XT_MOVF_SX2(y3,XT_CONST_SX2(0),b67);
             SUB_SX2X2(x0,x1,x0,x1,y0,y1);
             SUB_SX2X2(x2,x3,x2,x3,y2,y3);
             AE_SASX2X2_IP(x0,x1,aY,pY);
@@ -223,10 +225,10 @@ void xa_nnlib_vec_softmaxf    (float32_t * y, const float32_t * x,int N)
             AE_LASX2X2_IP(x2,x3,aY,pY);
             CONST_SX2X2(s0,s1,0);
             CONST_SX2X2(s2,s3,0);
-            XT_MOVF_SX2(x0,0,b01);
-            XT_MOVF_SX2(x1,0,b23);
-            XT_MOVF_SX2(x2,0,b45);
-            XT_MOVF_SX2(x3,0,b67);
+            XT_MOVF_SX2(x0,XT_CONST_SX2(0),b01);
+            XT_MOVF_SX2(x1,XT_CONST_SX2(0),b23);
+            XT_MOVF_SX2(x2,XT_CONST_SX2(0),b45);
+            XT_MOVF_SX2(x3,XT_CONST_SX2(0),b67);
             ADD_SX2X2(s0,s1,x0,x1,s0,s1);
             ADD_SX2X2(s2,s3,x2,x3,s2,s3);
             AE_SA128POS_FP(aY,pY);
@@ -244,7 +246,7 @@ void xa_nnlib_vec_softmaxf    (float32_t * y, const float32_t * x,int N)
             ysum=ADD_HL_LH_S(s0,s0);
         }
         /* normalize output */
-        ysum=XT_RECIP_S(ysum);
+        ysum=AE_MOVXTFLOATX2_FROMXTFLOAT(XT_RECIP_S(AE_MOVXTFLOAT_FROMXTFLOATX2(ysum)));
         __Pragma("no_reorder")
         pX=(xtfloatx4*)y;
         pY=(xtfloatx4*)y;
@@ -258,10 +260,10 @@ void xa_nnlib_vec_softmaxf    (float32_t * y, const float32_t * x,int N)
             AE_LASX2X2_IP(x2,x3,aX,pX);
             MOV_SX2X2(y0,y1,ysum,ysum);
             MOV_SX2X2(y2,y3,ysum,ysum);
-            XT_MOVF_SX2(y0,XT_CONST_S(1),b01);
-            XT_MOVF_SX2(y1,XT_CONST_S(1),b23);
-            XT_MOVF_SX2(y2,XT_CONST_S(1),b45);
-            XT_MOVF_SX2(y3,XT_CONST_S(1),b67);
+            XT_MOVF_SX2(y0,XT_CONST_SX2(1),b01);
+            XT_MOVF_SX2(y1,XT_CONST_SX2(1),b23);
+            XT_MOVF_SX2(y2,XT_CONST_SX2(1),b45);
+            XT_MOVF_SX2(y3,XT_CONST_SX2(1),b67);
             MUL_SX2X2(x0,x1,x0,x1,y0,y1);
             MUL_SX2X2(x2,x3,x2,x3,y2,y3);
             AE_SASX2X2_IP(x0,x1,aY,pY);

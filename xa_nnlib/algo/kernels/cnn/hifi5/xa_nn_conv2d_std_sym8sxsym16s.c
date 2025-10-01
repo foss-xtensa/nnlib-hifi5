@@ -58,7 +58,7 @@ static WORD32 conv_x_left_pad(
       ae_int64 q1;
       for (k = 0; k < out_channels; k++)
       {
-        q1 = 0;
+        q1 = ZERO64;
         if (pbias != NULL)
         {
           AE_L64_IP(q1, pbias, 8);
@@ -108,7 +108,7 @@ static WORD32 conv_x_right_pad(
       ae_int64 q1;
       for (k = 0; k < out_channels; k++)
       {
-        q1 = 0;
+        q1 = ZERO64;
         if (pbias != NULL)
         {
           AE_L64_IP(q1, pbias, 8);
@@ -128,7 +128,7 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_ow4(
     WORD16 *__restrict__ p_out,
     const WORD16 *__restrict__ p_inp,
     const WORD8 *__restrict__ p_kernel,
-    const WORD64 *__restrict__ p_bias,
+    const WORD64 *__restrict__ pt_bias,
     WORD32 input_height,
     WORD32 input_width,
     WORD32 input_channels,
@@ -149,11 +149,11 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_ow4(
     WORD32 out_activation_min,
     WORD32 out_activation_max)
 {
-
-  const WORD16 *p_dst0_0 = p_out + 0;
-  const WORD16 *p_dst1_0 = p_out + out_channels + 0;
-  const WORD16 *p_dst2_0 = p_out + 2 * out_channels + 0;
-  const WORD16 *p_dst3_0 = p_out + 3 * out_channels + 0;
+  ae_int64* p_bias = (ae_int64 *)pt_bias;
+  ae_int16x4 *p_dst0_0 = (ae_int16x4 *)((WORD16 *)p_out + 0);
+  ae_int16x4 *p_dst1_0 = (ae_int16x4 *)((WORD16 *)p_out + out_channels + 0);
+  ae_int16x4 *p_dst2_0 = (ae_int16x4 *)((WORD16 *)p_out + 2 * out_channels + 0);
+  ae_int16x4 *p_dst3_0 = (ae_int16x4 *)((WORD16 *)p_out + 3 * out_channels + 0);
 
   int kernel_out_ch_offset = kernel_height * kernel_width * input_channels;
   int input_x_offset = (input_channels * x_stride) / 4;
@@ -168,25 +168,29 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_ow4(
   {
     for (int out_x = 0; out_x < out_width; out_x += 4)
     {
+      p_bias = (ae_int64 *)pt_bias;
       for (int out_ch = 0; out_ch < out_channels; out_ch += 4)
       {
-        ae_int64 out0_0 = p_bias[out_ch + 0];
-        ae_int64 out0_1 = p_bias[out_ch + 1];
-        ae_int64 out0_2 = p_bias[out_ch + 2];
-        ae_int64 out0_3 = p_bias[out_ch + 3];
-        ae_int64 out1_0 = p_bias[out_ch + 0];
-        ae_int64 out1_1 = p_bias[out_ch + 1];
-        ae_int64 out1_2 = p_bias[out_ch + 2];
-        ae_int64 out1_3 = p_bias[out_ch + 3];
-
-        ae_int64 out2_0 = p_bias[out_ch + 0];
-        ae_int64 out2_1 = p_bias[out_ch + 1];
-        ae_int64 out2_2 = p_bias[out_ch + 2];
-        ae_int64 out2_3 = p_bias[out_ch + 3];
-        ae_int64 out3_0 = p_bias[out_ch + 0];
-        ae_int64 out3_1 = p_bias[out_ch + 1];
-        ae_int64 out3_2 = p_bias[out_ch + 2];
-        ae_int64 out3_3 = p_bias[out_ch + 3];
+        ae_int64 out0_0, out0_1, out0_2, out0_3;
+        ae_int64 out1_0, out1_1, out1_2, out1_3;
+        ae_int64 out2_0, out2_1, out2_2, out2_3;
+        ae_int64 out3_0, out3_1, out3_2, out3_3;
+        AE_L64_IP(out0_0, p_bias, 8);
+        AE_L64_IP(out0_1, p_bias, 8);
+        AE_L64_IP(out0_2, p_bias, 8);
+        AE_L64_IP(out0_3, p_bias, 8);
+        out1_0 = out0_0;
+        out1_1 = out0_1;
+        out1_2 = out0_2;
+        out1_3 = out0_3;
+        out2_0 = out0_0;
+        out2_1 = out0_1;
+        out2_2 = out0_2;
+        out2_3 = out0_3;
+        out3_0 = out0_0;
+        out3_1 = out0_1;
+        out3_2 = out0_2;
+        out3_3 = out0_3;
 
         int in_x_o = out_x * x_stride;
         int in_y_o = out_y * y_stride - y_padding;
@@ -207,17 +211,17 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_ow4(
                       0];
         for (int k_y = k_y_min; k_y < k_y_max; ++k_y)
         {
-          const ae_int16x4 *p_inp_vec0 = p_inp_vec;
-          const ae_int16x4 *p_inp_vec1 = p_inp_vec + input_x_offset;
-          const ae_int16x4 *p_inp_vec2, *p_inp_vec3;
+          const ae_int16x8 *p_inp_vec0 = (ae_int16x8 *)p_inp_vec;
+          const ae_int16x8 *p_inp_vec1 = (ae_int16x8 *)(p_inp_vec + input_x_offset);
+          const ae_int16x8 *p_inp_vec2, *p_inp_vec3;
 
-          p_inp_vec2 = p_inp_vec + 2 * input_x_offset;
-          p_inp_vec3 = p_inp_vec + 3 * input_x_offset;
+          p_inp_vec2 = (ae_int16x8 *)(p_inp_vec + 2 * input_x_offset);
+          p_inp_vec3 = (ae_int16x8 *)(p_inp_vec + 3 * input_x_offset);
 
-          const WORD8 *p_kern_vec0 = p_kern_vec;
-          const WORD8 *p_kern_vec1 = p_kern_vec0 + kernel_out_ch_offset;
-          const WORD8 *p_kern_vec2 = p_kern_vec1 + kernel_out_ch_offset;
-          const WORD8 *p_kern_vec3 = p_kern_vec2 + kernel_out_ch_offset;
+          const ae_int8x8 *p_kern_vec0 = (ae_int8x8 *)p_kern_vec;
+          const ae_int8x8 *p_kern_vec1 = (ae_int8x8 *)((WORD8 *)p_kern_vec0 + kernel_out_ch_offset);
+          const ae_int8x8 *p_kern_vec2 = (ae_int8x8 *)((WORD8 *)p_kern_vec1 + kernel_out_ch_offset);
+          const ae_int8x8 *p_kern_vec3 = (ae_int8x8 *)((WORD8 *)p_kern_vec2 + kernel_out_ch_offset);
           p_inp_vec += p_inp_vec_stride;
           p_kern_vec += p_kern_vec_stride;
           ae_int16x4 d_inp0, d_inp0_1;
@@ -230,15 +234,15 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_ow4(
 #pragma no_unroll
           for (int i = 0; i < vec_len; i += 8)
           {
-            AE_L16X4X2_IP(d_inp0, d_inp0_1, (ae_int16x8 *)p_inp_vec0, 16);
-            AE_L16X4X2_IP(d_inp1, d_inp1_1, (ae_int16x8 *)p_inp_vec1, 16);
-            AE_L16X4X2_IP(d_inp2, d_inp2_1, (ae_int16x8 *)p_inp_vec2, 16);
-            AE_L16X4X2_IP(d_inp3, d_inp3_1, (ae_int16x8 *)p_inp_vec3, 16);
+            AE_L16X4X2_IP(d_inp0, d_inp0_1, p_inp_vec0, 16);
+            AE_L16X4X2_IP(d_inp1, d_inp1_1, p_inp_vec1, 16);
+            AE_L16X4X2_IP(d_inp2, d_inp2_1, p_inp_vec2, 16);
+            AE_L16X4X2_IP(d_inp3, d_inp3_1, p_inp_vec3, 16);
 
-            AE_L8X8_IP(d_kern0, (ae_int8x8 *)p_kern_vec0, 8);
-            AE_L8X8_IP(d_kern1, (ae_int8x8 *)p_kern_vec1, 8);
-            AE_L8X8_IP(d_kern2, (ae_int8x8 *)p_kern_vec2, 8);
-            AE_L8X8_IP(d_kern3, (ae_int8x8 *)p_kern_vec3, 8);
+            AE_L8X8_IP(d_kern0, p_kern_vec0, 8);
+            AE_L8X8_IP(d_kern1, p_kern_vec1, 8);
+            AE_L8X8_IP(d_kern2, p_kern_vec2, 8);
+            AE_L8X8_IP(d_kern3, p_kern_vec3, 8);
 
             AE_MULA8QW8X16(out0_0, out0_1, out0_2, out0_3, d_kern0, d_kern1, d_kern2, d_kern3, d_inp0, d_inp0_1);
             AE_MULA8QW8X16(out1_0, out1_1, out1_2, out1_3, d_kern0, d_kern1, d_kern2, d_kern3, d_inp1, d_inp1_1);
@@ -265,8 +269,8 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_ow4(
         AE_MINMAX16(d1, out_min16, out_max16);
         AE_MINMAX16(d2, out_min16, out_max16);
 
-        AE_S16X4_IP(AE_SEL16_7531(d1, d2), (ae_int16x4 *)p_dst0_0, 8);
-        AE_S16X4_IP(AE_SEL16_6420(d1, d2), (ae_int16x4 *)p_dst1_0, 8);
+        AE_S16X4_IP(AE_SEL16_7531(d1, d2), p_dst0_0, 8);
+        AE_S16X4_IP(AE_SEL16_6420(d1, d2), p_dst1_0, 8);
 
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_vec0, out2_0, out3_0, p_out_multiplier[out_ch + 0], out_shift_0);
         MPY_BY_QUANT_MULT_ACC64_X2_OUT32(acc_vec1, out2_1, out3_1, p_out_multiplier[out_ch + 1], out_shift_1);
@@ -279,13 +283,13 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_ow4(
         AE_MINMAX16(d1, out_min16, out_max16);
         AE_MINMAX16(d2, out_min16, out_max16);
 
-        AE_S16X4_IP(AE_SEL16_7531(d1, d2), (ae_int16x4 *)p_dst2_0, 8);
-        AE_S16X4_IP(AE_SEL16_6420(d1, d2), (ae_int16x4 *)p_dst3_0, 8);
+        AE_S16X4_IP(AE_SEL16_7531(d1, d2), p_dst2_0, 8);
+        AE_S16X4_IP(AE_SEL16_6420(d1, d2), p_dst3_0, 8);
       }
-      p_dst0_0 += 3 * out_channels;
-      p_dst1_0 += 3 * out_channels;
-      p_dst2_0 += 3 * out_channels;
-      p_dst3_0 += 3 * out_channels;
+      p_dst0_0 = (ae_int16x4 *)((WORD16 *)p_dst0_0 + 3 * out_channels);
+      p_dst1_0 = (ae_int16x4 *)((WORD16 *)p_dst1_0 + 3 * out_channels);
+      p_dst2_0 = (ae_int16x4 *)((WORD16 *)p_dst2_0 + 3 * out_channels);
+      p_dst3_0 = (ae_int16x4 *)((WORD16 *)p_dst3_0 + 3 * out_channels);
     }
   }
   return 0;
@@ -332,7 +336,7 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
     WORD16 *__restrict__ p_out,
     const WORD16 *__restrict__ p_inp,
     const WORD8 *__restrict__ p_kernel,
-    const WORD64 *__restrict__ p_bias,
+    const WORD64 *__restrict__ pt_bias,
     WORD32 input_height,
     WORD32 input_width,
     WORD32 input_channels,
@@ -353,10 +357,11 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
     WORD32 out_activation_min,
     WORD32 out_activation_max)
 {
-  const WORD16 *p_dst0_0 = p_out + 0;
-  const WORD16 *p_dst1_0 = p_out + out_channels + 0;
-  const WORD16 *p_dst2_0 = p_out + 2 * out_channels + 0;
-  const WORD16 *p_dst3_0 = p_out + 3 * out_channels + 0;
+  ae_int64* p_bias = (ae_int64 *)pt_bias;
+  ae_int16x4 *p_dst0_0 = (ae_int16x4 *)(p_out + 0);
+  ae_int16x4 *p_dst1_0 = (ae_int16x4 *)(p_out + out_channels + 0);
+  ae_int16x4 *p_dst2_0 = (ae_int16x4 *)(p_out + 2 * out_channels + 0);
+  ae_int16x4 *p_dst3_0 = (ae_int16x4 *)(p_out + 3 * out_channels + 0);
 
   int kernel_out_ch_offset = kernel_height * PADDED_SIZE(kernel_width * input_channels, 8);
   int input_x_offset = (input_channels * x_stride) * sizeof(WORD16);      /* value in bytes*/
@@ -424,18 +429,18 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
 
         for (int k_y = k_y_min; k_y < k_y_max; ++k_y)
         {
-          const ae_int16x4 *p_inp_vec0 = p_inp_vec;
-          const ae_int16x4 *p_inp_vec1 = (ae_int16x4 *)((WORD8 *)p_inp_vec + input_x_offset);
+          const ae_int16x8 *p_inp_vec0 = (ae_int16x8 *)p_inp_vec;
+          const ae_int16x8 *p_inp_vec1 = (ae_int16x8 *)((WORD8 *)p_inp_vec + input_x_offset);
 
-          const ae_int16x4 *p_inp_vec2, *p_inp_vec3;
+          const ae_int16x8 *p_inp_vec2, *p_inp_vec3;
           
-          p_inp_vec2 = (ae_int16x4 *)((WORD8 *)p_inp_vec + in_multiplier * input_x_offset);
-          p_inp_vec3 = (ae_int16x4 *)((WORD8 *)p_inp_vec + (in_multiplier + 1) * input_x_offset);
+          p_inp_vec2 = (ae_int16x8 *)((WORD8 *)p_inp_vec + in_multiplier * input_x_offset);
+          p_inp_vec3 = (ae_int16x8 *)((WORD8 *)p_inp_vec + (in_multiplier + 1) * input_x_offset);
 
-          const WORD8 *p_kern_vec0 = p_kern_vec;
-          const WORD8 *p_kern_vec1 = p_kern_vec0 + kernel_out_ch_offset;
-          const WORD8 *p_kern_vec2 = p_kern_vec1 + kernel_out_ch_offset;
-          const WORD8 *p_kern_vec3 = p_kern_vec2 + kernel_out_ch_offset;
+          const ae_int8x8 *p_kern_vec0 = (ae_int8x8 *)p_kern_vec;
+          const ae_int8x8 *p_kern_vec1 = (ae_int8x8 *)((WORD8 *)p_kern_vec0 + kernel_out_ch_offset);
+          const ae_int8x8 *p_kern_vec2 = (ae_int8x8 *)((WORD8 *)p_kern_vec1 + kernel_out_ch_offset);
+          const ae_int8x8 *p_kern_vec3 = (ae_int8x8 *)((WORD8 *)p_kern_vec2 + kernel_out_ch_offset);
           p_inp_vec = (ae_int16x4 *)((WORD8 *)p_inp_vec + p_inp_vec_stride);
           p_kern_vec += p_kern_vec_stride;
           ae_int16x4 d_inp0, d_inp0_1;
@@ -455,16 +460,16 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
 #pragma no_unroll
           for (int i = 0; i < vec_len; i += 8)
           {
-            AE_LA16X4X2_IP(d_inp0, d_inp0_1, vec0_align, (ae_int16x8 *)p_inp_vec0);
-            AE_LA16X4X2_IP(d_inp1, d_inp1_1, vec1_align, (ae_int16x8 *)p_inp_vec1);
+            AE_LA16X4X2_IP(d_inp0, d_inp0_1, vec0_align, p_inp_vec0);
+            AE_LA16X4X2_IP(d_inp1, d_inp1_1, vec1_align, p_inp_vec1);
 
-            AE_LA16X4X2_IP(d_inp2, d_inp2_1, vec2_align, (ae_int16x8 *)p_inp_vec2);
-            AE_LA16X4X2_IP(d_inp3, d_inp3_1, vec3_align, (ae_int16x8 *)p_inp_vec3);
+            AE_LA16X4X2_IP(d_inp2, d_inp2_1, vec2_align, p_inp_vec2);
+            AE_LA16X4X2_IP(d_inp3, d_inp3_1, vec3_align, p_inp_vec3);
 
-            AE_L8X8_IP(d_kern0, (ae_int8x8 *)p_kern_vec0, 8);
-            AE_L8X8_IP(d_kern1, (ae_int8x8 *)p_kern_vec1, 8);
-            AE_L8X8_IP(d_kern2, (ae_int8x8 *)p_kern_vec2, 8);
-            AE_L8X8_IP(d_kern3, (ae_int8x8 *)p_kern_vec3, 8);
+            AE_L8X8_IP(d_kern0, p_kern_vec0, 8);
+            AE_L8X8_IP(d_kern1, p_kern_vec1, 8);
+            AE_L8X8_IP(d_kern2, p_kern_vec2, 8);
+            AE_L8X8_IP(d_kern3, p_kern_vec3, 8);
 
             AE_MULA8QW8X16(out0_0, out0_1, out0_2, out0_3, d_kern0, d_kern1, d_kern2, d_kern3, d_inp0, d_inp0_1);
             AE_MULA8QW8X16(out1_0, out1_1, out1_2, out1_3, d_kern0, d_kern1, d_kern2, d_kern3, d_inp1, d_inp1_1);
@@ -490,8 +495,8 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
         AE_MINMAX16(d1, out_min16, out_max16);
         AE_MINMAX16(d2, out_min16, out_max16);
 
-        AE_S16X4_IP(AE_SEL16_7531(d1, d2), (ae_int16x4 *)p_dst0_0, 8);
-        AE_S16X4_IP(AE_SEL16_6420(d1, d2), (ae_int16x4 *)p_dst1_0, 8);
+        AE_S16X4_IP(AE_SEL16_7531(d1, d2), p_dst0_0, 8);
+        AE_S16X4_IP(AE_SEL16_6420(d1, d2), p_dst1_0, 8);
         if ((out_width - out_x) != 2)
         {
           // ae_int32x2 acc_vec0, acc_vec1, acc_vec2, acc_vec3;
@@ -505,14 +510,14 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
           AE_MINMAX16(d1, out_min16, out_max16);
           AE_MINMAX16(d2, out_min16, out_max16);
 
-          AE_S16X4_IP(AE_SEL16_7531(d1, d2), (ae_int16x4 *)p_dst2_0, 8);
-          AE_S16X4_IP(AE_SEL16_6420(d1, d2), (ae_int16x4 *)p_dst3_0, 8);
+          AE_S16X4_IP(AE_SEL16_7531(d1, d2), p_dst2_0, 8);
+          AE_S16X4_IP(AE_SEL16_6420(d1, d2), p_dst3_0, 8);
         }
       }
-      p_dst0_0 += out_multiplier1 * out_channels;
-      p_dst1_0 += out_multiplier1 * out_channels;
-      p_dst2_0 += out_multiplier2 * out_channels;
-      p_dst3_0 += out_multiplier2 * out_channels;
+      p_dst0_0 = (ae_int16x4 *)((WORD16 *)p_dst0_0 + out_multiplier1 * out_channels);
+      p_dst1_0 = (ae_int16x4 *)((WORD16 *)p_dst1_0 + out_multiplier1 * out_channels);
+      p_dst2_0 = (ae_int16x4 *)((WORD16 *)p_dst2_0 + out_multiplier2 * out_channels);
+      p_dst3_0 = (ae_int16x4 *)((WORD16 *)p_dst3_0 + out_multiplier2 * out_channels);
     }
   }
   return 0;

@@ -47,8 +47,8 @@ static WORD32 conv_x_left_pad(
   WORD32 left_shift, right_shift;
   out_width_over_x_pad = out_width_over_x_pad > out_width ? out_width : out_width_over_x_pad;
 
-  ae_int32x2 max_int8 = AE_MOVDA32(out_activation_max);
-  ae_int32x2 min_int8 = AE_MOVDA32(out_activation_min);
+  ae_int32x2 max_int8 = SW_MOVDA32(out_activation_max);
+  ae_int32x2 min_int8 = SW_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -68,12 +68,12 @@ static WORD32 conv_x_left_pad(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = 0;
+        ae_int32x2 acc = AE_ZERO32();
         if(p_bias != NULL){
-          acc = AE_MOVDA32(p_bias[k]);
+          acc = SW_MOVDA32(p_bias[k]);
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
-        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
@@ -106,8 +106,8 @@ static WORD32 conv_x_right_pad(
   WORD32 left_shift, right_shift;
   WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad;
 
-  ae_int32x2 max_int8 = AE_MOVDA32(out_activation_max);
-  ae_int32x2 min_int8 = AE_MOVDA32(out_activation_min);
+  ae_int32x2 max_int8 = SW_MOVDA32(out_activation_max);
+  ae_int32x2 min_int8 = SW_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -127,12 +127,12 @@ static WORD32 conv_x_right_pad(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = 0;
+        ae_int32x2 acc = AE_ZERO32();
         if(p_bias != NULL){
-          acc = AE_MOVDA32(p_bias[k]);
+          acc = SW_MOVDA32(p_bias[k]);
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
-        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
@@ -162,8 +162,8 @@ static void conv_y_pad_nhwc_out(
   out_width_offset = out_channels;
   out_height_offset = out_width * out_width_offset;
 
-  ae_int32x2 max_int8 = AE_MOVDA32(out_activation_max);
-  ae_int32x2 min_int8 = AE_MOVDA32(out_activation_min);
+  ae_int32x2 max_int8 = SW_MOVDA32(out_activation_max);
+  ae_int32x2 min_int8 = SW_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -183,12 +183,12 @@ static void conv_y_pad_nhwc_out(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = 0;
+        ae_int32x2 acc = AE_ZERO32();
         if(p_bias != NULL){
-          acc = AE_MOVDA32(p_bias[k]);
+          acc = SW_MOVDA32(p_bias[k]);
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
-        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_int8, max_int8);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (WORD8)AE_MOVAD32_L(acc);
       }

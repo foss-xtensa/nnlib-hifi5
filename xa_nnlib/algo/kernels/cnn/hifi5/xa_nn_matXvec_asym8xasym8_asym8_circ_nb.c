@@ -25,6 +25,7 @@
 #include "xa_nnlib_quant_macros_hifi5.h"
 
 #define ZERO64  AE_ZERO64()
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
 
 #define ROW_UNROLL  4
 
@@ -40,14 +41,18 @@
   WORD8 *_WORD8_p_mat1_ ## idx_row = (WORD8 *) (&p_mat1[(m_itr+idx_row)*cols]); \
 
 #define LOAD_VEC_ASYM8b \
-  _ae_int16x4_vec = AE_L8X4F_I(_WORD8_p_vec, 0); \
-  AE_ADDCIRC16X4_XC((ae_int16x4 *)_WORD8_p_vec, 4*sizeof(WORD8)); \
-  _ae_int16x4_vec = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_vec), 8)); \
+  _ae_int16x4_vec = AE_MOVINT16X4_FROMF16X4(AE_L8X4F_I(_WORD8_p_vec, 0)); \
+  ae_int16x4 *_WORD8_p_vec_temp = (ae_int16x4 *)_WORD8_p_vec; \
+  AE_ADDCIRC16X4_XC(_WORD8_p_vec_temp, 4*sizeof(WORD8)); \
+  _WORD8_p_vec = (WORD8*)_WORD8_p_vec_temp; \
+  _ae_int16x4_vec = AE_MOVINT16X4_FROMINT64(AE_SRLI64(AE_MOVINT64_FROMF16X4(AE_MOVF16X4_FROMINT16X4(_ae_int16x4_vec)), 8)); \
   _ae_int16x4_vec = AE_ADD16(_ae_int16x4_vec, AE_MOVDA16(vec1_offset));
 
 #define LOAD_ROW_MAT1_ASYM8b(idx_row) \
-  AE_L8X4F_IP(_ae_int16x4_mat1_ ##idx_row, _WORD8_p_mat1_ ##idx_row, 4*sizeof(WORD8)); \
-  _ae_int16x4_mat1_ ##idx_row = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_mat1_ ##idx_row), 8)); \
+  ae_f16x4 _ae_int16x4_mat1_temp ##idx_row = AE_MOVF16X4_FROMINT16X4(_ae_int16x4_mat1_ ##idx_row); \
+  AE_L8X4F_IP(_ae_int16x4_mat1_temp ##idx_row, _WORD8_p_mat1_ ##idx_row, 4*sizeof(WORD8)); \
+  _ae_int16x4_mat1_ ##idx_row = AE_MOVINT16X4_FROMF16X4(_ae_int16x4_mat1_temp ##idx_row); \
+  _ae_int16x4_mat1_ ##idx_row = AE_MOVINT16X4_FROMINT64(AE_SRLI64(AE_MOVINT64_FROMINT16X4(_ae_int16x4_mat1_ ##idx_row), 8)); \
   _ae_int16x4_mat1_ ##idx_row = AE_ADD16(_ae_int16x4_mat1_ ##idx_row, AE_MOVDA16(mat1_offset));
 
 #define KERNEL_MAT1_VEC_ASYM8b_ASYM8b(idx_row) \
@@ -55,8 +60,8 @@
   AE_MULAAAAQ16(_ae_int64_acc_ ## idx_row, _ae_int16x4_vec, _ae_int16x4_mat1_ ## idx_row); \
 
 #define ADD_BIAS_ASYM8b_ACC_FOR_ASYM8bxASYM8b(idx_row) \
-  ae_int64 _ae_int64_sat_bias_ ##idx_row = AE_SRAI64(AE_MOVINT64_FROMINT32X2(AE_MOVDA32(p_bias[m_itr + idx_row])), 32); \
-  _ae_int64_acc_ ## idx_row = AE_ADD64S(_ae_int64_acc_ ## idx_row, _ae_int64_sat_bias_ ##idx_row); \
+  ae_int64 _ae_int64_sat_bias_ ##idx_row = AE_SRAI64(AE_MOVINT64_FROMINT32X2(SW_MOVDA32(p_bias[m_itr + idx_row])), 32); \
+  _ae_int64_acc_ ## idx_row = AE_MOVINT64_FROMF64(AE_ADD64S(AE_MOVF64_FROMINT64(_ae_int64_acc_ ## idx_row), AE_MOVF64_FROMINT64(_ae_int64_sat_bias_ ##idx_row))); \
 
 /* Output scaling according to Tensorflow logic; following are steps:
     1. If left_shift is to be done, do it in 32-bit without saturation
@@ -68,11 +73,11 @@
   ae_int32x2 _ae_int32x2_acc_ ##idx_row; \
   _ae_int32x2_acc_ ##idx_row = AE_MOVINT32X2_FROMINT64(_ae_int64_acc_ ##idx_row); \
   MPY_BY_QUANT_MULT_X2_OUT32(_ae_int32x2_acc_ ##idx_row, _ae_int32x2_acc_ ##idx_row, out_multiplier, left_shift, right_shift); \
-  (_ae_int32x2_acc_ ##idx_row) = AE_ADD32S(_ae_int32x2_acc_ ##idx_row, AE_MOVDA32(out_offset)); \
+  (_ae_int32x2_acc_ ##idx_row) = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(_ae_int32x2_acc_ ##idx_row), AE_MOVF32X2_FROMINT32X2(SW_MOVDA32(out_offset)))); \
 
 /* Saturate result to unsigned 8 bit (0-255) and store */
 #define STORE_ACC_ASYM8bxASYM8b_AT_OUT_ASYM8b(idx_row) \
-  _ae_int32x2_acc_ ##idx_row = AE_MIN32(AE_MAX32(_ae_int32x2_acc_ ##idx_row, AE_MOVDA32(0)), AE_MOVDA32(255)); \
+  _ae_int32x2_acc_ ##idx_row = AE_MIN32(AE_MAX32(_ae_int32x2_acc_ ##idx_row, SW_MOVDA32(0)), SW_MOVDA32(255)); \
   (*((UWORD8 *) (&p_out[(m_itr + idx_row)*out_stride]))) = (UWORD8)AE_MOVAD32_L(_ae_int32x2_acc_ ##idx_row); \
 
 #if (ROW_UNROLL == 1)

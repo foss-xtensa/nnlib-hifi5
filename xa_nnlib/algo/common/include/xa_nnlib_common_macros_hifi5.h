@@ -23,12 +23,65 @@
 #define __XA_NNLIB_COMMON_MACROS_H__
 
 #include "xa_nnlib_quant_macros_hifi5.h"
+#include <xtensa/config/core-isa.h>
+#include "xtensa/tie/xt_hifi2.h"
+#include "xa_nnlib_standards.h"
 
 #ifndef NULL
 #define NULL (void *)0
 #endif /* NULL */
 
 #define MAX(a, b)   (((a) > (b)) ? (a) : (b))
+
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+
+#define SW_SLAA64S_INT64_INT64(inp1, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(AE_MOVF64_FROMINT64(inp1), bias_shift))
+
+#define SW_SLAA64S_INT64PTR_INT64(inp, bias_shift) ({ae_int64 temp; temp = AE_L64_I(&inp, 0); SW_SLAA64S_INT64_INT64(temp, bias_shift);})
+
+#define SW_SRAI64_F64_F64(inp, shift) AE_MOVF64_FROMINT64(AE_SRAI64(AE_MOVINT64_FROMF64(inp),shift))
+
+#define SW_SLAA64S_INT16_INT64(inp1, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(SW_SRAI64_F64_F64(AE_MOVF64_FROMINT16(inp1), 48), bias_shift))
+
+#define SW_SLAA64S_INT16PTR_INT64(inp, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(AE_MOVF64_FROMINT32X2(AE_MOVDA32X2(inp,0)), bias_shift - 32))
+
+#define SW_SLAS64S_INT16_INT64(inp) AE_MOVINT64_FROMF64(AE_SLAS64S(SW_SRAI64_F64_F64(AE_MOVF64_FROMINT16(inp),48)))
+
+#define SW_SLAS64S_INT32_INT64(inp) AE_MOVINT64_FROMF64(AE_SLAS64S(SW_SRAI64_F64_F64(AE_MOVF64_FROMINT16(inp),32)))
+
+//#define SW_SLAS64S_INT16PTR_INT64(inp) SW_SLAS64S_INT16_INT64(AE_MOVDA16(inp))
+#define SW_SLAS64S_INT16PTR_INT64(inp) AE_MOVINT64_FROMF64(AE_SLAS64S(SW_SRAI64_F64_F64(AE_MOVF64_FROMINT16X4(AE_MOVDA16(inp)),48)))
+//
+
+#define SW_SLAI32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_MOVF32X2_FROMINT32X2(inp1),inp2))
+
+#define SW_SLAA32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_SLAA32S(AE_MOVF32X2_FROMINT32X2(inp1), inp2))
+
+#define SW_SRAA32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_SRAA32S(AE_MOVF32X2_FROMINT32X2(inp1), inp2))
+
+#define SW_SRAA32S_INT32X2_F32X2(inp1, inp2) AE_SRAA32S(AE_MOVF32X2_FROMINT32X2(inp1), inp2)
+
+#define SW_ADD64S_INT64_INT64(inp1, inp2) AE_MOVINT64_FROMF64(AE_ADD64S(AE_MOVF64_FROMINT64(inp1),AE_MOVF64_FROMINT64(inp2)))
+
+#define SW_ADD32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(inp1), AE_MOVF32X2_FROMINT32X2(inp2)));
+
+#define SW_SUB32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_SUB32S(AE_MOVF32X2_FROMINT32X2(inp1), AE_MOVF32X2_FROMINT32X2(inp2)));
+
+#define SW_SEL32_LL_INT32X2_INT64(inp1, inp2) AE_MOVINT64_FROMINT32X2(AE_SEL32_LL(inp1,inp2))
+
+#define SW_SEL32_HH_INT32X2_INT64(inp1, inp2) AE_MOVINT64_FROMINT32X2(AE_SEL32_HH(inp1,inp2))
+
+#define SW_SEL32_HH_INT32X2_INT16X4(inp1, inp2) AE_MOVINT16X4_FROMINT32X2(AE_SEL32_HH(inp1,inp2))
+
+#define SW_SEL32_LL_INT32X2_INT16X4(inp1, inp2) AE_MOVINT16X4_FROMINT32X2(AE_SEL32_LL(inp1,inp2))
+
+#define SW_ROUND32X2F64SSYM_INT32X2_INT64_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_ROUND32X2F64SSYM(AE_MOVF64_FROMINT32X2(inp1),AE_MOVF64_FROMINT64(inp2)))
+
+#define SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_ROUND32X2F64SSYM(AE_MOVF64_FROMINT64(inp1), AE_MOVF64_FROMINT64(inp2)))
+
+#define SW_ROUND32F64SSYM_INT64_INT32(inp) AE_MOVINT32_FROMF32X2(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(inp)))
+
+#define SW_SAT16X4_INT32X2_INT16(inp1, inp2) AE_MOVINT16_FROMINT16X4(AE_SAT16X4(inp1, inp2))
 
 /* Macros for memcpy */
 #define MEMCPY_8b(out, inp, N) \
@@ -172,8 +225,8 @@ __Pragma("no_unroll") \
 /* Macro for zero value */
 #define ZERO64   AE_ZERO64()
 #define ZERO16X4 AE_MOVDA16(0)
-#define ZERO16   (0)
-#define ZERO32   (0)
+#define ZERO16   AE_ZERO16()
+#define ZERO32   AE_ZERO32()
 
 /* Macro for 1 */
 #define ONE16X4 AE_MOVDA16(1)
@@ -230,7 +283,7 @@ __Pragma("no_unroll") \
 
 /* ==================================================================================================== */
 #define SETUP_BIAS_f32 \
-  xtfloat _xtfloat_bias = (xtfloat)0.0f; \
+  xtfloat _xtfloat_bias = ZERO_S(); \
   xtfloat *_xtfloat_p_bias = (xtfloat *) p_bias; \
 
 #define SETUP_BIAS_ASYM8b \
@@ -261,7 +314,7 @@ __Pragma("no_unroll") \
   ae_int32 *_ae_int32_p_bias = (ae_int32 *) p_bias; \
 
 #define SETUP_BIAS_16b \
-ae_int16 _ae_int16_bias = ZERO16; \
+ae_int16 _ae_int16_bias = AE_MOVINT16_FROMINT16X4(ZERO16); \
   ae_int64 _ae_int64_sat_bias = ZERO64; \
   ae_int16 *_ae_int16_p_bias = (ae_int16 *) p_bias; \
 
@@ -302,9 +355,9 @@ ae_int16 _ae_int16_bias = ZERO16; \
   SETUP_ACC_BATCH_VEC_UNROLL(idx_row);\
 
 #define SETUP_ACC_BATCH_FOR_f32(idx_row,idx_vec) \
-  xtfloatx2 _xtfloatx2_acc_ ##idx_row ##_ ##idx_vec = (xtfloatx2)0.0f; \
-  xtfloatx2 _xtfloatx2_acc_1_ ##idx_row ##_ ##idx_vec = (xtfloatx2)0.0f; \
-  xtfloat _xtfloat_acc_ ##idx_row ##_ ##idx_vec = (xtfloat) 0.0f;\
+  xtfloatx2 _xtfloatx2_acc_ ##idx_row ##_ ##idx_vec = ZERO_SX2(); \
+  xtfloatx2 _xtfloatx2_acc_1_ ##idx_row ##_ ##idx_vec = ZERO_SX2(); \
+  xtfloat _xtfloat_acc_ ##idx_row ##_ ##idx_vec = ZERO_S();\
 /*---------------------------------------------------------*/
 
 #define SETUP_ACC_32x32b(idx) \
@@ -332,13 +385,15 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define SETUP_VEC1_16b_UNALIGNED_8x16_BATCH(vec_idx) \
   ae_int16x4 _ae_int16x4_vec1_ ## vec_idx; \
   ae_int16x4 _ae_int16x4_vec1_1_ ## vec_idx; \
+  ae_int16 *temp_p_vec1 ## vec_idx; \
   ae_int16x8 * _ae_int16x8_p_vec1_ ## vec_idx = (ae_int16x8 *) (p_vec1[vec_itr + vec_idx]); \
   ae_valignx2 _align_ae_int16x8_p_vec1_ ## vec_idx = AE_LA128_PP(_ae_int16x8_p_vec1_ ## vec_idx);
 
 #define SETUP_VEC1_16b_UNALIGNED_BATCH(vec_idx) \
   ae_int16x4 _ae_int16x4_vec1_ ## vec_idx; \
   ae_int16x4 * _ae_int16x4_p_vec1_ ## vec_idx = (ae_int16x4 *) (p_vec1[vec_itr + vec_idx]); \
-  ae_valign _align_ae_int16x4_p_vec1_ ## vec_idx = AE_LA64_PP(_ae_int16x4_p_vec1_ ## vec_idx);
+  ae_valign _align_ae_int16x4_p_vec1_ ## vec_idx = AE_LA64_PP(_ae_int16x4_p_vec1_ ## vec_idx); \
+  ae_int16 * _ae_temp16x4_p_vec1_ ## vec_idx;
 
 #define SETUP_VEC1_16b_UNALIGNED_ONE_VECTOR \
   ae_int16x4 _ae_int16x4_vec1;; \
@@ -364,6 +419,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
   ae_int8x8 * _ae_int8x8_p_vec2 = (ae_int8x8 *) p_vec2; \
 
 #define SETUP_VEC1_8b_UNALIGNED_BATCH(idx) \
+  ae_int8 * _ae_int8_temp_vec1_ ## idx;\
   ae_int8x8 _ae_int8x8_vec1_ ## idx; \
   ae_int8x8 * _ae_int8x8_p_vec1_ ## idx = (ae_int8x8 *) (p_vec1[vec_itr + idx]); \
   ae_valign _align_ae_int8x8_p_vec1_ ## idx = AE_LA64_PP(_ae_int8x8_p_vec1_ ## idx);
@@ -439,6 +495,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
 /*------------------ time batching macros ----------------- */
 
 #define SETUP_VEC_BATCH_8b(idx_vec)\
+  ae_f16x4 _temp_f16x4_vec_batch_ ##idx_vec; \
   ae_int16x4 _ae_int16x4_vec_batch_ ##idx_vec  = ZERO16X4; \
   WORD8 *_WORD8_p_vec_batch_ ##idx_vec  = (WORD8 *)(p_vec1[vec_itr + idx_vec]); \
 
@@ -448,8 +505,8 @@ ae_int16 _ae_int16_bias = ZERO16; \
   ae_int16x8 *_ae_int16x8_p_vec_batch_ ##idx_vec  = (ae_int16x8 *)(p_vec1[vec_itr + idx_vec]); \
 
 #define SETUP_VEC_BATCH_f32(idx_vec)\
-  xtfloatx2 _xtfloatx2_vec_batch_ ##idx_vec  = (xtfloatx2)0.0f ; \
-  xtfloatx2 _xtfloatx2_vec_batch_1_ ##idx_vec  = (xtfloatx2)0.0f ; \
+  xtfloatx2 _xtfloatx2_vec_batch_ ##idx_vec  = ZERO_SX2() ; \
+  xtfloatx2 _xtfloatx2_vec_batch_1_ ##idx_vec  = ZERO_SX2() ; \
   xtfloatx4 *_xtfloatx4_p_vec_batch_ ##idx_vec  = (xtfloatx4 *)(p_vec1[vec_itr + idx_vec]); \
 
 #define SETUP_VEC_BATCH_ASYM8b SETUP_VEC_BATCH_8b
@@ -457,21 +514,25 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define SETUP_MAT1_8b_UNALIGNED(idx) \
   ae_int8x8 _ae_int8x8_mat1_ ## idx ; \
+  ae_int8 *_ae_int8_temp_mat1_ ## idx; \
   ae_int8x8 * _ae_int8x8_p_mat1_ ## idx = (ae_int8x8 *) &p_mat1[(m_itr+idx)*row_stride1]; \
   ae_valign _align_ae_int8x8_p_mat1_ ## idx = AE_LA64_PP(_ae_int8x8_p_mat1_ ##idx);
 
 #define SETUP_MAT2_8b_UNALIGNED(idx) \
   ae_int8x8 _ae_int8x8_mat2_ ## idx ; \
+  ae_int8 *_ae_int8_temp_mat2_ ## idx; \
   ae_int8x8 * _ae_int8x8_p_mat2_ ## idx = (ae_int8x8 *) &p_mat2[(m_itr+idx)*row_stride2]; \
   ae_valign _align_ae_int8x8_p_mat2_ ## idx = AE_LA64_PP(_ae_int8x8_p_mat2_ ##idx);
 
 #define SETUP_MAT1_16b_UNALIGNED_16x8(idx) \
+  ae_int16 * _ae_int16_temp_mat1_ ## idx; \
   ae_int16x4 _ae_int16x4_mat1_ ## idx ; \
   ae_int16x4 _ae_int16x4_mat1_1_ ## idx ; \
   ae_int16x8 * _ae_int16x8_p_mat1_ ## idx = (ae_int16x8 *) &p_mat1[(m_itr+idx)*row_stride1]; \
   ae_valignx2 _align_ae_int16x8_p_mat1_ ## idx = AE_LA128_PP(_ae_int16x8_p_mat1_ ##idx);
 
 #define SETUP_MAT2_16b_UNALIGNED_16x8(idx) \
+  ae_int16 * _ae_int16_temp_mat2_ ## idx; \
   ae_int16x4 _ae_int16x4_mat2_ ## idx ; \
   ae_int16x4 _ae_int16x4_mat2_1_ ## idx ; \
   ae_int16x8 * _ae_int16x8_p_mat2_ ## idx = (ae_int16x8 *) &p_mat2[(m_itr+idx)*row_stride2]; \
@@ -481,7 +542,9 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define SETUP_MAT1_16b_UNALIGNED(idx) \
   ae_int16x4 _ae_int16x4_mat1_ ## idx ; \
   ae_int16x4 * _ae_int16x4_p_mat1_ ## idx = (ae_int16x4 *) &p_mat1[(m_itr+idx)*row_stride1]; \
-  ae_valign _align_ae_int16x4_p_mat1_ ## idx = AE_LA64_PP(_ae_int16x4_p_mat1_ ##idx);
+  ae_valign _align_ae_int16x4_p_mat1_ ## idx = AE_LA64_PP(_ae_int16x4_p_mat1_ ##idx); \
+  ae_int16 *_ae_temp_p_mat1_ ## idx;
+  
 
 #define SETUP_MAT2_16b_UNALIGNED(idx) \
   ae_int16x4 _ae_int16x4_mat2_ ## idx ; \
@@ -529,8 +592,8 @@ ae_int16 _ae_int16_bias = ZERO16; \
   ae_int16x8 *_ae_int16x8_p_mat2_ ## idx = (ae_int16x8 *) &p_mat2[(m_itr+idx)*row_stride2]; \
 
 #define SETUP_MAT1_f32(idx) \
-  xtfloatx2 _xtfloatx2_mat1_ ## idx = (xtfloatx2)0.0f; \
-  xtfloatx2 _xtfloatx2_mat1_1_ ## idx = (xtfloatx2)0.0f; \
+  xtfloatx2 _xtfloatx2_mat1_ ## idx = ZERO_SX2(); \
+  xtfloatx2 _xtfloatx2_mat1_1_ ## idx = ZERO_SX2(); \
   xtfloatx4 *_xtfloatx4_p_mat1_ ## idx = (xtfloatx4 *) &p_mat1[(m_itr+idx)*row_stride1]; \
 
 #define SETUP_MAT1_ASYM8b(idx) \
@@ -556,7 +619,9 @@ ae_int16 _ae_int16_bias = ZERO16; \
     AE_LA16X4_IP(_ae_int16x4_vec2,_align_ae_int16x4_p_vec2, _ae_int16x4_p_vec2);
 
 #define LOAD_VEC2_16b_UNALIGNED_SINGLE_ELEMENT \
-    AE_L16_IP(_ae_int16x4_vec2,(ae_int16* ) _ae_int16x4_p_vec2,2);
+    ae_int16 * _ae_int16_p_vec2_tmp = (ae_int16 *)_ae_int16x4_p_vec2; \
+    AE_L16_IP(_ae_int16x4_vec2, _ae_int16_p_vec2_tmp,2);\
+    _ae_int16x4_p_vec2 = (ae_int16x4 *)_ae_int16_p_vec2_tmp;
 
 #define LOAD_VEC1_16b_UNALIGNED_8x16_BATCH(idx) \
     AE_LA16X4X2_IP(_ae_int16x4_vec1_ ## idx,_ae_int16x4_vec1_1_ ## idx,_align_ae_int16x8_p_vec1_ ## idx, _ae_int16x8_p_vec1_ ## idx);
@@ -568,22 +633,34 @@ ae_int16 _ae_int16_bias = ZERO16; \
     AE_LA16X4_IP(_ae_int16x4_vec1,_align_ae_int16x4_p_vec1, _ae_int16x4_p_vec1);
 
 #define LOAD_VEC1_16b_UNALIGNED_8x16_SINGLE_ELEMENT_BATCH(idx) \
-    AE_L16_IP(_ae_int16x4_vec1_ ## idx,(ae_int16* ) _ae_int16x8_p_vec1_ ## idx,2);
+    temp_p_vec1 ## idx = (ae_int16 *)_ae_int16x8_p_vec1_ ## idx; \
+    AE_L16_IP(_ae_int16x4_vec1_ ## idx,temp_p_vec1 ## idx,2); \
+    _ae_int16x8_p_vec1_ ## idx = (ae_int16x8 *)temp_p_vec1 ## idx;
 
 #define LOAD_VEC1_16b_UNALIGNED_SINGLE_ELEMENT_BATCH(idx) \
-    AE_L16_IP(_ae_int16x4_vec1_ ## idx,(ae_int16* ) _ae_int16x4_p_vec1_ ## idx,2);
+    _ae_temp16x4_p_vec1_ ## idx = (ae_int16* ) _ae_int16x4_p_vec1_ ## idx; \
+    AE_L16_IP(_ae_int16x4_vec1_ ## idx,_ae_temp16x4_p_vec1_ ## idx,2); \
+    _ae_int16x4_p_vec1_ ## idx = (ae_int16x4*) _ae_temp16x4_p_vec1_ ## idx;
 
 #define LOAD_VEC1_16b_UNALIGNED_SINGLE_ELEMENT \
-    AE_L16_IP(_ae_int16x4_vec1,(ae_int16* ) _ae_int16x4_p_vec1,2);
+    ae_int16 * _ae_int16_p_vec1_tmp = (ae_int16 *)_ae_int16x4_p_vec1; \
+    AE_L16_IP(_ae_int16x4_vec1, _ae_int16_p_vec1_tmp,2);\
+    _ae_int16x4_p_vec1 = (ae_int16x4 *)_ae_int16_p_vec1_tmp; \
 
 #define LOAD_VEC1_8b_UNALIGNED_SINGLE_ELEMENT_BATCH(idx) \
-    AE_L8_IP(_ae_int8x8_vec1_ ## idx,(ae_int8 *)_ae_int8x8_p_vec1_ ##idx,1);
+    _ae_int8_temp_vec1_ ## idx = (ae_int8*)_ae_int8x8_p_vec1_ ##idx; \
+    AE_L8_IP(_ae_int8x8_vec1_ ## idx,_ae_int8_temp_vec1_ ##idx,1); \
+    _ae_int8x8_p_vec1_ ##idx = (ae_int8x8*)_ae_int8_temp_vec1_ ## idx ;
 
 #define LOAD_VEC1_8b_UNALIGNED_SINGLE_ELEMENT \
-    AE_L8_IP(_ae_int8x8_vec1,(ae_int8 *)_ae_int8x8_p_vec1,1);
+    ae_int8* temp_ptr = (ae_int8 *)_ae_int8x8_p_vec1; \
+    AE_L8_IP(_ae_int8x8_vec1,temp_ptr,1); \
+    _ae_int8x8_p_vec1 = (ae_int8x8 *)temp_ptr;
 
 #define LOAD_VEC2_8b_UNALIGNED_SINGLE_ELEMENT \
-    AE_L8_IP(_ae_int8x8_vec2,(ae_int8 *)_ae_int8x8_p_vec2,1);
+    ae_int8* temp_ptr2 = (ae_int8 *)_ae_int8x8_p_vec2; \
+    AE_L8_IP(_ae_int8x8_vec2,temp_ptr2,1); \
+    _ae_int8x8_p_vec2 = (ae_int8x8 *)temp_ptr2;
 
 #define LOAD_VEC1_8b_UNALIGNED_BATCH(idx) \
   AE_LA8X8_IP(_ae_int8x8_vec1_ ## idx, _align_ae_int8x8_p_vec1_ ## idx ,_ae_int8x8_p_vec1_ ## idx); \
@@ -656,8 +733,8 @@ ae_int16 _ae_int16_bias = ZERO16; \
   AE_L16X4X2_IP(_ae_int16x4_vec_batch_ ##idx_vec,_ae_int16x4_vec_batch_1_ ##idx_vec, _ae_int16x8_p_vec_batch_ ##idx_vec, 2*INCREMENT_IN_BYTES_FOR_INT16X4); \
 
 #define LOAD_VEC_BATCH_ASYM8b(idx_vec) \
-  AE_L8X4F_IP(_ae_int16x4_vec_batch_ ##idx_vec, _WORD8_p_vec_batch_ ##idx_vec, INCREMENT_IN_BYTES_FOR_WORD8X4); \
-  _ae_int16x4_vec_batch_ ##idx_vec  = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_vec_batch_ ##idx_vec), 8)); \
+  AE_L8X4F_IP(_temp_f16x4_vec_batch_ ##idx_vec, _WORD8_p_vec_batch_ ##idx_vec, INCREMENT_IN_BYTES_FOR_WORD8X4); \
+  _ae_int16x4_vec_batch_ ##idx_vec  = AE_MOVINT16X4_FROMINT64(AE_SRLI64(AE_MOVINT64_FROMF16X4(_temp_f16x4_vec_batch_ ##idx_vec), 8)); \
   _ae_int16x4_vec_batch_ ##idx_vec = AE_ADD16(_ae_int16x4_vec_batch_ ##idx_vec, AE_MOVDA16(vec1_zero_bias)); \
 
 #define LOAD_BIAS_8b_FOR_8bx8b \
@@ -674,14 +751,14 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define LOAD_BIAS_16b_FOR_16bx16b \
   ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16); \
-  _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift); \
+  _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift); \
 
 #define LOAD_BIAS_f32 \
   AE_LSIP(_xtfloat_bias, _xtfloat_p_bias, INCREMENT_IN_BYTES_FOR_FLOAT32); \
 
 #define LOAD_BIAS_ASYM8b \
   _WORD32_bias = *_WORD32_p_bias++; \
-  _ae_int64_sat_bias = AE_SRAI64(AE_MOVINT64_FROMINT32X2(AE_MOVDA32(_WORD32_bias)), 32); \
+  _ae_int64_sat_bias = AE_SRAI64(AE_MOVINT64_FROMINT32X2(SW_MOVDA32(_WORD32_bias)), 32); \
 
 #define LOAD_BIAS_ASYM8b_MATMUL \
   if(p_bias!=NULL)\
@@ -700,13 +777,20 @@ ae_int16 _ae_int16_bias = ZERO16; \
     AE_LA16X4_IP(_ae_int16x4_mat1_ ## idx,_align_ae_int16x4_p_mat1_ ## idx,_ae_int16x4_p_mat1_ ## idx);
 
 #define LOAD_ROW_MAT1_16b_UNALIGNED_SINGLE_ELEMENT_16x8(idx) \
-    AE_L16_IP(_ae_int16x4_mat1_ ## idx,(ae_int16 *)_ae_int16x8_p_mat1_ ## idx,2);
+    _ae_int16_temp_mat1_ ## idx =(ae_int16 *)_ae_int16x8_p_mat1_ ## idx;\
+    AE_L16_IP(_ae_int16x4_mat1_ ## idx,_ae_int16_temp_mat1_ ## idx,2);\
+    _ae_int16x8_p_mat1_ ## idx =(ae_int16x8 *)_ae_int16_temp_mat1_ ## idx;
 
 #define LOAD_ROW_MAT2_16b_UNALIGNED_SINGLE_ELEMENT_16x8(idx) \
-    AE_L16_IP(_ae_int16x4_mat2_ ## idx,(ae_int16 *)_ae_int16x8_p_mat2_ ## idx,2);
+    _ae_int16_temp_mat2_ ## idx =(ae_int16 *)_ae_int16x8_p_mat2_ ## idx;\
+    AE_L16_IP(_ae_int16x4_mat2_ ## idx,_ae_int16_temp_mat2_ ## idx,2);\
+   _ae_int16x8_p_mat2_ ## idx =(ae_int16x8 *)_ae_int16_temp_mat2_ ## idx;
 
 #define LOAD_ROW_MAT1_16b_UNALIGNED_SINGLE_ELEMENT(idx) \
-    AE_L16_IP(_ae_int16x4_mat1_ ## idx,(ae_int16 *)_ae_int16x4_p_mat1_ ## idx,2);
+    _ae_temp_p_mat1_ ##idx = (ae_int16 *)_ae_int16x4_p_mat1_ ## idx; \
+    AE_L16_IP(_ae_int16x4_mat1_ ## idx, _ae_temp_p_mat1_ ##idx ,2); \
+    _ae_int16x4_p_mat1_ ## idx = (ae_int16x4 *)_ae_temp_p_mat1_ ##idx;
+
 
 #define LOAD_ROW_MAT2_16b_UNALIGNED(idx) \
     AE_LA16X4_IP(_ae_int16x4_mat2_ ## idx,_align_ae_int16x4_p_mat2_ ## idx,_ae_int16x4_p_mat2_ ## idx);
@@ -716,10 +800,14 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 
 #define LOAD_ROW_MAT1_8b_UNALIGNED_SINGLE_ELEMENT(idx) \
-  AE_L8_IP(_ae_int8x8_mat1_ ## idx,(ae_int8 * )_ae_int8x8_p_mat1_ ## idx,1); \
+  _ae_int8_temp_mat1_ ## idx = (ae_int8 *)_ae_int8x8_p_mat1_ ## idx; \
+  AE_L8_IP(_ae_int8x8_mat1_ ## idx, _ae_int8_temp_mat1_ ## idx,1); \
+  _ae_int8x8_p_mat1_ ## idx = (ae_int8x8 *)_ae_int8_temp_mat1_ ## idx;
 
 #define LOAD_ROW_MAT2_8b_UNALIGNED_SINGLE_ELEMENT(idx) \
-  AE_L8_IP(_ae_int8x8_mat2_ ## idx,(ae_int8 * )_ae_int8x8_p_mat2_ ## idx,1); \
+  _ae_int8_temp_mat2_ ## idx = (ae_int8 *) _ae_int8x8_p_mat2_  ## idx ;\
+  AE_L8_IP(_ae_int8x8_mat2_ ## idx,_ae_int8_temp_mat2_ ## idx ,1); \
+  _ae_int8x8_p_mat2_ ## idx = (ae_int8x8 *)_ae_int8_temp_mat2_ ## idx;
 
 #define LOAD_ROW_MAT1_8b_UNALIGNED(idx) \
   AE_LA8X8_IP(_ae_int8x8_mat1_ ## idx, _align_ae_int8x8_p_mat1_ ## idx ,_ae_int8x8_p_mat1_ ## idx); \
@@ -755,8 +843,9 @@ ae_int16 _ae_int16_bias = ZERO16; \
   AE_LSX2X2_IP(_xtfloatx2_mat1_ ## idx,_xtfloatx2_mat1_1_ ## idx, _xtfloatx4_p_mat1_ ## idx, 2*INCREMENT_IN_BYTES_FOR_FLOAT32x2); \
 
 #define LOAD_ROW_MAT1_ASYM8b(idx) \
-  AE_L8X4F_IP(_ae_int16x4_mat1_ ##idx, _WORD8_p_mat1_ ##idx, INCREMENT_IN_BYTES_FOR_WORD8X4); \
-  _ae_int16x4_mat1_ ##idx = AE_MOVF16X4_FROMF64(AE_SRLI64(AE_MOVF64_FROMF16X4(_ae_int16x4_mat1_ ##idx), 8)); \
+  ae_f16x4 _ae_f16x4_mat1_ ##idx; \
+  AE_L8X4F_IP(_ae_f16x4_mat1_ ##idx, _WORD8_p_mat1_ ##idx, INCREMENT_IN_BYTES_FOR_WORD8X4); \
+  _ae_int16x4_mat1_ ##idx = AE_MOVINT16X4_FROMINT64(AE_SRLI64(AE_MOVINT64_FROMF16X4(_ae_f16x4_mat1_ ##idx), 8)); \
   _ae_int16x4_mat1_ ##idx = AE_ADD16(_ae_int16x4_mat1_ ##idx, AE_MOVDA16(mat1_zero_bias)); \
 
 #define LOAD_ROW_MAT1_ASYM8b_UNALIGNED(idx) \
@@ -908,17 +997,17 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 
 #define KERNEL_MAT2_VEC2_8b_8b_UNALIGNED_SINGLE_ROW_SINGLE_ELEMENT \
-          _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0)));
+          _ae_int32x2_acc_0= AE_ADD32(_ae_int32x2_acc_0 , AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0))));
 
 #define KERNEL_MAT1_VEC1_8b_8b_UNALIGNED_SINGLE_ROW_SINGLE_ELEMENT_BATCH_SINGLE_VECTOR \
-          _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0)));\
+          _ae_int32x2_acc_0= AE_ADD32(_ae_int32x2_acc_0, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0))));\
 
 #define KERNEL_MAT1_VEC1_8b_8b_UNALIGNED_SINGLE_ROW_SINGLE_ELEMENT_BATCH \
-          _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0)));\
-          _ae_int32x2_acc_2= _ae_int32x2_acc_2 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_1,0)));
+          _ae_int32x2_acc_0= AE_ADD32(_ae_int32x2_acc_0, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0))));\
+          _ae_int32x2_acc_2= AE_ADD32(_ae_int32x2_acc_2, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_1,0))));
 
 #define KERNEL_MAT1_VEC1_8b_8b_UNALIGNED_SINGLE_ROW_SINGLE_ELEMENT \
-          _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0)));
+          _ae_int32x2_acc_0= AE_ADD32(_ae_int32x2_acc_0, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0))));
 
 
 #define KERNEL_MAT1_VEC1_8b_8b_UNALIGNED_SINGLE_ROW_SINGLE_VECTOR_BATCH \
@@ -947,26 +1036,26 @@ ae_int16 _ae_int16_bias = ZERO16; \
     AE_MULA8Q8X8(_ae_int32x2_acc_0 ,  _ae_int32x2_acc_1 ,zero_temp,_ae_int8x8_mat1_0 ,_ae_int8x8_mat1_2, _ae_int8x8_mat1_1,_ae_int8x8_vec1);
 
 #define KERNEL_MAT1_VEC1_8b_8b_UNALIGNED_SINGLE_ELEMENT_BATCH_SINGLE_ROW \
-          _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0)));\
-          _ae_int32x2_acc_1= _ae_int32x2_acc_1 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0)));\
+          _ae_int32x2_acc_0= AE_ADD32(_ae_int32x2_acc_0, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0))));\
+          _ae_int32x2_acc_1= AE_ADD32(_ae_int32x2_acc_1, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0))));\
 
 #define KERNEL_MAT1_VEC1_8b_8b_UNALIGNED_SINGLE_ELEMENT_BATCH \
-          _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0)));\
-          _ae_int32x2_acc_1= _ae_int32x2_acc_1 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0)));\
-          _ae_int32x2_acc_2= _ae_int32x2_acc_2 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_1,0)));\
-          _ae_int32x2_acc_3= _ae_int32x2_acc_3 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_1,0)));\
+          _ae_int32x2_acc_0= AE_ADD32(_ae_int32x2_acc_0, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0))));\
+          _ae_int32x2_acc_1= AE_ADD32(_ae_int32x2_acc_1, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_0,0))));\
+          _ae_int32x2_acc_2= AE_ADD32(_ae_int32x2_acc_2, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_1,0))));\
+          _ae_int32x2_acc_3= AE_ADD32(_ae_int32x2_acc_3, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1_1,0))));\
 
 #define KERNEL_MAT1_VEC1_8b_8b_UNALIGNED_SINGLE_ELEMENT \
           ae_int32x2 temp;\
-          _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0)));\
-          temp = AE_SEL32_LL(AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_2,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0))),AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0))));\
-          _ae_int32x2_acc_1= _ae_int32x2_acc_1 + temp;\
+          _ae_int32x2_acc_0= AE_ADD32(_ae_int32x2_acc_0, AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0))));\
+          temp = AE_SEL32_LL(AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_2,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0))), AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat1_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec1,0))));\
+          _ae_int32x2_acc_1= AE_ADD32(_ae_int32x2_acc_1, temp);\
 
 #define KERNEL_MAT2_VEC2_8b_8b_UNALIGNED_SINGLE_ELEMENT \
           ae_int32x2 temp;\
-          _ae_int32x2_acc_0= _ae_int32x2_acc_0 + AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0)));\
-          temp = AE_SEL32_LL(AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_2,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0))),AE_MUL16S(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0))));\
-          _ae_int32x2_acc_1= _ae_int32x2_acc_1 + temp;\
+          _ae_int32x2_acc_0= AE_ADD32(_ae_int32x2_acc_0 , AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_0,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0))));\
+          temp = AE_SEL32_LL(AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_2,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0))), AE_MUL16S_00(AE_MOVDA16(AE_MOVAD8(_ae_int8x8_mat2_1,0)),AE_MOVDA16(AE_MOVAD8(_ae_int8x8_vec2,0))));\
+          _ae_int32x2_acc_1= AE_ADD32(_ae_int32x2_acc_1, temp);\
 
 
 #define KERNEL_MAT2_VEC2_8b_8b_UNALIGNED \
@@ -1119,119 +1208,121 @@ ae_int16 _ae_int16_bias = ZERO16; \
 /*---------------------------------------------------------*/
 #define ADD_BIAS_8b_ACC_FOR_8bx8b_SINGLE \
         AE_L8_IP(_ae_int8_bias,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);\
-        _ae_int64_acc_0 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_0,ZERO32));\
+        _ae_int64_acc_0 = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_acc_0,ZERO32);\
         _ae_int64_acc_0 = AE_SRAA64(_ae_int64_acc_0,32);\
-        sat_1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(AE_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32));\
+        sat_1 = SW_SEL32_LL_INT32X2_INT64(SW_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32);\
         sat_1 = AE_SRAI64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_0  = AE_ADD64S(_ae_int64_acc_0,sat_1);\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_0  = SW_ADD64S_INT64_INT64(_ae_int64_acc_0,sat_1);\
 
 #define ADD_BIAS_8b_ACC_FOR_8bx8b_UNALIGNED_SUPPORT_BATCH(idx,idx1) \
         AE_L8_IP(_ae_int8_bias,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);\
-        sat_1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(AE_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32));\
+        sat_1 = AE_MOVINT64_FROMINT32X2(AE_SEL32_LL(SW_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32));\
         sat_1 = AE_SRAI64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_ ## idx = AE_MOVINT64_FROMINT32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
         _ae_int64_acc_ ## idx = AE_SRAA64(_ae_int64_acc_ ## idx,32);\
-        _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx,sat_1);\
-        _ae_int64_acc_ ## idx1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx1,ZERO32));\
+        _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx,sat_1);\
+        _ae_int64_acc_ ## idx1 = AE_MOVINT64_FROMINT32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx1,ZERO32));\
         _ae_int64_acc_ ## idx1 = AE_SRAA64(_ae_int64_acc_ ## idx1,32);\
-        _ae_int64_acc_ ## idx1 = AE_ADD64S(_ae_int64_acc_ ## idx1,sat_1);\
+        _ae_int64_acc_ ## idx1 = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx1,sat_1);\
 
 #define ADD_BIAS_8b_ACC_FOR_8bx8b_UNALIGNED_SUPPORT(idx) \
         AE_L8_IP(_ae_int8_bias,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);\
-        _ae_int64_acc_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
+        _ae_int64_acc_ ## idx = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
         _ae_int64_acc_ ## idx = AE_SRAA64(_ae_int64_acc_ ## idx,32);\
-        sat_1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(AE_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32));\
+        sat_1 = SW_SEL32_LL_INT32X2_INT64(SW_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32);\
         sat_1 = AE_SRAI64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx,sat_1);\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx,sat_1);\
 
 #define ADD_BIAS_8b_ACC_FOR_8bx8b_UNALIGNED_SUPPORT_1(idx) \
         AE_L8_IP(_ae_int8_bias,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);\
-        _ae_int64_acc_1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx, ZERO32));\
+        _ae_int64_acc_1 = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_acc_ ## idx, ZERO32);\
         _ae_int64_acc_1 = AE_SRAA64(_ae_int64_acc_1,32);\
-        sat_1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(AE_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32));\
+        sat_1 = SW_SEL32_LL_INT32X2_INT64(SW_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32);\
         sat_1 = AE_SRAI64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_1 = AE_ADD64S(_ae_int64_acc_1,sat_1);\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_1 = SW_ADD64S_INT64_INT64(_ae_int64_acc_1,sat_1);\
         \
         AE_L8_IP(_ae_int8_bias,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);\
-        _ae_int64_acc_2 = AE_MOVF64_FROMF32X2(AE_SEL32_HH(_ae_int32x2_acc_ ## idx, ZERO32));\
+        _ae_int64_acc_2 = SW_SEL32_HH_INT32X2_INT64(_ae_int32x2_acc_ ## idx, ZERO32);\
         _ae_int64_acc_2 = AE_SRAA64(_ae_int64_acc_2,32);\
-        sat_1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(AE_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32));\
+        sat_1 = SW_SEL32_LL_INT32X2_INT64(SW_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32);\
         sat_1 = AE_SRAA64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_2 = AE_ADD64S(_ae_int64_acc_2,sat_1);\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_2 = SW_ADD64S_INT64_INT64(_ae_int64_acc_2,sat_1);\
 
 #define ADD_BIAS_8b_ACC_FOR_8bx8b(idx) \
         AE_L8_IP(_ae_int8_bias,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);\
         AE_L8_IP(_ae_int8_bias_1,_ae_int8_p_bias,INCREMENT_IN_BYTES_FOR_WORD8);\
-        sat_1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(AE_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32));\
+        sat_1 = SW_SEL32_LL_INT32X2_INT64(SW_MOVDA32(AE_MOVAD8(_ae_int8_bias,0)),ZERO32);\
         sat_1 = AE_SRAI64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        sat_2 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(AE_MOVDA32(AE_MOVAD8(_ae_int8_bias_1,0)),ZERO32));\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        sat_2 = SW_SEL32_LL_INT32X2_INT64(SW_MOVDA32(AE_MOVAD8(_ae_int8_bias_1,0)),ZERO32);\
         sat_2 = AE_SRAI64(sat_2,32);\
-        sat_2 = AE_SLAA64S(sat_2,bias_shift);\
-        _ae_int64_acc_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_HH(_ae_int32x2_acc_ ## idx,ZERO32));\
+        sat_2 = SW_SLAA64S_INT64_INT64(sat_2,bias_shift);\
+        _ae_int64_acc_ ## idx = SW_SEL32_HH_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
         _ae_int64_acc_ ## idx = AE_SRAA64(_ae_int64_acc_ ## idx,32);\
-        _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx,sat_1);\
+        _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx,sat_1);\
         \
-        _ae_int64_acc_1_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
+        _ae_int64_acc_1_ ## idx = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
         _ae_int64_acc_1_ ## idx = AE_SRAA64(_ae_int64_acc_1_ ## idx,32);\
-        _ae_int64_acc_1_ ## idx = AE_ADD64S(_ae_int64_acc_1_ ## idx,sat_2);\
+        _ae_int64_acc_1_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_1_ ## idx,sat_2);\
 
 #define ADD_BIAS_32b_ACC_FOR_8bx8b_SINGLE_EXTRA_ROW(idx) \
-        AE_L32_IP(_ae_int32x2_bias,(ae_int32*) _ae_int32x2_p_bias, INCREMENT_IN_BYTES_FOR_INT32); \
-        sat_1 = AE_MOVF64_FROMF32X2(_ae_int32x2_bias);\
+        temp_int32ptr = (ae_int32 *)_ae_int32x2_p_bias; \
+        AE_L32_IP(_ae_int32x2_bias, temp_int32ptr, INCREMENT_IN_BYTES_FOR_INT32); \
+        _ae_int32x2_p_bias = (ae_int32x2 *)temp_int32ptr; \
+        sat_1 = AE_MOVINT64_FROMINT32X2(_ae_int32x2_bias);\
         sat_1 = AE_SRAA64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_ ## idx = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
         _ae_int64_acc_ ## idx = AE_SRAA64(_ae_int64_acc_ ## idx,32);\
-        _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx,sat_1);\
+        _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx,sat_1);\
 
 #define ADD_BIAS_32b_ACC_FOR_8bx8b_SINGLE_1(idx) \
         AE_L32_IP(_ae_int32_bias, _ae_int32_p_bias, INCREMENT_IN_BYTES_FOR_INT32); \
-        sat_1 = AE_MOVF64_FROMF32X2(_ae_int32_bias);\
+        sat_1 = AE_MOVINT64_FROMINT32X2(_ae_int32_bias);\
         sat_1 = AE_SRAI64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_1 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_1 = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
         _ae_int64_acc_1 = AE_SRAA64(_ae_int64_acc_1,32);\
-        _ae_int64_acc_1 = AE_ADD64S(_ae_int64_acc_1,sat_1);\
+        _ae_int64_acc_1 = SW_ADD64S_INT64_INT64(_ae_int64_acc_1,sat_1);\
         \
         AE_L32_IP(_ae_int32_bias, _ae_int32_p_bias, INCREMENT_IN_BYTES_FOR_INT32); \
-        sat_1 = AE_MOVF64_FROMF32X2(_ae_int32_bias);\
+        sat_1 = AE_MOVINT64_FROMINT32X2(_ae_int32_bias);\
         sat_1 = AE_SRAI64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_2 = AE_MOVF64_FROMF32X2(AE_SEL32_HH(_ae_int32x2_acc_ ## idx,ZERO32));\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_2 = SW_SEL32_HH_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
         _ae_int64_acc_2 = AE_SRAA64(_ae_int64_acc_2,32);\
-        _ae_int64_acc_2 = AE_ADD64S(_ae_int64_acc_2,sat_1);\
+        _ae_int64_acc_2 = SW_ADD64S_INT64_INT64(_ae_int64_acc_2,sat_1);\
 
 
 #define ADD_BIAS_32b_ACC_FOR_8bx8b_SINGLE(idx) \
         AE_L32_IP(_ae_int32_bias, _ae_int32_p_bias, INCREMENT_IN_BYTES_FOR_INT32); \
-        sat_1 = AE_MOVF64_FROMF32X2(_ae_int32_bias);\
+        sat_1 = AE_MOVINT64_FROMINT32X2(_ae_int32_bias);\
         sat_1 = AE_SRAA64(sat_1,32);\
-        sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-        _ae_int64_acc_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
+        sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+        _ae_int64_acc_ ## idx = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
         _ae_int64_acc_ ## idx = AE_SRAA64(_ae_int64_acc_ ## idx,32);\
-        _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx,sat_1);\
+        _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx,sat_1);\
 
 #define ADD_BIAS_32b_ACC_FOR_8bx8b(idx) \
   AE_L32X2_IP(_ae_int32x2_bias, _ae_int32x2_p_bias, 2*INCREMENT_IN_BYTES_FOR_INT32); \
-  sat_1 = AE_MOVF64_FROMF32X2(AE_SEL32_HH(_ae_int32x2_bias,ZERO32));\
+  sat_1 = SW_SEL32_HH_INT32X2_INT64(_ae_int32x2_bias,ZERO32);\
   sat_1 = AE_SRAI64(sat_1,32);\
-  sat_1 = AE_SLAA64S(sat_1,bias_shift);\
-  sat_2 = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_bias,ZERO32));\
+  sat_1 = SW_SLAA64S_INT64_INT64(sat_1,bias_shift);\
+  sat_2 = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_bias,ZERO32);\
   sat_2 = AE_SRAI64(sat_2,32);\
-  sat_2 = AE_SLAA64S(sat_2,bias_shift);\
-  _ae_int64_acc_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_HH(_ae_int32x2_acc_ ## idx,ZERO32));\
+  sat_2 = SW_SLAA64S_INT64_INT64(sat_2,bias_shift);\
+  _ae_int64_acc_ ## idx = SW_SEL32_HH_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
   _ae_int64_acc_ ## idx = AE_SRAA64(_ae_int64_acc_ ## idx,32);\
-  _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx,sat_1);\
+  _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx,sat_1);\
   \
-  _ae_int64_acc_1_ ## idx = AE_MOVF64_FROMF32X2(AE_SEL32_LL(_ae_int32x2_acc_ ## idx,ZERO32));\
+  _ae_int64_acc_1_ ## idx = SW_SEL32_LL_INT32X2_INT64(_ae_int32x2_acc_ ## idx,ZERO32);\
   _ae_int64_acc_1_ ## idx = AE_SRAA64(_ae_int64_acc_1_ ## idx,32);\
-  _ae_int64_acc_1_ ## idx = AE_ADD64S(_ae_int64_acc_1_ ## idx,sat_2);\
+  _ae_int64_acc_1_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_1_ ## idx,sat_2);\
 
 #define ADD_BIAS_16b_ACC_FOR_8bx16b_NEW(idx) \
   AE_L16_IP(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16); \
@@ -1242,24 +1333,24 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define ADD_BIAS_16b_ACC_FOR_8bx16b_BATCH(idx,idx1) \
   ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16); \
   /* Saturate 16b bias after shift to 64b */ \
-  _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift); \
-  _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx, _ae_int64_sat_bias); \
-  _ae_int64_acc_ ## idx1 = AE_ADD64S(_ae_int64_acc_ ## idx1, _ae_int64_sat_bias); \
+  _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift); \
+  _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx, _ae_int64_sat_bias); \
+  _ae_int64_acc_ ## idx1 = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx1, _ae_int64_sat_bias); \
 
 
 #define ADD_BIAS_16b_ACC_FOR_8bx16b(idx) \
   ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16); \
   /* Saturate 16b bias after shift to 64b */ \
-  _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int16_bias), bias_shift); \
-  _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx, _ae_int64_sat_bias); \
+  _ae_int64_sat_bias = SW_SLAA64S_INT16_INT64(_ae_int16_bias, bias_shift); \
+  _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx, _ae_int64_sat_bias); \
 
 #define ADD_BIAS_16b_ACC_FOR_16bx8b ADD_BIAS_16b_ACC_FOR_8bx16b
 
 #define ADD_BIAS_64b_ACC_FOR_8bx16b(idx) \
   ae_int64_loadip(_ae_int64_bias, _ae_int64_p_bias, INCREMENT_IN_BYTES_FOR_INT64); \
   /* Saturate 64b bias after shift to 64b */ \
-  _ae_int64_sat_bias = AE_SLAA64S(((ae_int64) _ae_int64_bias), bias_shift); \
-  _ae_int64_acc_ ## idx = AE_ADD64S(_ae_int64_acc_ ## idx, _ae_int64_sat_bias); \
+  _ae_int64_sat_bias = SW_SLAA64S_INT64_INT64(_ae_int64_bias, bias_shift); \
+  _ae_int64_acc_ ## idx = SW_ADD64S_INT64_INT64(_ae_int64_acc_ ## idx, _ae_int64_sat_bias); \
 
 #define ADD_BIAS_16b_ACC_FOR_16bx16b(idx) \
   ae_int16_loadip(_ae_int16_bias, _ae_int16_p_bias, INCREMENT_IN_BYTES_FOR_INT16); \
@@ -1311,8 +1402,8 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define ADD_BIAS_BATCH_16b_ACC_FOR_8bx16b    ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b
 
 #define ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b(idx_row,idx_vec)\
-  _ae_int64_acc_ ##idx_row ##_ ##idx_vec=_ae_int64_acc_1_ ##idx_row ##_ ##idx_vec+_ae_int64_acc_ ##idx_row ##_ ##idx_vec;\
-  _ae_int64_acc_ ##idx_row ##_ ##idx_vec = AE_ADD64S(_ae_int64_acc_ ##idx_row ##_ ##idx_vec, _ae_int64_sat_bias); \
+  _ae_int64_acc_ ##idx_row ##_ ##idx_vec= AE_ADD64(_ae_int64_acc_1_ ##idx_row ##_ ##idx_vec, _ae_int64_acc_ ##idx_row ##_ ##idx_vec);\
+  _ae_int64_acc_ ##idx_row ##_ ##idx_vec = AE_ADD64(_ae_int64_acc_ ##idx_row ##_ ##idx_vec, _ae_int64_sat_bias); \
 
 #define ADD_BIAS_BATCH_ASYM8b_ACC_FOR_ASYM8bxASYM8b     ADD_BIAS_BATCH_16b_ACC_FOR_16bx16b
 
@@ -1321,7 +1412,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
   ADD_BIAS_BATCH_ACC_VEC_UNROLL(idx_row);\
 
 #define ADD_BIAS_BATCH_ACC_FOR_f32(idx_row,idx_vec)\
-  _xtfloatx2_acc_ ##idx_row ##_ ##idx_vec =_xtfloatx2_acc_ ##idx_row ##_ ##idx_vec+_xtfloatx2_acc_1_ ##idx_row ##_ ##idx_vec;\
+  _xtfloatx2_acc_ ##idx_row ##_ ##idx_vec = ADD_SX2(_xtfloatx2_acc_ ##idx_row ##_ ##idx_vec, _xtfloatx2_acc_1_ ##idx_row ##_ ##idx_vec);\
   _xtfloat_acc_ ##idx_row ##_ ##idx_vec = RADD_SX2(_xtfloatx2_acc_ ##idx_row ##_ ##idx_vec);\
   _xtfloat_acc_ ##idx_row ##_ ##idx_vec = ADD_S(_xtfloat_acc_ ##idx_row ##_ ##idx_vec, _xtfloat_bias); \
 
@@ -1343,35 +1434,35 @@ ae_int16 _ae_int16_bias = ZERO16; \
           AE_MULA8Q8X8(_ae_int32x2_acc_1, _ae_int32x2_acc_0,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat1_1_0,_ae_int8x8_vec1_1);
 
 #define KERNEL_8x8_NOT_UNROLLED_MAT2_VEC2 \
-          AE_MULA8Q8X8(_ae_int32x2_acc_0, _ae_int32x2_acc_0,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat2_0,_ae_int8x8_vec2);\
-          AE_MULA8Q8X8(_ae_int32x2_acc_0, _ae_int32x2_acc_0,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat2_1_0,_ae_int8x8_vec2_1);
+          AE_MULA8Q8X8(_ae_int32x2_acc_0, _ae_int32x2_acc_1,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat2_0,_ae_int8x8_vec2);\
+          AE_MULA8Q8X8(_ae_int32x2_acc_0, _ae_int32x2_acc_1,zero_temp,zero_temp,zero_temp,_ae_int8x8_mat2_1_0,_ae_int8x8_vec2_1);
 
 #define STORE_ACC_8bx8b_AT_OUT_8_SINGLE \
         ae_int8x8 temp;\
         ae_int32x2 temp_32;\
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0,acc_shift);\
-        temp_32  = AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_0);\
-        temp_32 = AE_SLAI32S(temp_32,24); \
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0,acc_shift);\
+        temp_32  = SW_ROUND32X2F64SSYM_INT32X2_INT64_INT32X2(ZERO32,_ae_int64_acc_0);\
+        temp_32 = SW_SLAI32S_INT32X2_INT32X2(temp_32,24); \
         temp_32 = AE_SRAI32(temp_32,24); \
         temp = AE_MOVINT8X8_FROMINT32X2(temp_32);\
         AE_S8_0_IP(temp,output_ptr,sizeof(ae_int8));
 
 #define STORE_ACC_8bx8b_AT_OUT_8_SINGLE_UNALIGNED(idx) \
-        _ae_int64_acc_ ## idx = AE_SLAA64S(_ae_int64_acc_ ## idx,acc_shift);\
-        temp_32  = AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_ ## idx);\
-        temp_32 = AE_SLAI32S(temp_32,24); \
+        _ae_int64_acc_ ## idx = SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## idx,acc_shift);\
+        temp_32  = SW_ROUND32X2F64SSYM_INT32X2_INT64_INT32X2(ZERO32,_ae_int64_acc_ ## idx);\
+        temp_32 = SW_SLAI32S_INT32X2_INT32X2(temp_32,24); \
         temp_32 = AE_SRAI32(temp_32,24); \
         temp_output = AE_MOVINT8X8_FROMINT32X2(temp_32);\
         AE_S8_0_IP(temp_output,output_ptr,sizeof(ae_int8));
 
 #define ZER0_8x8_Temp_Variable \
-        ae_int8x8 zero_temp = AE_MOVINT8X8_FROMINT32X2(0);
+        ae_int8x8 zero_temp = AE_MOVINT8X8_FROMINT32X2(ZERO32);
 
 #define SETUP_OUTPUT_STORE_8_UNALIGNED_SUPPORT \
         ae_int8 * output_ptr; \
         output_ptr=(ae_int8 *)(p_out+m_itr);\
         ae_int8x8 temp_output;\
-        ae_int32 temp_32;\
+        ae_int32x2 temp_32;\
 
 
 #define SETUP_OUTPUT_STORE_8x8 \
@@ -1552,45 +1643,45 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define STORE_ACC_8bx8b_AT_OUT_16_SINGLE \
         ae_int16x4 temp1;\
         ae_int32x2 temp_32;\
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0,acc_shift);\
-        temp_32  = AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_0);\
-        temp_32 = AE_SLAI32S(temp_32,16); \
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0,acc_shift);\
+        temp_32  = SW_ROUND32X2F64SSYM_INT32X2_INT64_INT32X2(ZERO32,_ae_int64_acc_0);\
+        temp_32 = SW_SLAI32S_INT32X2_INT32X2(temp_32,16); \
         temp_32 = AE_SRAI32(temp_32,16); \
         temp1 = AE_MOVINT16X4_FROMINT32X2(temp_32);\
         AE_S16_0_IP(temp1,output_ptr,sizeof(ae_int16));\
 
 #define STORE_ACC_8bx8b_AT_OUT_16_SINGLE_UNALIGNED(idx) \
-        _ae_int64_acc_ ## idx = AE_SLAA64S(_ae_int64_acc_ ## idx,acc_shift);\
-        temp_32  = AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_ ## idx);\
-        temp_32 = AE_SLAA32S(temp_32,16); \
+        _ae_int64_acc_ ## idx = SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## idx,acc_shift);\
+        temp_32  = SW_ROUND32X2F64SSYM_INT32X2_INT64_INT32X2(ZERO32,_ae_int64_acc_ ## idx);\
+        temp_32 = AE_MOVINT32X2_FROMF32X2(AE_SLAA32S(AE_MOVF32X2_FROMINT32X2(temp_32),16)); \
         temp_32 = AE_SRAA32(temp_32,16); \
         temp_output = AE_MOVINT16X4_FROMINT32X2(temp_32);\
         AE_S16_0_IP(temp_output,output_ptr,sizeof(ae_int16));\
 
 #define STORE_ACC_BATCH_8bx8b_AT_OUT_32b_UNALIGNED_SUPPORT(idx_row,idx_vec,acc) \
-        _ae_int64_acc_ ## acc = AE_SLAA64S(_ae_int64_acc_ ## acc,acc_shift);\
+        _ae_int64_acc_ ## acc = SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## acc,acc_shift);\
   (*((ae_int32 *) p_out[vec_itr + idx_vec] + m_itr + idx_row)) = \
-  AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_ ## acc); \
+  AE_MOVINT32_FROMF32X2(AE_ROUND32X2F64SSYM(AE_MOVF64_FROMINT32X2(ZERO32),AE_MOVF64_FROMINT64(_ae_int64_acc_ ## acc))); \
 
 #define STORE_ACC_8bx8b_AT_OUT_32_SINGLE_UNALIGNED(idx) \
-        _ae_int64_acc_ ## idx = AE_SLAA64S(_ae_int64_acc_ ## idx,acc_shift);\
-        AE_S32_L_IP(AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_ ## idx),output_ptr,sizeof(ae_int32));
+        _ae_int64_acc_ ## idx = SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## idx,acc_shift);\
+        AE_S32_L_IP(SW_ROUND32X2F64SSYM_INT32X2_INT64_INT32X2(ZERO32, _ae_int64_acc_ ## idx),output_ptr,sizeof(ae_int32));
 
 #define STORE_ACC_8bx8b_AT_OUT_32_SINGLE \
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0,acc_shift);\
-        AE_S32_L_IP(AE_ROUND32X2F64SSYM(ZERO32,_ae_int64_acc_0),output_ptr,sizeof(ae_int32));
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0,acc_shift);\
+        AE_S32_L_IP(SW_ROUND32X2F64SSYM_INT32X2_INT64_INT32X2(ZERO32,_ae_int64_acc_0),output_ptr,sizeof(ae_int32));
 
 #define STORE_ACC_8bx16b_AT_OUT_16x4(one,two,three,four)\
         ae_int32x2 temp1 ## one,temp2 ## one;\
-        _ae_int64_acc_ ## one   =  AE_SLAA64S(_ae_int64_acc_ ## one  ,acc_shift);\
-        _ae_int64_acc_ ## two   =  AE_SLAA64S(_ae_int64_acc_ ## two  ,acc_shift);\
-        _ae_int64_acc_ ## three =  AE_SLAA64S(_ae_int64_acc_ ## three,acc_shift);\
-        _ae_int64_acc_ ## four  =  AE_SLAA64S(_ae_int64_acc_ ## four ,acc_shift);\
-        temp1 ## one = AE_ROUND32X2F64SSYM(_ae_int64_acc_ ## one,_ae_int64_acc_ ## two); \
-        temp2 ## one = AE_ROUND32X2F64SSYM(_ae_int64_acc_ ## three,_ae_int64_acc_ ## four); \
-        temp1 ## one =  AE_SLAI32S(temp1 ## one,16);\
+        _ae_int64_acc_ ## one   =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## one  ,acc_shift);\
+        _ae_int64_acc_ ## two   =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## two  ,acc_shift);\
+        _ae_int64_acc_ ## three =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## three,acc_shift);\
+        _ae_int64_acc_ ## four  =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## four ,acc_shift);\
+        temp1 ## one = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_ ## one,_ae_int64_acc_ ## two); \
+        temp2 ## one = SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_ ## three,_ae_int64_acc_ ## four); \
+        temp1 ## one =  SW_SLAI32S_INT32X2_INT32X2(temp1 ## one,16);\
         temp1 ## one =  AE_SRAI32(temp1 ## one,16);\
-        temp2 ## one =  AE_SLAI32S(temp2 ## one,16);\
+        temp2 ## one =  SW_SLAI32S_INT32X2_INT32X2(temp2 ## one,16);\
         temp2 ## one =  AE_SRAI32(temp2 ## one,16);\
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_HH(temp1 ## one,temp1 ## one)),output_ptr,sizeof(ae_int16));\
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_LL(temp1 ## one,temp1 ## one)),output_ptr,sizeof(ae_int16));\
@@ -1704,13 +1795,13 @@ ae_int16 _ae_int16_bias = ZERO16; \
 /* ==================================================================================================== */
 #define STORE_ACC_8bx16b_AT_SCRATCH_32b(idx) \
   (*((ae_int32 *) p_scratch + m_itr + idx)) = \
-  AE_ROUND32F64SSYM(AE_SLAA64S(_ae_int64_acc_ ## idx, acc_shift)); \
+  AE_MOVINT32_FROMF32X2(AE_ROUND32F64SSYM(AE_SLAA64S(AE_MOVF64_FROMINT64(_ae_int64_acc_ ## idx), acc_shift))); \
 
 #define STORE_ACC_8bx16b_AT_OUT_16b(idx) \
   ae_int32 temp32 ## idx;\
-  _ae_int64_acc_ ## idx =  AE_SLAA64S(_ae_int64_acc_ ## idx,acc_shift);\
-  temp32 ## idx =  AE_ROUND32F64SSYM(_ae_int64_acc_ ## idx);\
-  (*((ae_int16 *) p_out + m_itr + idx)) = AE_SAT16X4(0,temp32 ## idx); \
+  _ae_int64_acc_ ## idx =  SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## idx,acc_shift);\
+  temp32 ## idx =  SW_ROUND32F64SSYM_INT64_INT32(_ae_int64_acc_ ## idx);\
+  (*((ae_int16 *) p_out + m_itr + idx)) = AE_MOVINT16_FROMINT16X4(AE_SAT16X4(ZERO32,AE_MOVINT32X2_FROMINT32(temp32 ## idx))); \
 
 #define STORE_ACC_16bx8b_AT_OUT_16b STORE_ACC_8bx16b_AT_OUT_16b
 
@@ -1774,11 +1865,11 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define STORE_ACC_8bx16b_AT_OUT_32b(idx) \
   (*((ae_int32 *) p_out + m_itr + idx)) = \
-  AE_ROUND32F64SSYM(AE_SLAA64S(_ae_int64_acc_ ## idx, acc_shift)); \
+  AE_MOVINT32_FROMF32X2(AE_ROUND32F64SSYM(AE_SLAA64S(AE_MOVF64_FROMINT64(_ae_int64_acc_ ## idx), acc_shift))); \
 
 #define STORE_ACC_8bx16b_AT_OUT_64b(idx) \
   (*((ae_int64 *) p_out + m_itr + idx)) = \
-  AE_SLAA64S(_ae_int64_acc_ ## idx, acc_shift); \
+  SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## idx, acc_shift); \
 
 /* ==================================================================================================== */
 #define STORE_ACC_16bx16b_AT_SCRATCH_32b(idx) \
@@ -1837,11 +1928,11 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define STORE_ACC_BATCH_16bx16b_AT_OUT_64b_UNALIGNED_SUPPORT(idx_row,idx_vec,acc) \
   (*((ae_int64 *) p_out[vec_itr + idx_vec] + m_itr + idx_row)) = \
-  AE_SLAA64S(_ae_int64_acc_ ## acc, acc_shift); \
+  SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ## acc, acc_shift); \
 
 #define STORE_ACC_BATCH_16bx16b_AT_OUT_64b(idx_row,idx_vec) \
   (*((ae_int64 *) p_out[vec_itr + idx_vec] + m_itr + idx_row)) = \
-  AE_SLAA64S(_ae_int64_acc_ ##idx_row ##_ ##idx_vec, acc_shift); \
+  SW_SLAA64S_INT64_INT64(_ae_int64_acc_ ##idx_row ##_ ##idx_vec, acc_shift); \
 
 #define STORE_ACC_BATCH_16bx16b_AT_OUT_16b(idx_row,idx_vec) \
   (*((ae_int16 *) p_out[vec_itr + idx_vec] + m_itr + idx_row)) = \
@@ -1852,14 +1943,14 @@ ae_int16 _ae_int16_bias = ZERO16; \
 
 #define STORE_ACC_BATCH_AT_OUT_f32(idx_row,idx_vec) \
   /*p_out value stored in a tmp pointer to make it inout for ISA */\
-  p_out_tmp = (p_out[vec_itr + idx_vec] + m_itr + idx_row);\
+  p_out_tmp = (xtfloat*)(p_out[vec_itr + idx_vec] + m_itr + idx_row);\
   AE_SSIP(_xtfloat_acc_ ##idx_row ##_ ##idx_vec,p_out_tmp,0); \
 
 #define STORE_ACC_BATCH_ROW_ASYM8bxASYM8b_AT_OUT_ASYM8b(idx_row) \
   STORE_ACC_BATCH_VEC_UNROLL(idx_row); \
 
 #define STORE_ACC_BATCH_ASYM8bxASYM8b_AT_OUT_ASYM8b(idx_row,idx_vec) \
-  _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_MIN32(AE_MAX32(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, AE_MOVDA32(0)), AE_MOVDA32(255)); \
+  _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_MIN32(AE_MAX32(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, SW_MOVDA32(0)), SW_MOVDA32(255)); \
   (*((UWORD8 *) (p_out[vec_itr + idx_vec] + m_itr + idx_row))) = (UWORD8)AE_MOVAD32_L(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec); \
 
 /*---------------------------------------------------------*/
@@ -1888,7 +1979,7 @@ ae_int16 _ae_int16_bias = ZERO16; \
   ae_int32x2 _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec = AE_MOVINT32X2_FROMINT64(_ae_int64_acc_ ##idx_row ##_ ##idx_vec); \
   MPY_BY_QUANT_MULT_X2_OUT32(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, _ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, out_multiplier, left_shift, right_shift); \
   /* Add output zero point */ \
-  (_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec) = AE_ADD32S(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec, AE_MOVDA32(out_zero_bias)); \
+  (_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec) = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(_ae_int32x2_acc_ ##idx_row ##_ ##idx_vec), AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_zero_bias)))); \
 
 /*---------------------------------------------------------*/
 /* ==================================================================================================== */
@@ -2004,11 +2095,15 @@ ae_int16 _ae_int16_bias = ZERO16; \
     WORD8 *p_char_align_##p_char =  (WORD8 *)((unsigned int)p_char & ~0x7); \
     int sel_idx_##p_char = (unsigned int)p_char - (unsigned int)p_char_align_##p_char; \
     ae_int8x8 sel_##p_char = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(g_sel_pattern[2 * sel_idx_##p_char], g_sel_pattern[2 * sel_idx_##p_char + 1])); \
-    AE_L8X8_IP(tmp, (ae_int8x8 *)p_char_align_##p_char, 8); 
+    ae_int8x8* p8x8_char_align_##p_char = (ae_int8x8*)p_char_align_##p_char; \
+    AE_L8X8_IP(tmp, p8x8_char_align_##p_char, 8); \
+    p_char_align_##p_char = (WORD8*)p8x8_char_align_##p_char;
 
 #define AE_SW_LA8X8_IP(d, tmp, p_char) { \
       ae_int8x8 d_tmp; \
-      AE_L8X8_IP(d_tmp, (ae_int8x8 *)p_char_align_##p_char, 8);\
+      p8x8_char_align_##p_char = (ae_int8x8*)p_char_align_##p_char; \
+      AE_L8X8_IP(d_tmp, p8x8_char_align_##p_char, 8);\
+      p_char_align_##p_char = (WORD8*)p8x8_char_align_##p_char; \
       AE_DSEL8X8(d, tmp, tmp, d_tmp, sel_##p_char); \
     }
 
@@ -2017,11 +2112,15 @@ ae_int16 _ae_int16_bias = ZERO16; \
     WORD8 *p_char_align_##p_char =  (WORD8 *)((unsigned int)p_char & ~0x7); \
     int sel_idx_##p_char = (unsigned int)p_char - (unsigned int)p_char_align_##p_char; \
     ae_int8x8 sel_##p_char = AE_MOVINT8X8_FROMINT32X2(AE_MOVDA32X2(g_sel_pattern[2 * sel_idx_##p_char], g_sel_pattern[2 * sel_idx_##p_char + 1])); \
-    AE_L8X8_XC(tmp, (ae_int8x8 *)p_char_align_##p_char, 8); 
+    ae_int8x8 *p8x8_char_align_##p_char = (ae_int8x8 *)p_char_align_##p_char; \
+    AE_L8X8_XC(tmp, p8x8_char_align_##p_char, 8); \
+    p_char_align_##p_char = (WORD8*)p8x8_char_align_##p_char;
         
 #define AE_SW_LA8X8_IC(d, tmp, p_char) { \
       ae_int8x8 d_tmp; \
-      AE_L8X8_XC(d_tmp, (ae_int8x8 *)p_char_align_##p_char, 8);\
+      ae_int8x8 *p8x8_char_align_##p_char = (ae_int8x8 *)p_char_align_##p_char; \
+      AE_L8X8_XC(d_tmp,p8x8_char_align_##p_char , 8);\
+      p_char_align_##p_char = (WORD8*)p8x8_char_align_##p_char; \
       AE_DSEL8X8(d, tmp, tmp, d_tmp, sel_##p_char); \
     }
        
@@ -2036,43 +2135,43 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define AE_SW_S8_1_XP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_1); \
-     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_XP(d_tmp , p_char, offset);\
      }
 
 #define AE_SW_S8_2_XP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_2); \
-     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_XP(d_tmp , p_char, offset);\
      }
 
 #define AE_SW_S8_3_XP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_3); \
-     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_XP(d_tmp , p_char, offset);\
      }
 
 #define AE_SW_S8_4_XP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_4); \
-     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_XP(d_tmp , p_char, offset);\
      }
 
 #define AE_SW_S8_5_XP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_5); \
-     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_XP(d_tmp , p_char, offset);\
      }
 
 #define AE_SW_S8_6_XP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_6); \
-     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_XP(d_tmp , p_char, offset);\
      }
 
 #define AE_SW_S8_7_XP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_7); \
-     AE_S8_0_XP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_XP(d_tmp , p_char, offset);\
      }
 
 #define AE_SW_S8_1_X(d, p_char, offset) { \
@@ -2120,13 +2219,13 @@ ae_int16 _ae_int16_bias = ZERO16; \
 #define AE_SW_S8_4_IP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_4); \
-     AE_S8_0_IP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_IP(d_tmp , p_char, offset);\
      }
  
 #define AE_SW_S8_6_IP(d, p_char, offset) { \
      ae_int8x8 d_tmp;\
      d_tmp = AE_SEL8X8(d, d, STORE8X8_6); \
-     AE_S8_0_IP(d_tmp , (ae_int8 *) p_char, offset);\
+     AE_S8_0_IP(d_tmp , p_char, offset);\
      }
 
 /* Alignment checking */

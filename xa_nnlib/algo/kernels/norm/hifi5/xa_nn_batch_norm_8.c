@@ -28,7 +28,9 @@
 #define AE_SW_LAV32X2X2_XP(out0, out1, align_out, p_out, off) \
 { \
   ae_int16x4 d_out16_0, d_out16_1; \
-  AE_LAV16X4X2_XP(d_out16_0, d_out16_1, align_out, (ae_int16x8 *)p_out, off); \
+  ae_int16x8 *p16x8_out = (ae_int16x8 *)p_out;\
+  AE_LAV16X4X2_XP(d_out16_0, d_out16_1, align_out, p16x8_out, off); \
+  p_out = (ae_int32x4 *)p16x8_out; \
   d_out16_0 = AE_SEL16_2301(d_out16_0, d_out16_0); \
   d_out16_1 = AE_SEL16_2301(d_out16_1, d_out16_1); \
   out0 = AE_MOVINT32X2_FROMINT16X4(d_out16_0); \
@@ -41,11 +43,13 @@
 { \
   ae_int32x2 d_in32_0, d_in32_1; \
   ae_int16x4 d_in16_0, d_in16_1; \
+  ae_int16x8 *p16x8_out = (ae_int16x8 *)p_out;\
   d_in16_0 = AE_MOVINT16X4_FROMINT32X2(in0); \
   d_in16_1 = AE_MOVINT16X4_FROMINT32X2(in1); \
   d_in16_0 = AE_SEL16_2301(d_in16_0, d_in16_0); \
   d_in16_1 = AE_SEL16_2301(d_in16_1, d_in16_1); \
-  AE_SAV16X4X2_XP(d_in16_0, d_in16_1, align_in, (ae_int16x8 *)p_out, off); \
+  AE_SAV16X4X2_XP(d_in16_0, d_in16_1, align_in, p16x8_out, off); \
+  p_out = (ae_int8x16 *)p16x8_out;\
 }
 
 WORD32 xa_nn_batch_norm_3D_8_8(WORD8 * __restrict__ p_out,
@@ -77,7 +81,7 @@ WORD32 xa_nn_batch_norm_3D_8_8(WORD8 * __restrict__ p_out,
   XA_NNLIB_ARG_CHK_COND((inp_data_format != 0), -1);
   XA_NNLIB_ARG_CHK_COND((out_data_format != 0), -1);
 
-  ae_int16x4 out_act_max = out_activation_max, out_act_min = out_activation_min;
+  ae_int16x4 out_act_max = AE_MOVDA16(out_activation_max), out_act_min = AE_MOVDA16(out_activation_min);
   WORD32 i, k;
   if(io_depth <= 4)
   {
@@ -88,8 +92,9 @@ WORD32 xa_nn_batch_norm_3D_8_8(WORD8 * __restrict__ p_out,
     alpha_aligner = AE_LA128_PP(alpha_ptr);
     beta_aligner = AE_LA128_PP(beta_ptr);
      
-    ae_int16x4 alpha_val, extra_val16, inp_val16;
-    ae_int32x2 beta_val1, beta_val2=0;
+    ae_int16x4 alpha_val, extra_val16;
+    ae_f16x4 inp_val16;
+    ae_int32x2 beta_val1, beta_val2=ZERO32;
     AE_LAV16X4X2_XP(alpha_val, extra_val16, alpha_aligner, alpha_ptr, io_depth*2);
     AE_SW_LAV32X2X2_XP(beta_val1, beta_val2, beta_aligner, beta_ptr, io_depth*4);
 
@@ -100,23 +105,23 @@ WORD32 xa_nn_batch_norm_3D_8_8(WORD8 * __restrict__ p_out,
     ae_valignx2 out_aligner = AE_ZALIGN128();
     ae_int8x8 out_val8;
     ae_int16x4 out_val16;
-
+    ae_f16x4 extra_val16_f;
     for(i = 0; i < io_height * io_width; i++)
     {
       ae_int32x2 out1, out2;
       AE_MOVD32X4(out1, out2, beta_val1, beta_val2);
       AE_LAV8X8X2_XP(inp_val, extra_val8, inp_aligner, inp_ptr, io_depth);
      
-      AE_CVTA16X4X2F8(inp_val16, extra_val16, inp_val, 0);
-      AE_MULA16X4S(out1, out2, inp_val16, alpha_val);
+      AE_CVTA16X4X2F8(inp_val16, extra_val16_f, inp_val, 0);
+      AE_MULA16X4S(out1, out2, AE_MOVINT16X4_FROMF16X4(inp_val16), alpha_val);
 
-      out1 = AE_SRAA32RS(out1, -out_shift);
-      out2 = AE_SRAA32RS(out2, -out_shift);
+      out1 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out1), -out_shift));
+      out2 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out2), -out_shift));
       
       out_val16=AE_SAT16X4(out1, out2);
       AE_MINMAX16(out_val16, out_act_min, out_act_max);
     
-      out_val8 = AE_SAT8X8X16(out_val16, extra_val16);
+      out_val8 = AE_SAT8X8X16(out_val16, AE_MOVINT16X4_FROMF16X4(extra_val16_f));
       AE_SAV8X8X2_XP(out_val8, extra_val8, out_aligner, out_ptr, io_depth); 
     }
 
@@ -144,13 +149,13 @@ WORD32 xa_nn_batch_norm_3D_8_8(WORD8 * __restrict__ p_out,
         AE_MULA16X4S(out1, out2, inp_val, alpha_val);
 
         //shift right
-        out1 = AE_SRAA32RS(out1, -out_shift);
-        out2 = AE_SRAA32RS(out2, -out_shift);
+        out1 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out1), -out_shift));
+        out2 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out2), -out_shift));
 
         //ranging and store output
         out_val=AE_SAT16X4(out1, out2);
         AE_MINMAX16(out_val, out_act_min, out_act_max);
-        STORE_16x4_8x4(out_val, out_ptr, 4);
+        STORE_16x4_8x4_pINT32(out_val, out_ptr, 4);
       }
     }
   }
@@ -193,10 +198,10 @@ WORD32 xa_nn_batch_norm_3D_8_8(WORD8 * __restrict__ p_out,
           AE_MULA16X4S(out21, out22, inp_val2, alpha_val2);
 
           //shift right
-          out11 = AE_SRAA32RS(out11, -out_shift);
-          out12 = AE_SRAA32RS(out12, -out_shift);
-          out21 = AE_SRAA32RS(out21, -out_shift);
-          out22 = AE_SRAA32RS(out22, -out_shift);
+          out11 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out11), -out_shift));
+          out12 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out12), -out_shift));
+          out21 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out21), -out_shift));
+          out22 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out22), -out_shift));
 
           //ranging ang store output
           out_val1 = AE_SAT16X4(out11, out12);
@@ -223,8 +228,9 @@ WORD32 xa_nn_batch_norm_3D_8_8(WORD8 * __restrict__ p_out,
     for(; i<io_depth; i+=8)
     {
       int count=((io_depth-i>=8)?8:io_depth-i);
-      ae_int16x4 alpha_val1, alpha_val2, inp1_val16, inp2_val16;
-      ae_int32x2 beta_val11, beta_val12, beta_val21, beta_val22=0;
+      ae_int16x4 alpha_val1, alpha_val2;
+      ae_f16x4 inp1_val16, inp2_val16;
+      ae_int32x2 beta_val11, beta_val12, beta_val21, beta_val22=ZERO32;
       AE_LAV16X4X2_XP(alpha_val1, alpha_val2, alpha_aligner, alpha_ptr, (count*2));
       AE_SW_LAV32X2X2_XP(beta_val11, beta_val12, beta_aligner, beta_ptr, (count>4 ? 16 : count*4));
       if(count>4){
@@ -248,14 +254,14 @@ WORD32 xa_nn_batch_norm_3D_8_8(WORD8 * __restrict__ p_out,
         AE_LAV8X8X2_XP(inp_val, extra_val8, inp_aligner, inp_ptr, count);
 
         AE_CVTA16X4X2F8(inp1_val16, inp2_val16, inp_val, 0);
-        AE_MULA16X4S(out11, out12, inp1_val16, alpha_val1);
-        AE_MULA16X4S(out21, out22, inp2_val16, alpha_val2);
+        AE_MULA16X4S(out11, out12, AE_MOVINT16X4_FROMF16X4(inp1_val16), alpha_val1);
+        AE_MULA16X4S(out21, out22, AE_MOVINT16X4_FROMF16X4(inp2_val16), alpha_val2);
 
-        out11 = AE_SRAA32RS(out11, -out_shift);
-        out12 = AE_SRAA32RS(out12, -out_shift);
+        out11 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out11), -out_shift));
+        out12 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out12), -out_shift));
     
-        out21 = AE_SRAA32RS(out21, -out_shift);
-        out22 = AE_SRAA32RS(out22, -out_shift);      
+        out21 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out21), -out_shift));
+        out22 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(out22), -out_shift));      
 
         out1_val16=AE_SAT16X4(out11, out12);
         out2_val16=AE_SAT16X4(out21, out22);

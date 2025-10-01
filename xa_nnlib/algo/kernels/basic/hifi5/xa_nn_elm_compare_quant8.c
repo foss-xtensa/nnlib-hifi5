@@ -59,18 +59,18 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int16x4 x76, x54, x32, x10, y76, y54, y32, y10;
   ae_int32x2 a76, a54, a32, a10, b76, b54, b32, b10, c76, c54, c32, c10, d76, d54, d32, d10;
   xtbool2 e76, e54, e32, e10, f76, f54, f32, f10;
-  ae_int32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
+  ae_f32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
 
   ae_int8x8 inp1_z_b = AE_MOVDA8(-inp1_zero_bias);
   ae_int8x8 inp2_z_b = AE_MOVDA8(-inp2_zero_bias);
 
-  WORD8 *p_in1  = (WORD8 *)p_inp1;
-  WORD8 *p_in2  = (WORD8 *)p_inp2;
-  WORD8 *p_o    = (WORD8 *)p_out;
+  ae_int8x16 *p_in1  = (ae_int8x16 *)p_inp1;
+  ae_int8x16 *p_in2  = (ae_int8x16 *)p_inp2;
+  ae_int8x16 *p_o    = (ae_int8x16 *)p_out;
 
   ae_valignx2 align_src_in1, align_src_in2, align_dst;
-  align_src_in1 = AE_LA128_PP((ae_int8x16 *)p_in1);
-  align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
+  align_src_in1 = AE_LA128_PP(p_in1);
+  align_src_in2 = AE_LA128_PP(p_in2);
   align_dst     = AE_ZALIGN128();
 
   ae_int32x2 out_76_H = AE_ZERO32();
@@ -81,27 +81,54 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int32x2 out_54_L = AE_ZERO32();
   ae_int32x2 out_32_L = AE_ZERO32();
   ae_int32x2 out_10_L = AE_ZERO32();
-  ae_int32x2 one_32x2  = AE_MOVDA32(1);
+  ae_int32x2 one_32x2  = SW_MOVDA32(1);
 
   for(i=0; i<(num_elm >> 4); i++)
   {
-    AE_LA8X8X2_IP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1);
-    AE_LA8X8X2_IP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2);
+    AE_LA8X8X2_IP(m1, m2, align_src_in1, p_in1);
+    AE_LA8X8X2_IP(m3, m4, align_src_in2, p_in2);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(x32, x10, m2, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
     AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-    AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
-    AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-    AE_CVTA32X4F16S(d32, d10, y10, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;
+    ae_f32x2 b76_t, b54_t, b32_t, b10_t;
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+    ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+    
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+    AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
+    AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+    AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+    b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+    b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+    b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
+    d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+    d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+    d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+    d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+    
+    
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
@@ -111,14 +138,14 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_EQ32(dequantized_a76, dequantized_c76);
-    e54 = AE_EQ32(dequantized_a54, dequantized_c54);
-    e32 = AE_EQ32(dequantized_a32, dequantized_c32);
-    e10 = AE_EQ32(dequantized_a10, dequantized_c10);
-    f76 = AE_EQ32(dequantized_b76, dequantized_d76);
-    f54 = AE_EQ32(dequantized_b54, dequantized_d54);
-    f32 = AE_EQ32(dequantized_b32, dequantized_d32);
-    f10 = AE_EQ32(dequantized_b10, dequantized_d10);
+    e76 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
+    f76 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+    f54 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+    f32 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+    f10 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
     AE_MOVT32X2(out_76_H, one_32x2, e76);
     AE_MOVT32X2(out_54_H, one_32x2, e54);
@@ -145,7 +172,7 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
     m1 = AE_SAT8X8X16(x76, x54);
     m2 = AE_SAT8X8X16(x32, x10);
-    AE_SA8X8X2_IP(m1, m2, align_dst, (ae_int8x16 *)p_o);
+    AE_SA8X8X2_IP(m1, m2, align_dst, p_o);
 
     out_76_H = AE_ZERO32();
     out_54_H = AE_ZERO32();
@@ -160,26 +187,39 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   // remainder loop
   if(rem_length)
   {
-    AE_LAV8X8X2_XP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1, rem_length);
-    AE_LAV8X8X2_XP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2, rem_length);
+    AE_LAV8X8X2_XP(m1, m2, align_src_in1, p_in1, rem_length);
+    AE_LAV8X8X2_XP(m3, m4, align_src_in2, p_in2, rem_length);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+    
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_EQ32(dequantized_a76, dequantized_c76);
-    e54 = AE_EQ32(dequantized_a54, dequantized_c54);
-    e32 = AE_EQ32(dequantized_a32, dequantized_c32);
-    e10 = AE_EQ32(dequantized_a10, dequantized_c10);
+    e76 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
 
     AE_MOVT32X2(out_76_H, one_32x2, e76);
     AE_MOVT32X2(out_54_H, one_32x2, e54);
@@ -200,21 +240,35 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     {
       AE_SUBW8(x32, x10, m2, inp1_z_b);
       AE_SUBW8(y32, y10, m4, inp2_z_b);
+    
+      ae_f32x2 b76_t, b54_t, b32_t, b10_t;
 
-      AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-      AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-      AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-      AE_CVTA32X4F16S(d32, d10, y10, left_shift);
-
+      ae_f32x2 d76_t, d54_t , d32_t, d10_t;
+    
+      AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+      AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+      AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+      AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
+    
+      b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+      b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+      b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+      b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+      d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+      d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+      d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+      d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+    
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-      f76 = AE_EQ32(dequantized_b76, dequantized_d76);
-      f54 = AE_EQ32(dequantized_b54, dequantized_d54);
-      f32 = AE_EQ32(dequantized_b32, dequantized_d32);
-      f10 = AE_EQ32(dequantized_b10, dequantized_d10);
+      f76 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+      f54 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+      f32 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+      f10 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
       AE_MOVT32X2(out_76_L, one_32x2, f76);
       AE_MOVT32X2(out_54_L, one_32x2, f54);
@@ -231,7 +285,7 @@ WORD32 xa_nn_elm_equal_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
       m2 = AE_SAT8X8X16(x32, x10);
     } 
-    AE_SAV8X8X2_XP(m1, m2, align_dst, (ae_int8x16 *)p_o, rem_length);
+    AE_SAV8X8X2_XP(m1, m2, align_dst, p_o, rem_length);
   }
   AE_SA128POS_FP(align_dst, p_o);
 
@@ -275,18 +329,18 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int16x4 x76, x54, x32, x10, y76, y54, y32, y10;
   ae_int32x2 a76, a54, a32, a10, b76, b54, b32, b10, c76, c54, c32, c10, d76, d54, d32, d10;
   xtbool2 e76, e54, e32, e10, f76, f54, f32, f10;
-  ae_int32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
+  ae_f32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
 
   ae_int8x8 inp1_z_b = AE_MOVDA8(-inp1_zero_bias);
   ae_int8x8 inp2_z_b = AE_MOVDA8(-inp2_zero_bias);
 
-  WORD8 *p_in1  = (WORD8 *)p_inp1;
-  WORD8 *p_in2  = (WORD8 *)p_inp2;
-  WORD8 *p_o    = (WORD8 *)p_out;
+  ae_int8x16 *p_in1  = (ae_int8x16 *)p_inp1;
+  ae_int8x16 *p_in2  = (ae_int8x16 *)p_inp2;
+  ae_int8x16 *p_o    = (ae_int8x16 *)p_out;
 
   ae_valignx2 align_src_in1, align_src_in2, align_dst;
-  align_src_in1 = AE_LA128_PP((ae_int8x16 *)p_in1);
-  align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
+  align_src_in1 = AE_LA128_PP(p_in1);
+  align_src_in2 = AE_LA128_PP(p_in2);
   align_dst     = AE_ZALIGN128();
 
   ae_int32x2 out_76_H = AE_ZERO32();
@@ -297,27 +351,50 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int32x2 out_54_L = AE_ZERO32();
   ae_int32x2 out_32_L = AE_ZERO32();
   ae_int32x2 out_10_L = AE_ZERO32();
-  ae_int32x2 one_32x2  = AE_MOVDA32(1);
+  ae_int32x2 one_32x2  = SW_MOVDA32(1);
 
   for(i=0; i<(num_elm >> 4); i++)
   {
-    AE_LA8X8X2_IP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1);
-    AE_LA8X8X2_IP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2);
+    AE_LA8X8X2_IP(m1, m2, align_src_in1, p_in1);
+    AE_LA8X8X2_IP(m3, m4, align_src_in2, p_in2);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(x32, x10, m2, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
     AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-    AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
-    AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-    AE_CVTA32X4F16S(d32, d10, y10, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t, b76_t, b54_t, b32_t, b10_t;
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t, d76_t, d54_t, d32_t, d10_t;
+    
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+    AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
+    AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+    AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+    b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+    b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+    b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
+    d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+    d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+    d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+    d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+    
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
@@ -327,14 +404,14 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_EQ32(dequantized_a76, dequantized_c76);
-    e54 = AE_EQ32(dequantized_a54, dequantized_c54);
-    e32 = AE_EQ32(dequantized_a32, dequantized_c32);
-    e10 = AE_EQ32(dequantized_a10, dequantized_c10);
-    f76 = AE_EQ32(dequantized_b76, dequantized_d76);
-    f54 = AE_EQ32(dequantized_b54, dequantized_d54);
-    f32 = AE_EQ32(dequantized_b32, dequantized_d32);
-    f10 = AE_EQ32(dequantized_b10, dequantized_d10);
+    e76 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
+    f76 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+    f54 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+    f32 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+    f10 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
     AE_MOVF32X2(out_76_H, one_32x2, e76);
     AE_MOVF32X2(out_54_H, one_32x2, e54);
@@ -361,7 +438,7 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
     m1 = AE_SAT8X8X16(x76, x54);
     m2 = AE_SAT8X8X16(x32, x10);
-    AE_SA8X8X2_IP(m1, m2, align_dst, (ae_int8x16 *)p_o);
+    AE_SA8X8X2_IP(m1, m2, align_dst, p_o);
 
     out_76_H = AE_ZERO32();
     out_54_H = AE_ZERO32();
@@ -376,26 +453,40 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   // remainder loop
   if(rem_length)
   {
-    AE_LAV8X8X2_XP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1, rem_length);
-    AE_LAV8X8X2_XP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2, rem_length);
+    AE_LAV8X8X2_XP(m1, m2, align_src_in1, p_in1, rem_length);
+    AE_LAV8X8X2_XP(m3, m4, align_src_in2, p_in2, rem_length);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;
+    
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+    
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_EQ32(dequantized_a76, dequantized_c76);
-    e54 = AE_EQ32(dequantized_a54, dequantized_c54);
-    e32 = AE_EQ32(dequantized_a32, dequantized_c32);
-    e10 = AE_EQ32(dequantized_a10, dequantized_c10);
+    e76 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
 
     AE_MOVF32X2(out_76_H, one_32x2, e76);
     AE_MOVF32X2(out_54_H, one_32x2, e54);
@@ -417,20 +508,34 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_SUBW8(x32, x10, m2, inp1_z_b);
       AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-      AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-      AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-      AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-      AE_CVTA32X4F16S(d32, d10, y10, left_shift);
+      ae_f32x2 b76_t, b54_t, b32_t, b10_t;
+    
+      ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+      AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+      AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+      AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+      AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
+          
+      b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+      b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+      b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+      b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+   
+      d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+      d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+      d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+      d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
 
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-      f76 = AE_EQ32(dequantized_b76, dequantized_d76);
-      f54 = AE_EQ32(dequantized_b54, dequantized_d54);
-      f32 = AE_EQ32(dequantized_b32, dequantized_d32);
-      f10 = AE_EQ32(dequantized_b10, dequantized_d10);
+      f76 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+      f54 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+      f32 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+      f10 = AE_EQ32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
       AE_MOVF32X2(out_76_L, one_32x2, f76);
       AE_MOVF32X2(out_54_L, one_32x2, f54);
@@ -447,7 +552,7 @@ WORD32 xa_nn_elm_notequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
       m2 = AE_SAT8X8X16(x32, x10);
     } 
-    AE_SAV8X8X2_XP(m1, m2, align_dst, (ae_int8x16 *)p_o, rem_length);
+    AE_SAV8X8X2_XP(m1, m2, align_dst, p_o, rem_length);
   }
   AE_SA128POS_FP(align_dst, p_o);
 
@@ -490,18 +595,18 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int16x4 x76, x54, x32, x10, y76, y54, y32, y10;
   ae_int32x2 a76, a54, a32, a10, b76, b54, b32, b10, c76, c54, c32, c10, d76, d54, d32, d10;
   xtbool2 e76, e54, e32, e10, f76, f54, f32, f10;
-  ae_int32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
+  ae_f32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
 
   ae_int8x8 inp1_z_b = AE_MOVDA8(-inp1_zero_bias);
   ae_int8x8 inp2_z_b = AE_MOVDA8(-inp2_zero_bias);
 
-  WORD8 *p_in1  = (WORD8 *)p_inp1;
-  WORD8 *p_in2  = (WORD8 *)p_inp2;
-  WORD8 *p_o    = (WORD8 *)p_out;
+  ae_int8x16 *p_in1  = (ae_int8x16 *)p_inp1;
+  ae_int8x16 *p_in2  = (ae_int8x16 *)p_inp2;
+  ae_int8x16 *p_o    = (ae_int8x16 *)p_out;
 
   ae_valignx2 align_src_in1, align_src_in2, align_dst;
-  align_src_in1 = AE_LA128_PP((ae_int8x16 *)p_in1);
-  align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
+  align_src_in1 = AE_LA128_PP(p_in1);
+  align_src_in2 = AE_LA128_PP(p_in2);
   align_dst     = AE_ZALIGN128();
 
   ae_int32x2 out_76_H = AE_ZERO32();
@@ -512,27 +617,55 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int32x2 out_54_L = AE_ZERO32();
   ae_int32x2 out_32_L = AE_ZERO32();
   ae_int32x2 out_10_L = AE_ZERO32();
-  ae_int32x2 one_32x2  = AE_MOVDA32(1);
+  ae_int32x2 one_32x2  = SW_MOVDA32(1);
 
   for(i=0; i<(num_elm >> 4); i++)
   {
-    AE_LA8X8X2_IP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1);
-    AE_LA8X8X2_IP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2);
+    AE_LA8X8X2_IP(m1, m2, align_src_in1, p_in1);
+    AE_LA8X8X2_IP(m3, m4, align_src_in2, p_in2);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(x32, x10, m2, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
     AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-    AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
-    AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-    AE_CVTA32X4F16S(d32, d10, y10, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;
+    
+    ae_f32x2 b76_t, b54_t, b32_t, b10_t;
+    
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+    
+    ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+    AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
+    AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+    AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+    b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+    b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+    b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
+    d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+    d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+    d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+    d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+    
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
@@ -542,14 +675,14 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_LE32(dequantized_a76, dequantized_c76);
-    e54 = AE_LE32(dequantized_a54, dequantized_c54);
-    e32 = AE_LE32(dequantized_a32, dequantized_c32);
-    e10 = AE_LE32(dequantized_a10, dequantized_c10);
-    f76 = AE_LE32(dequantized_b76, dequantized_d76);
-    f54 = AE_LE32(dequantized_b54, dequantized_d54);
-    f32 = AE_LE32(dequantized_b32, dequantized_d32);
-    f10 = AE_LE32(dequantized_b10, dequantized_d10);
+    e76 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
+    f76 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+    f54 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+    f32 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+    f10 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
     AE_MOVF32X2(out_76_H, one_32x2, e76);
     AE_MOVF32X2(out_54_H, one_32x2, e54);
@@ -576,7 +709,7 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
     m1 = AE_SAT8X8X16(x76, x54);
     m2 = AE_SAT8X8X16(x32, x10);
-    AE_SA8X8X2_IP(m1, m2, align_dst, (ae_int8x16 *)p_o);
+    AE_SA8X8X2_IP(m1, m2, align_dst, p_o);
 
     out_76_H = AE_ZERO32();
     out_54_H = AE_ZERO32();
@@ -591,26 +724,40 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
   // remainder loop
   if(rem_length)
   {
-    AE_LAV8X8X2_XP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1, rem_length);
-    AE_LAV8X8X2_XP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2, rem_length);
+    AE_LAV8X8X2_XP(m1, m2, align_src_in1, p_in1, rem_length);
+    AE_LAV8X8X2_XP(m3, m4, align_src_in2, p_in2, rem_length);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;
+    
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+   
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);   
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_LE32(dequantized_a76, dequantized_c76);
-    e54 = AE_LE32(dequantized_a54, dequantized_c54);
-    e32 = AE_LE32(dequantized_a32, dequantized_c32);
-    e10 = AE_LE32(dequantized_a10, dequantized_c10);
+    e76 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
 
     AE_MOVF32X2(out_76_H, one_32x2, e76);
     AE_MOVF32X2(out_54_H, one_32x2, e54);
@@ -631,21 +778,35 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
     {
       AE_SUBW8(x32, x10, m2, inp1_z_b);
       AE_SUBW8(y32, y10, m4, inp2_z_b);
-
-      AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-      AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-      AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-      AE_CVTA32X4F16S(d32, d10, y10, left_shift);
+    
+      ae_f32x2 b76_t, b54_t, b32_t, b10_t;
+          
+      ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+      AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+      AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+      AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+      AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);     
+    
+      b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+      b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+      b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+      b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+        
+      d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+      d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+      d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+      d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
 
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-      f76 = AE_LE32(dequantized_b76, dequantized_d76);
-      f54 = AE_LE32(dequantized_b54, dequantized_d54);
-      f32 = AE_LE32(dequantized_b32, dequantized_d32);
-      f10 = AE_LE32(dequantized_b10, dequantized_d10);
+      f76 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+      f54 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+      f32 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+      f10 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
       AE_MOVF32X2(out_76_L, one_32x2, f76);
       AE_MOVF32X2(out_54_L, one_32x2, f54);
@@ -662,7 +823,7 @@ WORD32 xa_nn_elm_greater_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
       m2 = AE_SAT8X8X16(x32, x10);
     } 
-    AE_SAV8X8X2_XP(m1, m2, align_dst, (ae_int8x16 *)p_o, rem_length);
+    AE_SAV8X8X2_XP(m1, m2, align_dst, p_o, rem_length);
   }
   AE_SA128POS_FP(align_dst, p_o);
 
@@ -705,18 +866,18 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int16x4 x76, x54, x32, x10, y76, y54, y32, y10;
   ae_int32x2 a76, a54, a32, a10, b76, b54, b32, b10, c76, c54, c32, c10, d76, d54, d32, d10;
   xtbool2 e76, e54, e32, e10, f76, f54, f32, f10;
-  ae_int32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
+  ae_f32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
 
   ae_int8x8 inp1_z_b = AE_MOVDA8(-inp1_zero_bias);
   ae_int8x8 inp2_z_b = AE_MOVDA8(-inp2_zero_bias);
 
-  WORD8 *p_in1  = (WORD8 *)p_inp1;
-  WORD8 *p_in2  = (WORD8 *)p_inp2;
-  WORD8 *p_o    = (WORD8 *)p_out;
+  ae_int8x16 *p_in1  = (ae_int8x16 *)p_inp1;
+  ae_int8x16 *p_in2  = (ae_int8x16 *)p_inp2;
+  ae_int8x16 *p_o    = (ae_int8x16 *)p_out;
 
   ae_valignx2 align_src_in1, align_src_in2, align_dst;
-  align_src_in1 = AE_LA128_PP((ae_int8x16 *)p_in1);
-  align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
+  align_src_in1 = AE_LA128_PP(p_in1);
+  align_src_in2 = AE_LA128_PP(p_in2);
   align_dst     = AE_ZALIGN128();
 
   ae_int32x2 out_76_H = AE_ZERO32();
@@ -727,27 +888,55 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int32x2 out_54_L = AE_ZERO32();
   ae_int32x2 out_32_L = AE_ZERO32();
   ae_int32x2 out_10_L = AE_ZERO32();
-  ae_int32x2 one_32x2  = AE_MOVDA32(1);
+  ae_int32x2 one_32x2  = SW_MOVDA32(1);
 
   for(i=0; i<(num_elm >> 4); i++)
   {
-    AE_LA8X8X2_IP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1);
-    AE_LA8X8X2_IP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2);
+    AE_LA8X8X2_IP(m1, m2, align_src_in1, p_in1);
+    AE_LA8X8X2_IP(m3, m4, align_src_in2, p_in2);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(x32, x10, m2, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
     AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-    AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
-    AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-    AE_CVTA32X4F16S(d32, d10, y10, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;
+    
+    ae_f32x2 b76_t, b54_t, b32_t, b10_t;
+    
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+    
+    ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+    AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
+    AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+    AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+    b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+    b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+    b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
+    d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+    d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+    d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+    d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+    
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
@@ -757,14 +946,14 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_LT32(dequantized_a76, dequantized_c76);
-    e54 = AE_LT32(dequantized_a54, dequantized_c54);
-    e32 = AE_LT32(dequantized_a32, dequantized_c32);
-    e10 = AE_LT32(dequantized_a10, dequantized_c10);
-    f76 = AE_LT32(dequantized_b76, dequantized_d76);
-    f54 = AE_LT32(dequantized_b54, dequantized_d54);
-    f32 = AE_LT32(dequantized_b32, dequantized_d32);
-    f10 = AE_LT32(dequantized_b10, dequantized_d10);
+    e76 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
+    f76 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+    f54 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+    f32 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+    f10 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
     AE_MOVF32X2(out_76_H, one_32x2, e76);
     AE_MOVF32X2(out_54_H, one_32x2, e54);
@@ -791,7 +980,7 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
     m1 = AE_SAT8X8X16(x76, x54);
     m2 = AE_SAT8X8X16(x32, x10);
-    AE_SA8X8X2_IP(m1, m2, align_dst, (ae_int8x16 *)p_o);
+    AE_SA8X8X2_IP(m1, m2, align_dst, p_o);
 
     out_76_H = AE_ZERO32();
     out_54_H = AE_ZERO32();
@@ -806,26 +995,40 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   // remainder loop
   if(rem_length)
   {
-    AE_LAV8X8X2_XP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1, rem_length);
-    AE_LAV8X8X2_XP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2, rem_length);
+    AE_LAV8X8X2_XP(m1, m2, align_src_in1, p_in1, rem_length);
+    AE_LAV8X8X2_XP(m3, m4, align_src_in2, p_in2, rem_length);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;    
+    
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+   
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
+    
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+        
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
 
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_LT32(dequantized_a76, dequantized_c76);
-    e54 = AE_LT32(dequantized_a54, dequantized_c54);
-    e32 = AE_LT32(dequantized_a32, dequantized_c32);
-    e10 = AE_LT32(dequantized_a10, dequantized_c10);
+    e76 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
 
     AE_MOVF32X2(out_76_H, one_32x2, e76);
     AE_MOVF32X2(out_54_H, one_32x2, e54);
@@ -847,20 +1050,34 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_SUBW8(x32, x10, m2, inp1_z_b);
       AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-      AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-      AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-      AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-      AE_CVTA32X4F16S(d32, d10, y10, left_shift);
-
+      ae_f32x2 b76_t, b54_t, b32_t, b10_t;          
+    
+      ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+      
+      AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+      AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+      AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+      AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
+     
+      b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+      b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+      b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+      b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+      d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+      d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+      d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+      d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+      
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-      f76 = AE_LT32(dequantized_b76, dequantized_d76);
-      f54 = AE_LT32(dequantized_b54, dequantized_d54);
-      f32 = AE_LT32(dequantized_b32, dequantized_d32);
-      f10 = AE_LT32(dequantized_b10, dequantized_d10);
+      f76 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+      f54 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+      f32 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+      f10 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
       AE_MOVF32X2(out_76_L, one_32x2, f76);
       AE_MOVF32X2(out_54_L, one_32x2, f54);
@@ -877,7 +1094,7 @@ WORD32 xa_nn_elm_greaterequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
       m2 = AE_SAT8X8X16(x32, x10);
     } 
-    AE_SAV8X8X2_XP(m1, m2, align_dst, (ae_int8x16 *)p_o, rem_length);
+    AE_SAV8X8X2_XP(m1, m2, align_dst, p_o, rem_length);
   }
   AE_SA128POS_FP(align_dst, p_o);
 
@@ -920,18 +1137,18 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int16x4 x76, x54, x32, x10, y76, y54, y32, y10;
   ae_int32x2 a76, a54, a32, a10, b76, b54, b32, b10, c76, c54, c32, c10, d76, d54, d32, d10;
   xtbool2 e76, e54, e32, e10, f76, f54, f32, f10;
-  ae_int32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
+  ae_f32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
 
   ae_int8x8 inp1_z_b = AE_MOVDA8(-inp1_zero_bias);
   ae_int8x8 inp2_z_b = AE_MOVDA8(-inp2_zero_bias);
 
-  WORD8 *p_in1  = (WORD8 *)p_inp1;
-  WORD8 *p_in2  = (WORD8 *)p_inp2;
-  WORD8 *p_o    = (WORD8 *)p_out;
+  ae_int8x16 *p_in1  = (ae_int8x16 *)p_inp1;
+  ae_int8x16 *p_in2  = (ae_int8x16 *)p_inp2;
+  ae_int8x16 *p_o    = (ae_int8x16 *)p_out;
 
   ae_valignx2 align_src_in1, align_src_in2, align_dst;
-  align_src_in1 = AE_LA128_PP((ae_int8x16 *)p_in1);
-  align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
+  align_src_in1 = AE_LA128_PP(p_in1);
+  align_src_in2 = AE_LA128_PP(p_in2);
   align_dst     = AE_ZALIGN128();
 
   ae_int32x2 out_76_H = AE_ZERO32();
@@ -942,27 +1159,55 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int32x2 out_54_L = AE_ZERO32();
   ae_int32x2 out_32_L = AE_ZERO32();
   ae_int32x2 out_10_L = AE_ZERO32();
-  ae_int32x2 one_32x2  = AE_MOVDA32(1);
+  ae_int32x2 one_32x2  = SW_MOVDA32(1);
 
   for(i=0; i<(num_elm >> 4); i++)
   {
-    AE_LA8X8X2_IP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1);
-    AE_LA8X8X2_IP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2);
+    AE_LA8X8X2_IP(m1, m2, align_src_in1, p_in1);
+    AE_LA8X8X2_IP(m3, m4, align_src_in2, p_in2);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(x32, x10, m2, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
     AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-    AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
-    AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-    AE_CVTA32X4F16S(d32, d10, y10, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;
+    
+    ae_f32x2 b76_t, b54_t, b32_t, b10_t;
+    
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+    
+    ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+    AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
+    AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+    AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+    b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+    b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+    b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
+    d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+    d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+    d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+    d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+    
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
@@ -972,14 +1217,14 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_LT32(dequantized_a76, dequantized_c76);
-    e54 = AE_LT32(dequantized_a54, dequantized_c54);
-    e32 = AE_LT32(dequantized_a32, dequantized_c32);
-    e10 = AE_LT32(dequantized_a10, dequantized_c10);
-    f76 = AE_LT32(dequantized_b76, dequantized_d76);
-    f54 = AE_LT32(dequantized_b54, dequantized_d54);
-    f32 = AE_LT32(dequantized_b32, dequantized_d32);
-    f10 = AE_LT32(dequantized_b10, dequantized_d10);
+    e76 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
+    f76 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+    f54 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+    f32 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+    f10 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
     AE_MOVT32X2(out_76_H, one_32x2, e76);
     AE_MOVT32X2(out_54_H, one_32x2, e54);
@@ -1006,7 +1251,7 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
     m1 = AE_SAT8X8X16(x76, x54);
     m2 = AE_SAT8X8X16(x32, x10);
-    AE_SA8X8X2_IP(m1, m2, align_dst, (ae_int8x16 *)p_o);
+    AE_SA8X8X2_IP(m1, m2, align_dst, p_o);
 
     out_76_H = AE_ZERO32();
     out_54_H = AE_ZERO32();
@@ -1021,26 +1266,40 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
   // remainder loop
   if(rem_length)
   {
-    AE_LAV8X8X2_XP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1, rem_length);
-    AE_LAV8X8X2_XP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2, rem_length);
+    AE_LAV8X8X2_XP(m1, m2, align_src_in1, p_in1, rem_length);
+    AE_LAV8X8X2_XP(m3, m4, align_src_in2, p_in2, rem_length);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;       
+    
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+   
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
+    
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
 
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_LT32(dequantized_a76, dequantized_c76);
-    e54 = AE_LT32(dequantized_a54, dequantized_c54);
-    e32 = AE_LT32(dequantized_a32, dequantized_c32);
-    e10 = AE_LT32(dequantized_a10, dequantized_c10);
+    e76 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
 
     AE_MOVT32X2(out_76_H, one_32x2, e76);
     AE_MOVT32X2(out_54_H, one_32x2, e54);
@@ -1062,20 +1321,34 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
       AE_SUBW8(x32, x10, m2, inp1_z_b);
       AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-      AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-      AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-      AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-      AE_CVTA32X4F16S(d32, d10, y10, left_shift);
-
+      ae_f32x2 b76_t, b54_t, b32_t, b10_t;
+    
+      ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+      AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+      AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+      AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+      AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
+   
+      b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+      b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+      b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+      b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+   
+      d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+      d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+      d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+      d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+      
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-      f76 = AE_LT32(dequantized_b76, dequantized_d76);
-      f54 = AE_LT32(dequantized_b54, dequantized_d54);
-      f32 = AE_LT32(dequantized_b32, dequantized_d32);
-      f10 = AE_LT32(dequantized_b10, dequantized_d10);
+      f76 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+      f54 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+      f32 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+      f10 = AE_LT32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
       AE_MOVT32X2(out_76_L, one_32x2, f76);
       AE_MOVT32X2(out_54_L, one_32x2, f54);
@@ -1092,7 +1365,7 @@ WORD32 xa_nn_elm_less_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
       m2 = AE_SAT8X8X16(x32, x10);
     } 
-    AE_SAV8X8X2_XP(m1, m2, align_dst, (ae_int8x16 *)p_o, rem_length);
+    AE_SAV8X8X2_XP(m1, m2, align_dst, p_o, rem_length);
   }
   AE_SA128POS_FP(align_dst, p_o);
 
@@ -1135,18 +1408,18 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int16x4 x76, x54, x32, x10, y76, y54, y32, y10;
   ae_int32x2 a76, a54, a32, a10, b76, b54, b32, b10, c76, c54, c32, c10, d76, d54, d32, d10;
   xtbool2 e76, e54, e32, e10, f76, f54, f32, f10;
-  ae_int32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
+  ae_f32x2 dequantized_a76, dequantized_a54, dequantized_a32, dequantized_a10, dequantized_b76, dequantized_b54, dequantized_b32, dequantized_b10, dequantized_c76, dequantized_c54, dequantized_c32, dequantized_c10, dequantized_d76, dequantized_d54, dequantized_d32, dequantized_d10;
 
   ae_int8x8 inp1_z_b = AE_MOVDA8(-inp1_zero_bias);
   ae_int8x8 inp2_z_b = AE_MOVDA8(-inp2_zero_bias);
 
-  WORD8 *p_in1  = (WORD8 *)p_inp1;
-  WORD8 *p_in2  = (WORD8 *)p_inp2;
-  WORD8 *p_o    = (WORD8 *)p_out;
+  ae_int8x16 *p_in1  = (ae_int8x16 *)p_inp1;
+  ae_int8x16 *p_in2  = (ae_int8x16 *)p_inp2;
+  ae_int8x16 *p_o    = (ae_int8x16 *)p_out;
 
   ae_valignx2 align_src_in1, align_src_in2, align_dst;
-  align_src_in1 = AE_LA128_PP((ae_int8x16 *)p_in1);
-  align_src_in2 = AE_LA128_PP((ae_int8x16 *)p_in2);
+  align_src_in1 = AE_LA128_PP(p_in1);
+  align_src_in2 = AE_LA128_PP(p_in2);
   align_dst     = AE_ZALIGN128();
 
   ae_int32x2 out_76_H = AE_ZERO32();
@@ -1157,26 +1430,51 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   ae_int32x2 out_54_L = AE_ZERO32();
   ae_int32x2 out_32_L = AE_ZERO32();
   ae_int32x2 out_10_L = AE_ZERO32();
-  ae_int32x2 one_32x2  = AE_MOVDA32(1);
+  ae_int32x2 one_32x2  = SW_MOVDA32(1);
 
   for(i=0; i<(num_elm >> 4); i++)
   {
-    AE_LA8X8X2_IP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1);
-    AE_LA8X8X2_IP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2);
+    AE_LA8X8X2_IP(m1, m2, align_src_in1, p_in1);
+    AE_LA8X8X2_IP(m3, m4, align_src_in2, p_in2);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(x32, x10, m2, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
     AE_SUBW8(y32, y10, m4, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-    AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
-    AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-    AE_CVTA32X4F16S(d32, d10, y10, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;
+    ae_f32x2 b76_t, b54_t, b32_t, b10_t;
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+    ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+    AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
+    AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+    AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
+    
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+    
+    b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+    b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+    b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+    b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+    
+    d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+    d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+    d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+    d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
 
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
@@ -1187,14 +1485,14 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_LE32(dequantized_a76, dequantized_c76);
-    e54 = AE_LE32(dequantized_a54, dequantized_c54);
-    e32 = AE_LE32(dequantized_a32, dequantized_c32);
-    e10 = AE_LE32(dequantized_a10, dequantized_c10);
-    f76 = AE_LE32(dequantized_b76, dequantized_d76);
-    f54 = AE_LE32(dequantized_b54, dequantized_d54);
-    f32 = AE_LE32(dequantized_b32, dequantized_d32);
-    f10 = AE_LE32(dequantized_b10, dequantized_d10);
+    e76 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
+    f76 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+    f54 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+    f32 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+    f10 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
     AE_MOVT32X2(out_76_H, one_32x2, e76);
     AE_MOVT32X2(out_54_H, one_32x2, e54);
@@ -1221,7 +1519,7 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
     m1 = AE_SAT8X8X16(x76, x54);
     m2 = AE_SAT8X8X16(x32, x10);
-    AE_SA8X8X2_IP(m1, m2, align_dst, (ae_int8x16 *)p_o);
+    AE_SA8X8X2_IP(m1, m2, align_dst, p_o);
 
     out_76_H = AE_ZERO32();
     out_54_H = AE_ZERO32();
@@ -1236,26 +1534,39 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
   // remainder loop
   if(rem_length)
   {
-    AE_LAV8X8X2_XP(m1, m2, align_src_in1, (ae_int8x16 *)p_in1, rem_length);
-    AE_LAV8X8X2_XP(m3, m4, align_src_in2, (ae_int8x16 *)p_in2, rem_length);
+    AE_LAV8X8X2_XP(m1, m2, align_src_in1, p_in1, rem_length);
+    AE_LAV8X8X2_XP(m3, m4, align_src_in2, p_in2, rem_length);
 
     AE_SUBW8(x76, x54, m1, inp1_z_b);
     AE_SUBW8(y76, y54, m3, inp2_z_b);
 
-    AE_CVTA32X4F16S(a76, a54, x76, left_shift);
-    AE_CVTA32X4F16S(a32, a10, x54, left_shift);
-    AE_CVTA32X4F16S(c76, c54, y76, left_shift);
-    AE_CVTA32X4F16S(c32, c10, y54, left_shift);
+    ae_f32x2 a76_t, a54_t, a32_t, a10_t;   
+    ae_f32x2 c76_t, c54_t, c32_t, c10_t;
+     
+    AE_CVTA32X4F16S(a76_t, a54_t, x76, left_shift);
+    AE_CVTA32X4F16S(a32_t, a10_t, x54, left_shift);
+    AE_CVTA32X4F16S(c76_t, c54_t, y76, left_shift);
+    AE_CVTA32X4F16S(c32_t, c10_t, y54, left_shift);
 
+    a76 = AE_MOVINT32X2_FROMF32X2(a76_t);
+    a54 = AE_MOVINT32X2_FROMF32X2(a54_t);
+    a32 = AE_MOVINT32X2_FROMF32X2(a32_t);
+    a10 = AE_MOVINT32X2_FROMF32X2(a10_t);
+      
+    c76 = AE_MOVINT32X2_FROMF32X2(c76_t);
+    c54 = AE_MOVINT32X2_FROMF32X2(c54_t);
+    c32 = AE_MOVINT32X2_FROMF32X2(c32_t);
+    c10 = AE_MOVINT32X2_FROMF32X2(c10_t);
+ 
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a76, dequantized_c76, a76, c76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a54, dequantized_c54, a54, c54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a32, dequantized_c32, a32, c32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
     MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_a10, dequantized_c10, a10, c10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-    e76 = AE_LE32(dequantized_a76, dequantized_c76);
-    e54 = AE_LE32(dequantized_a54, dequantized_c54);
-    e32 = AE_LE32(dequantized_a32, dequantized_c32);
-    e10 = AE_LE32(dequantized_a10, dequantized_c10);
+    e76 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a76), AE_MOVINT32X2_FROMF32X2(dequantized_c76));
+    e54 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a54), AE_MOVINT32X2_FROMF32X2(dequantized_c54));
+    e32 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a32), AE_MOVINT32X2_FROMF32X2(dequantized_c32));
+    e10 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_a10), AE_MOVINT32X2_FROMF32X2(dequantized_c10));
 
     AE_MOVT32X2(out_76_H, one_32x2, e76);
     AE_MOVT32X2(out_54_H, one_32x2, e54);
@@ -1276,21 +1587,34 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
     {
       AE_SUBW8(x32, x10, m2, inp1_z_b);
       AE_SUBW8(y32, y10, m4, inp2_z_b);
+    
+      ae_f32x2 b76_t, b54_t, b32_t, b10_t;          
+      ae_f32x2 d76_t, d54_t, d32_t, d10_t;
+    
+      AE_CVTA32X4F16S(b76_t, b54_t, x32, left_shift);
+      AE_CVTA32X4F16S(b32_t, b10_t, x10, left_shift);
+      AE_CVTA32X4F16S(d76_t, d54_t, y32, left_shift);
+      AE_CVTA32X4F16S(d32_t, d10_t, y10, left_shift);
 
-      AE_CVTA32X4F16S(b76, b54, x32, left_shift);
-      AE_CVTA32X4F16S(b32, b10, x10, left_shift);
-      AE_CVTA32X4F16S(d76, d54, y32, left_shift);
-      AE_CVTA32X4F16S(d32, d10, y10, left_shift);
-
+      b76 = AE_MOVINT32X2_FROMF32X2(b76_t);
+      b54 = AE_MOVINT32X2_FROMF32X2(b54_t);
+      b32 = AE_MOVINT32X2_FROMF32X2(b32_t);
+      b10 = AE_MOVINT32X2_FROMF32X2(b10_t);
+    
+      d76 = AE_MOVINT32X2_FROMF32X2(d76_t);
+      d54 = AE_MOVINT32X2_FROMF32X2(d54_t);
+      d32 = AE_MOVINT32X2_FROMF32X2(d32_t);
+      d10 = AE_MOVINT32X2_FROMF32X2(d10_t);
+    
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b76, dequantized_d76, b76, d76, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b54, dequantized_d54, b54, d54, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b32, dequantized_d32, b32, d32, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
       MPY_BY_QUANT_MULT_ST_ONE_EXP_X2_OUT32_X2(dequantized_b10, dequantized_d10, b10, d10, inp1_multiplier, inp2_multiplier, inp1_shift, inp2_shift);
 
-      f76 = AE_LE32(dequantized_b76, dequantized_d76);
-      f54 = AE_LE32(dequantized_b54, dequantized_d54);
-      f32 = AE_LE32(dequantized_b32, dequantized_d32);
-      f10 = AE_LE32(dequantized_b10, dequantized_d10);
+      f76 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b76), AE_MOVINT32X2_FROMF32X2(dequantized_d76));
+      f54 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b54), AE_MOVINT32X2_FROMF32X2(dequantized_d54));
+      f32 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b32), AE_MOVINT32X2_FROMF32X2(dequantized_d32));
+      f10 = AE_LE32(AE_MOVINT32X2_FROMF32X2(dequantized_b10), AE_MOVINT32X2_FROMF32X2(dequantized_d10));
 
       AE_MOVT32X2(out_76_L, one_32x2, f76);
       AE_MOVT32X2(out_54_L, one_32x2, f54);
@@ -1307,7 +1631,7 @@ WORD32 xa_nn_elm_lessequal_asym8sxasym8s(WORD8 * __restrict__ p_out,
 
       m2 = AE_SAT8X8X16(x32, x10);
     } 
-    AE_SAV8X8X2_XP(m1, m2, align_dst, (ae_int8x16 *)p_o, rem_length);
+    AE_SAV8X8X2_XP(m1, m2, align_dst, p_o, rem_length);
   }
   AE_SA128POS_FP(align_dst, p_o);
 

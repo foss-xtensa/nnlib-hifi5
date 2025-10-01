@@ -71,10 +71,10 @@ WORD32 xa_nn_dot_prod_16x16_asym8s(
 	right_shift = out_shift > 0 ? 0 : -out_shift;
 #endif /* #if TFLITE_SINGLE_ROUNDING */
   
-  ae_int32x2 max_int8 = AE_MOVDA32(127);
-  ae_int32x2 min_int8 = AE_MOVDA32(-128);
+  ae_int32x2 max_int8 = SW_MOVDA32(127);
+  ae_int32x2 min_int8 = SW_MOVDA32(-128);
       
-  const ae_int16x4 *pt_inp1, *pt_inp2;		
+  const ae_int16x8 *pt_inp1, *pt_inp2;		
   ae_valignx2 align_inp1, align_inp2;
   ae_int16x4 d_inp1_0, d_inp1_1;
   ae_int16x4 d_inp2_0, d_inp2_1;
@@ -84,6 +84,8 @@ WORD32 xa_nn_dot_prod_16x16_asym8s(
   ae_int32x2 d_bias;
   int i;
 
+  ae_int32 *p32_bias_load = (ae_int32 *)p_bias_load;
+  ae_int8 *p8_out = (ae_int8 *) p_out;
   /* handle cases where vec_length is multiple of 8 */
   if(vec_length == 8)
   {
@@ -91,28 +93,29 @@ WORD32 xa_nn_dot_prod_16x16_asym8s(
      * p_inp1_start - memory is continuous => vec_count1 end and vect_count2 start are continuous 
      * p_inp2_start - memory is continuous => vec_count1 end and vect_count2 start are continuous 
      * */
-    pt_inp1 = (const ae_int16x4 *)((WORD16 *)p_inp1_start);
-    pt_inp2 = (const ae_int16x4 *)((WORD16 *)p_inp2_start);
+    pt_inp1 = (const ae_int16x8 *)((WORD16 *)p_inp1_start);
+    pt_inp2 = (const ae_int16x8 *)((WORD16 *)p_inp2_start);
 
     align_inp1 = AE_LA128_PP(pt_inp1);
     align_inp2 = AE_LA128_PP(pt_inp2);
+        
     /* TBD: multiple vec_count processing in a single loop can be done */
     for(loopcnt = 0; loopcnt < vec_count; loopcnt++)
     {
-      AE_L32_XP(d_bias, (ae_int32 *)p_bias_load, bias_address_increment);
+      AE_L32_XP(d_bias, p32_bias_load, bias_address_increment);
 
-      AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, (ae_int16x8 *)pt_inp1);
-      AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, (ae_int16x8 *)pt_inp2);
+      AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, pt_inp1);
+      AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, pt_inp2);
       AE_MULZAAAA2Q16(d_out64_0, d_out64_1, d_inp1_0, d_inp1_1, d_inp2_0, d_inp2_1);
 
-      d_out64_0 = AE_ADD64S(d_out64_0, d_out64_1);
+      d_out64_0 = SW_ADD64S_INT64_INT64(d_out64_0, d_out64_1);
       d_out32 = AE_SAT32X2(AE_ZERO64(), d_out64_0);
-      d_out32 = AE_ADD32S(d_out32, d_bias);
+      d_out32 = SW_ADD32S_INT32X2_INT32X2(d_out32, d_bias);
 
       MPY_BY_QUANT_MULT_X2_OUT32(d_out32, d_out32, out_multiplier, left_shift, right_shift)
-      d_out32 = AE_ADD32S(d_out32 ,out_zero_bias);
+      d_out32 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_out32) ,AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_zero_bias))));
       AE_MINMAX32(d_out32, min_int8, max_int8);
-      AE_S8_0_IP(AE_MOVINT8X8_FROMINT32X2(d_out32), (ae_int8 *) p_out, 1);
+      AE_S8_0_IP(AE_MOVINT8X8_FROMINT32X2(d_out32), p8_out, 1);
     }
   }
   else if(vec_length == 32)
@@ -121,35 +124,35 @@ WORD32 xa_nn_dot_prod_16x16_asym8s(
      * p_inp1_start - memory is continuous => vec_count1 end and vect_count2 start are continuous 
      * p_inp2_start - memory is continuous => vec_count1 end and vect_count2 start are continuous 
      * */
-    pt_inp1 = (const ae_int16x4 *)((WORD16 *)p_inp1_start);
-    pt_inp2 = (const ae_int16x4 *)((WORD16 *)p_inp2_start);
+    pt_inp1 = (const ae_int16x8 *)((WORD16 *)p_inp1_start);
+    pt_inp2 = (const ae_int16x8 *)((WORD16 *)p_inp2_start);
 
     align_inp1 = AE_LA128_PP(pt_inp1);
     align_inp2 = AE_LA128_PP(pt_inp2);
     /* TBD: multiple vec_count processing in a single loop can be done */
     for(loopcnt = 0; loopcnt < vec_count; loopcnt++)
     {
-      AE_L32_XP(d_bias, (ae_int32 *)p_bias_load, bias_address_increment);
+      AE_L32_XP(d_bias, p32_bias_load, bias_address_increment);
 
-      AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, (ae_int16x8 *)pt_inp1);
-      AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, (ae_int16x8 *)pt_inp2);
+      AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, pt_inp1);
+      AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, pt_inp2);
       AE_MULZAAAA2Q16(d_out64_0, d_out64_1, d_inp1_0, d_inp1_1, d_inp2_0, d_inp2_1);
 
 #pragma loop_count min=3
       for(i = 1; i < (vec_length >> 3); i++)
       {
-        AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, (ae_int16x8 *)pt_inp1);
-        AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, (ae_int16x8 *)pt_inp2);
+        AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, pt_inp1);
+        AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, pt_inp2);
         AE_MULAAAA2Q16(d_out64_0, d_out64_1, d_inp1_0, d_inp1_1, d_inp2_0, d_inp2_1);
       }
-      d_out64_0 = AE_ADD64S(d_out64_0, d_out64_1);
+      d_out64_0 = SW_ADD64S_INT64_INT64(d_out64_0, d_out64_1);
       d_out32 = AE_SAT32X2(AE_ZERO64(), d_out64_0);
-      d_out32 = AE_ADD32S(d_out32, d_bias);
+      d_out32 = SW_ADD32S_INT32X2_INT32X2(d_out32, d_bias);
 
       MPY_BY_QUANT_MULT_X2_OUT32(d_out32, d_out32, out_multiplier, left_shift, right_shift)
-      d_out32 = AE_ADD32S(d_out32 ,out_zero_bias);
+      d_out32 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_out32) ,AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_zero_bias))));
       AE_MINMAX32(d_out32, min_int8, max_int8);
-      AE_S8_0_IP(AE_MOVINT8X8_FROMINT32X2(d_out32), (ae_int8 *) p_out, 1);
+      AE_S8_0_IP(AE_MOVINT8X8_FROMINT32X2(d_out32), p8_out, 1);
     }
   }
   /* handle cases where vec_length is multiple of 8 */
@@ -159,74 +162,76 @@ WORD32 xa_nn_dot_prod_16x16_asym8s(
      * p_inp1_start - memory is continuous => vec_count1 end and vect_count2 start are continuous 
      * p_inp2_start - memory is continuous => vec_count1 end and vect_count2 start are continuous 
      * */
-    pt_inp1 = (const ae_int16x4 *)((WORD16 *)p_inp1_start);
-    pt_inp2 = (const ae_int16x4 *)((WORD16 *)p_inp2_start);
+    pt_inp1 = (const ae_int16x8 *)((WORD16 *)p_inp1_start);
+    pt_inp2 = (const ae_int16x8 *)((WORD16 *)p_inp2_start);
 
     align_inp1 = AE_LA128_PP(pt_inp1);
     align_inp2 = AE_LA128_PP(pt_inp2);
     /* TBD: multiple vec_count processing in a single loop can be done */
     for(loopcnt = 0; loopcnt < vec_count; loopcnt++)
     {
-      AE_L32_XP(d_bias, (ae_int32 *)p_bias_load, bias_address_increment);
+      AE_L32_XP(d_bias, p32_bias_load, bias_address_increment);
 
-      AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, (ae_int16x8 *)pt_inp1);
-      AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, (ae_int16x8 *)pt_inp2);
+      AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, pt_inp1);
+      AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, pt_inp2);
       AE_MULZAAAA2Q16(d_out64_0, d_out64_1, d_inp1_0, d_inp1_1, d_inp2_0, d_inp2_1);
 
 #pragma no_unroll
       for(i = 1; i < (vec_length >> 3); i++)
       {
-        AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, (ae_int16x8 *)pt_inp1);
-        AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, (ae_int16x8 *)pt_inp2);
+        AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, pt_inp1);
+        AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, pt_inp2);
         AE_MULAAAA2Q16(d_out64_0, d_out64_1, d_inp1_0, d_inp1_1, d_inp2_0, d_inp2_1);
       }
-      d_out64_0 = AE_ADD64S(d_out64_0, d_out64_1);
+      d_out64_0 = SW_ADD64S_INT64_INT64(d_out64_0, d_out64_1);
       d_out32 = AE_SAT32X2(AE_ZERO64(), d_out64_0);
-      d_out32 = AE_ADD32S(d_out32, d_bias);
+      d_out32 = SW_ADD32S_INT32X2_INT32X2(d_out32, d_bias);
 
       MPY_BY_QUANT_MULT_X2_OUT32(d_out32, d_out32, out_multiplier, left_shift, right_shift)
-      d_out32 = AE_ADD32S(d_out32 ,out_zero_bias);
+      d_out32 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_out32) ,AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_zero_bias))));
       AE_MINMAX32(d_out32, min_int8, max_int8);
       ae_int8x8 out8_0 = AE_MOVINT8X8_FROMINT32X2(d_out32);
-      AE_S8_0_IP(out8_0, (ae_int8 *) p_out, 1);
+      AE_S8_0_IP(out8_0, p8_out, 1);
     }
   }
   else
   {
     for(loopcnt = 0; loopcnt < vec_count; loopcnt++)
     {
-      pt_inp1 = (const ae_int16x4 *)((WORD16 *)p_inp1_start + (loopcnt * vec_length));
-      pt_inp2 = (const ae_int16x4 *)((WORD16 *)p_inp2_start + (loopcnt * vec_length));
+      pt_inp1 = (const ae_int16x8 *)((WORD16 *)p_inp1_start + (loopcnt * vec_length));
+      pt_inp2 = (const ae_int16x8 *)((WORD16 *)p_inp2_start + (loopcnt * vec_length));
       align_inp1 = AE_LA128_PP(pt_inp1);
       align_inp2 = AE_LA128_PP(pt_inp2);
       int i;
       d_out64_0 = ZERO64;
       d_out64_1 = ZERO64;
 
-      AE_L32_XP(d_bias, (ae_int32 *)p_bias_load, bias_address_increment);
+      AE_L32_XP(d_bias, p32_bias_load, bias_address_increment);
 
       for(i = 0; i < (vec_length >> 3); i++)
       {
-        AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, (ae_int16x8 *)pt_inp1);
-        AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, (ae_int16x8 *)pt_inp2);
+        AE_LA16X4X2_IP(d_inp1_0, d_inp1_1, align_inp1, pt_inp1);
+        AE_LA16X4X2_IP(d_inp2_0, d_inp2_1, align_inp2, pt_inp2);
         AE_MULAAAA2Q16(d_out64_0, d_out64_1, d_inp1_0, d_inp1_1, d_inp2_0, d_inp2_1);
       }
+      ae_int16 *pt16_inp1 = (ae_int16 *)pt_inp1;
+      ae_int16 *pt16_inp2 = (ae_int16 *)pt_inp2;
       for(i = 0; i < (vec_length & 7); i++)
       {
-        AE_L16_IP(d_inp1_0, (ae_int16 *)pt_inp1, 2);
-        AE_L16_IP(d_inp2_0, (ae_int16 *)pt_inp2, 2);
+        AE_L16_IP(d_inp1_0, pt16_inp1, 2);
+        AE_L16_IP(d_inp2_0, pt16_inp2, 2);
         AE_MULA16_00(d_out64_0, d_inp1_0, d_inp2_0);
       }
 
-      d_out64_0 = AE_ADD64S(d_out64_0, d_out64_1);
+      d_out64_0 = SW_ADD64S_INT64_INT64(d_out64_0, d_out64_1);
       d_out32 = AE_SAT32X2(AE_ZERO64(), d_out64_0);
-      d_out32 = AE_ADD32S(d_out32, d_bias);
+      d_out32 = SW_ADD32S_INT32X2_INT32X2(d_out32, d_bias);
 
       MPY_BY_QUANT_MULT_X2_OUT32(d_out32, d_out32, out_multiplier, left_shift, right_shift) 
-      d_out32 = AE_ADD32S(d_out32 ,out_zero_bias);
+      d_out32 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(d_out32) ,AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_zero_bias))));
       AE_MINMAX32(d_out32, min_int8, max_int8);
       ae_int8x8 out8_0 = AE_MOVINT8X8_FROMINT32X2(d_out32);
-      AE_S8_0_IP(out8_0, (ae_int8 *) p_out, 1);
+      AE_S8_0_IP(out8_0, p8_out, 1);
     }
   }
   return 0;

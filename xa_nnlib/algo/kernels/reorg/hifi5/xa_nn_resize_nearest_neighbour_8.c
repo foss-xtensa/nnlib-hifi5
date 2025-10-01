@@ -83,28 +83,32 @@ WORD32 xa_nn_resize_nearest_neighbour_8_8
   WORD8 *ptmp_inp = (WORD8 *)p_inp, *ptmp_out = (WORD8 *)p_out;
   WORD8 *ptmp_inp_h, *ptmp_inp_w;
 
+  xtfloat heightf_offset = *(xtfloat *)&height_offset;
+  xtfloat heightf_scale = *(xtfloat *)&height_scale;
+  xtfloat widthf_offset = *(xtfloat *)&width_offset;
+  xtfloat widthf_scale = *(xtfloat *)&width_scale;
   for(itr_n = 0; itr_n < out_batch; itr_n++)
   {
     for(itr_h = 0; itr_h < out_height; itr_h++)
     {
       xtfloat outh_idx; 
-      outh_idx = ADD_S(itr_h, height_offset); 
-      outh_idx = MUL_S(outh_idx, height_scale); 
+      outh_idx = ADD_S(FLOAT_S(itr_h, 0), heightf_offset); 
+      outh_idx = MUL_S(outh_idx, heightf_scale); 
       outh_idx = align_corners ? FIROUND_S(outh_idx) : FIFLOOR_S(outh_idx); 
-      outh_idx = MIN_S(outh_idx, input_height - 1);
-      outh_idx = MAX_S(0, outh_idx);
-      int outh = (int)(outh_idx);
+      outh_idx = MIN_S(outh_idx, FLOAT_S(input_height - 1, 0));
+      outh_idx = MAX_S(FLOAT_S(0,0), outh_idx);
+      int outh = xtfloatx2_rtor_int32(AE_MOVXTFLOATX2_FROMXTFLOAT(outh_idx));
       ptmp_inp_h = ptmp_inp + (outh * height_off);
 
       for(itr_w = 0; itr_w < out_width; itr_w++)
       {
         xtfloat outw_idx; 
-        outw_idx = ADD_S((xtfloat)itr_w, width_offset); 
-        outw_idx = MUL_S(outw_idx, width_scale); 
+        outw_idx = ADD_S(FLOAT_S(itr_w,0), widthf_offset); 
+        outw_idx = MUL_S(outw_idx, widthf_scale); 
         outw_idx = align_corners ? FIROUND_S(outw_idx) : FIFLOOR_S(outw_idx); 
-        outw_idx = MIN_S(outw_idx, input_width - 1);
-        outw_idx = MAX_S(0, outw_idx);
-        int outw = (int)(outw_idx);
+        outw_idx = MIN_S(outw_idx, FLOAT_S(input_width - 1,0));
+        outw_idx = MAX_S(FLOAT_S(0,0), outw_idx);
+        int outw = xtfloatx2_rtor_int32(AE_MOVXTFLOATX2_FROMXTFLOAT(outw_idx));
         ptmp_inp_w = ptmp_inp_h + (outw * width_off);
 
         MEMCPY_8b(ptmp_out, ptmp_inp_w, input_channels);

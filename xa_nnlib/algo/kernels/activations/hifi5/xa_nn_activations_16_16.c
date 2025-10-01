@@ -22,6 +22,7 @@
 #include "xa_type_def.h"
 #include "xa_nn_common.h"
 #include "xa_nnlib_err_chk.h"
+#include "xa_nnlib_kernels_api.h"
 
 #define MAX_WORD16 (int)0x00007fff
 #define MIN_WORD16 (int)0xffff8000
@@ -47,26 +48,26 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
     XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((activation_max < activation_min), -1);
 
-    WORD16 *p_o = p_out;
-    WORD16 *p_v = (WORD16 *)p_vec;
+    ae_int16x8 *p_o = (ae_int16x8 *)p_out;
+    ae_int16x8 *p_v = (ae_int16x8 *)p_vec;
 
     min  = AE_MOVDA16(activation_min);
     max  = AE_MOVDA16(activation_max);
 
-    align_src = AE_LA128_PP((ae_int16x8 *)p_v);
+    align_src = AE_LA128_PP(p_v);
     align_dst = AE_ZALIGN128(); // zero alignment reg
 
     if((activation_max >= MAX_WORD16) && (activation_min <= MIN_WORD16))
     {
         for(i=0; i<(vec_length >> 3); i++)
         {
-            AE_LA16X4X2_IP(x, y, align_src, (ae_int16x8 *)p_v);
-            AE_SA16X4X2_IP(x, y, align_dst, (ae_int16x8 *)p_o);
+            AE_LA16X4X2_IP(x, y, align_src, p_v);
+            AE_SA16X4X2_IP(x, y, align_dst, p_o);
         }
         int rem_itr = (vec_length & 7);
         {
-            AE_LAV16X4X2_XP(x, y, align_src, (ae_int16x8 *)p_v, (rem_itr << 1));
-            AE_SAV16X4X2_XP(x, y, align_dst, (ae_int16x8 *)p_o, (rem_itr << 1));
+            AE_LAV16X4X2_XP(x, y, align_src, p_v, (rem_itr << 1));
+            AE_SAV16X4X2_XP(x, y, align_dst, p_o, (rem_itr << 1));
         }
         AE_SA128POS_FP(align_dst, p_o); // finalize the stream
     }
@@ -74,21 +75,21 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
     {
         for(i=0; i<(vec_length >> 3); i++)
         {
-            AE_LA16X4X2_IP(x, y, align_src, (ae_int16x8 *)p_v);
+            AE_LA16X4X2_IP(x, y, align_src, p_v);
 
             x = AE_MIN16(x, max);
             y = AE_MIN16(y, max);
 
-            AE_SA16X4X2_IP(x, y, align_dst, (ae_int16x8 *)p_o);
+            AE_SA16X4X2_IP(x, y, align_dst, p_o);
         }
         int rem_itr = vec_length & 7;
         {
-            AE_LAV16X4X2_XP(x, y, align_src, (ae_int16x8 *)p_v, (rem_itr << 1));
+            AE_LAV16X4X2_XP(x, y, align_src, p_v, (rem_itr << 1));
 
             x = AE_MIN16(x, max);
             y = AE_MIN16(y, max);
 
-            AE_SAV16X4X2_XP(x, y, align_dst, (ae_int16x8 *)p_o, (rem_itr << 1));
+            AE_SAV16X4X2_XP(x, y, align_dst, p_o, (rem_itr << 1));
         }
 
         AE_SA128POS_FP(align_dst, p_o); // finalize the stream
@@ -97,21 +98,21 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
     {
         for(i=0; i<(vec_length >> 3); i++)
         {
-            AE_LA16X4X2_IP(x, y, align_src, (ae_int16x8 *)p_v);
+            AE_LA16X4X2_IP(x, y, align_src, p_v);
 
             x = AE_MAX16(x, min);
             y = AE_MAX16(y, min);
 
-            AE_SA16X4X2_IP(x, y, align_dst, (ae_int16x8 *)p_o);
+            AE_SA16X4X2_IP(x, y, align_dst, p_o);
         }
         int rem_itr = (vec_length & 7);
         {
-            AE_LAV16X4X2_XP(x, y, align_src, (ae_int16x8 *)p_v, rem_itr << 1);
+            AE_LAV16X4X2_XP(x, y, align_src, p_v, rem_itr << 1);
 
             x = AE_MAX16(x, min);
             y = AE_MAX16(y, min);
 
-            AE_SAV16X4X2_XP(x, y, align_dst, (ae_int16x8 *)p_o, rem_itr << 1);
+            AE_SAV16X4X2_XP(x, y, align_dst, p_o, rem_itr << 1);
         }
         AE_SA128POS_FP(align_dst, p_o); // finalize the stream
     }
@@ -119,21 +120,21 @@ WORD32 xa_nn_vec_activation_min_max_16_16(WORD16 * __restrict__ p_out,
     {
         for(i=0; i<(vec_length >> 3); i++)
         {
-            AE_LA16X4X2_IP(x, y, align_src, (ae_int16x8 *)p_v);
+            AE_LA16X4X2_IP(x, y, align_src, p_v);
 
             AE_MINMAX16(x, min, max);
             AE_MINMAX16(y, min, max);
 
-            AE_SA16X4X2_IP(x, y, align_dst, (ae_int16x8 *)p_o);
+            AE_SA16X4X2_IP(x, y, align_dst, p_o);
         }
         int rem_itr = (vec_length & 7);
         {
-            AE_LAV16X4X2_XP(x, y, align_src, (ae_int16x8 *)p_v, (rem_itr << 1));
+            AE_LAV16X4X2_XP(x, y, align_src, p_v, (rem_itr << 1));
 
             AE_MINMAX16(x, min, max);
             AE_MINMAX16(y, min, max);
 
-            AE_SAV16X4X2_XP(x, y, align_dst, (ae_int16x8 *)p_o, (rem_itr << 1));
+            AE_SAV16X4X2_XP(x, y, align_dst, p_o, (rem_itr << 1));
         }
         AE_SA128POS_FP(align_dst, p_o); // finalize the stream
     }
@@ -178,26 +179,29 @@ WORD32 xa_nn_vec_relu_std_16_16(
 #if !((defined(AE_TANH16X4X2) || defined(AE_SIGMOID16X4X2)) && defined(USE_HIFI_ACT_TIE))
 #define ROUNDING_HALF_SUM_16X4(s0, s1, a, b){\
   AE_ADDW16(s0, s1, a, b);\
-  AE_MULF2P32X4RS(s0, s1, s0, s1, AE_MOVDA32(1<<(31-1)), AE_MOVDA32(1<<(31-1)));\
+  ae_f32x2 s0_t, s1_t;\
+  AE_MULF2P32X4RS(s0_t, s1_t, AE_MOVF32X2_FROMINT32X2(s0), AE_MOVF32X2_FROMINT32X2(s1), AE_MOVF32X2_FROMINT32(AE_MOVDA32(1<<(31-1))), AE_MOVF32X2_FROMINT32(AE_MOVDA32(1<<(31-1))));\
+  s0 = AE_MOVINT32X2_FROMF32X2(s0_t);\
+  s1 = AE_MOVINT32X2_FROMF32X2(s1_t);\
 }
 
 #define EXP_ON_INTERVAL_BETWEEN_NEGATIVE_ONE_QUARTER_AND_0_EXCL_16X4(y_out1, inp1)\
 {\
   ae_int16x4 x1_in, x2, x3, x4, x4_by_4, y1, y2, y3, y4, y5, y6;\
 \
-  x1_in = AE_ADD16S(inp1, CT_1_BY_8);\
-  x2 = AE_MULFP16X4RAS(x1_in, x1_in);\
-  x3 = AE_MULFP16X4RAS(x2, x1_in);\
-  x4 = AE_MULFP16X4RAS(x2, x2);\
+  x1_in = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(inp1), AE_MOVF16X4_FROMINT16X4(CT_1_BY_8)));\
+  x2 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(x1_in), AE_MOVF16X4_FROMINT16X4(x1_in)));\
+  x3 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(x2), AE_MOVF16X4_FROMINT16X4(x1_in)));\
+  x4 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(x2), AE_MOVF16X4_FROMINT16X4(x2)));\
   x4_by_4 = AE_SRAI16R(x4, 2);\
-  y1 = AE_ADD16S(x4_by_4, x3);\
-  y2 = AE_MULFP16X4RAS(y1, CT_1_BY_3);\
-  y3 = AE_ADD16S(y2, x2);\
+  y1 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(x4_by_4), AE_MOVF16X4_FROMINT16X4(x3)));\
+  y2 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(y1), AE_MOVF16X4_FROMINT16X4(CT_1_BY_3)));\
+  y3 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(y2), AE_MOVF16X4_FROMINT16X4(x2)));\
   y4 = AE_SRAI16R(y3, 1);\
 \
-  y5 = AE_ADD16S(x1_in, y4);\
-  y6 = AE_MULFP16X4RAS(y5, CT);\
-  y_out1 = AE_ADD16S(y6, CT);\
+  y5 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(x1_in), AE_MOVF16X4_FROMINT16X4(y4)));\
+  y6 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(y5), AE_MOVF16X4_FROMINT16X4(CT)));\
+  y_out1 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(y6), AE_MOVF16X4_FROMINT16X4(CT)));\
 }
 
 #define GEMMLOWP_EXP_BARREL_SHIFTER_16X4(out_1, fract_bits, exponent, FixedPointMultiplier, remainder1)\
@@ -212,7 +216,7 @@ WORD32 xa_nn_vec_relu_std_16_16(
   bit_set = AE_LT16(zero16, mask1);\
 \
   d16_fpm = AE_MOVDA16(FixedPointMultiplier); \
-  out1 = AE_MULFP16X4RAS(out_1, d16_fpm);\
+  out1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(out_1), AE_MOVF16X4_FROMINT16X4(d16_fpm)));\
   AE_MOVT16X4(out_1, out1, bit_set);\
 }
 
@@ -273,19 +277,19 @@ WORD32 xa_nn_vec_relu_std_16_16(
 \
   half_den1234 = AE_SAT16X4(t1, t2);\
 \
-  m1 = AE_MULFP16X4RAS(half_den1234, CT_neg_32_by_17);\
-  x1 = AE_ADD16S(m1, CT_48_by_17);\
+  m1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(half_den1234), AE_MOVF16X4_FROMINT16X4(CT_neg_32_by_17)));\
+  x1 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(m1), AE_MOVF16X4_FROMINT16X4(CT_48_by_17)));\
 \
   for(itr_nr=0; itr_nr<3; itr_nr++)\
   {\
-    half_denominator_times_x1 = AE_MULFP16X4RAS(x1, half_den1234);\
-    one_minus_half_denominator_times_x1 = AE_SUB16S(CT_F2_ONE, half_denominator_times_x1);\
-    m1 = AE_MULFP16X4RAS(x1, one_minus_half_denominator_times_x1);\
+    half_denominator_times_x1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(x1), AE_MOVF16X4_FROMINT16X4(half_den1234)));\
+    one_minus_half_denominator_times_x1 = AE_MOVINT16X4_FROMF16X4(AE_SUB16S(AE_MOVF16X4_FROMINT16X4(CT_F2_ONE), AE_MOVF16X4_FROMINT16X4(half_denominator_times_x1)));\
+    m1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(x1), AE_MOVF16X4_FROMINT16X4(one_minus_half_denominator_times_x1)));\
     /* Shift m1 left by 2, saturate to 16-bit and add to x1 with saturation */\
     AE_MULAP16X16X4S(x1, m1, AE_MOVDA16(1<<2)); \
   }\
 \
-  y1 = AE_SLAI16S(x1, 1);\
+  y1 = AE_MOVINT16X4_FROMF16X4(AE_SLAI16S(AE_MOVF16X4_FROMINT16X4(x1), 1));\
 \
 }
 #endif /* #if !(defined(AE_SIGMOID16X4X2) && defined(USE_HIFI_ACT_TIE)) */
@@ -324,7 +328,7 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
 
     AE_SIGMOID16X4X2(z32_op, z10_op, z32, z10);
     z32_op = AE_SRLI16(z32_op, 1);
-    z10_op = AE_MULFP16X4S(z10_op, r_mult);
+    z10_op = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(z10_op), AE_MOVF16X4_FROMINT16X4(r_mult)));
     z10_op = AE_AND16(z10_op, mask);
 
     AE_SA16X4X2_IP(z32_op, z10_op, align_dst_hf5_0, p_o_0);
@@ -338,7 +342,7 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
 
     AE_SIGMOID16X4X2(z32_op, z10_op, z32, z10);
     z32_op = AE_SRLI16(z32_op, 1);
-    z10_op = AE_MULFP16X4S(z10_op, r_mult);
+    z10_op = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(z10_op), AE_MOVF16X4_FROMINT16X4(r_mult)));
     z10_op = AE_AND16(z10_op, mask);
 
     AE_SAV16X4X2_XP(z32_op, z10_op, align_dst_hf5_0, p_o_0, (rem_itr << 1));
@@ -377,7 +381,7 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
     AE_LA16X4_IP(x3210, align_src_hf5, p_in);
 
     // Computing Negative value
-    y3210 = AE_NEG16S(x3210);
+    y3210 = AE_MOVINT16X4_FROMF16X4(AE_NEG16S(AE_MOVF16X4_FROMINT16X4(x3210)));
     y3210 = AE_MIN16(y3210, x3210);
 
     // Compute sigmoid/logistic i.e. one_over_one_plus_x(exp(x))
@@ -409,13 +413,13 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
     ae_int16 *p16_in, *p16_out;
     p16_in = (ae_int16 *)p_in;
     p16_out = (ae_int16 *)p_o;
-    x3210 = p16_in[0];
+    x3210 = AE_MOVINT16X4_FROMINT16(p16_in[0]);
     if(rem_itr > 1)
-      x3210 = AE_SEL16_6543(x3210, p16_in[1]);
+      x3210 = AE_SEL16_6543(x3210, AE_MOVINT16X4_FROMINT16(p16_in[1]));
     if(rem_itr > 2)
-      x3210 = AE_SEL16_6543(x3210, p16_in[2]);
+      x3210 = AE_SEL16_6543(x3210, AE_MOVINT16X4_FROMINT16(p16_in[2]));
 
-    y3210 = AE_NEG16S(x3210);
+    y3210 = AE_MOVINT16X4_FROMF16X4(AE_NEG16S(AE_MOVF16X4_FROMINT16X4(x3210)));
     y3210 = AE_MIN16(y3210, x3210);
 
     // Compute sigmoid/logistic i.e. one_over_one_plus_x(exp(x))
@@ -435,15 +439,15 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
 
     if(rem_itr > 2)
     {
-      p16_out[2] = y3210;
+      p16_out[2] = AE_MOVINT16_FROMINT16X4(y3210);
       y3210 = AE_SEL16_4321(y3210, y3210);
     }
     if(rem_itr > 1)
     {
-      p16_out[1] = y3210;
+      p16_out[1] = AE_MOVINT16_FROMINT16X4(y3210);
       y3210 = AE_SEL16_4321(y3210, y3210);
     }
-    p16_out[0] = y3210;
+    p16_out[0] = AE_MOVINT16_FROMINT16X4(y3210);
   }
 #endif
 
@@ -479,7 +483,7 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
   {\
     ae_int16x4 scale;\
     xtbool4 is_less;\
-    scale = AE_SLAA16S(AE_MOVDA16(-1), (fract_bits - 1) + 4);\
+    scale = AE_MOVINT16X4_FROMF16X4(AE_SLAA16S(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(-1)), (fract_bits - 1) + 4));\
     is_less = AE_LT16(inp1, scale);\
     AE_MOVT16X4(y1, zero16, is_less);\
   }\
@@ -506,20 +510,20 @@ WORD32 xa_nn_vec_sigmoid_16_16(WORD16 *p_out,         /* result, Q0.15     */
   CT_neg_32_by_17 = AE_MOVDA16(CONSTANT_NEG_32_OVER_17);\
   CT_F2_ONE = AE_MOVDA16(F2_ONE);\
 \
-  m1 = AE_MULFP16X4RAS(half_den1234, CT_neg_32_by_17);\
-  x1 = AE_ADD16S(m1, CT_48_by_17);\
+  m1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(half_den1234), AE_MOVF16X4_FROMINT16X4(CT_neg_32_by_17)));\
+  x1 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(m1), AE_MOVF16X4_FROMINT16X4(CT_48_by_17)));\
 \
   for(itr_nr=0; itr_nr<3; itr_nr++)\
   {\
-    half_denominator_times_x1 = AE_MULFP16X4RAS(x1, half_den1234);\
-    one_minus_half_denominator_times_x1 = AE_SUB16S(CT_F2_ONE, half_denominator_times_x1);\
-    m1 = AE_MULFP16X4RAS(x1, one_minus_half_denominator_times_x1);\
+    half_denominator_times_x1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(x1), AE_MOVF16X4_FROMINT16X4(half_den1234)));\
+    one_minus_half_denominator_times_x1 = AE_MOVINT16X4_FROMF16X4(AE_SUB16S(AE_MOVF16X4_FROMINT16X4(CT_F2_ONE), AE_MOVF16X4_FROMINT16X4(half_denominator_times_x1)));\
+    m1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(x1), AE_MOVF16X4_FROMINT16X4(one_minus_half_denominator_times_x1)));\
     /* Shift m1 left by 2, saturate to 16-bit and add to x1 with saturation */\
     AE_MULAP16X16X4S(x1, m1, AE_MOVDA16(1<<2)); \
   }\
 \
-  x1 = AE_SUB16S(x1, CT_F2_ONE);\
-  y1 = AE_SLAI16S(x1, 2);\
+  x1 = AE_MOVINT16X4_FROMF16X4(AE_SUB16S(AE_MOVF16X4_FROMINT16X4(x1), AE_MOVF16X4_FROMINT16X4(CT_F2_ONE)));\
+  y1 = AE_MOVINT16X4_FROMF16X4(AE_SLAI16S(AE_MOVF16X4_FROMINT16X4(x1), 2));\
 \
 }
 #endif /* #if !(defined(AE_TANH16X4X2) && defined(USE_HIFI_ACT_TIE)) */
@@ -638,7 +642,7 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
   {
     AE_LA16X4_IP(x0123, align_src_hf5, p_in);
 
-    y0123 = AE_NEG16S(x0123);
+    y0123 = AE_MOVINT16X4_FROMF16X4(AE_NEG16S(AE_MOVF16X4_FROMINT16X4(x0123)));
     y0123 = AE_MIN16(y0123, x0123);
 
     EXP_2X_INP16X4(exp_y0123, fract_bits, y0123);
@@ -652,13 +656,13 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
     e0123 = AE_LT16(x0123, zero16);
 
     out1 = z0123;
-    AE_MOVT16X4(out1, AE_NEG16S(z0123), e0123);
+    AE_MOVT16X4(out1, AE_MOVINT16X4_FROMF16X4(AE_NEG16S(AE_MOVF16X4_FROMINT16X4(z0123))), e0123);
 
     //Check if input = 0
     f0123 = AE_EQ16(x0123, zero16);
     AE_MOVT16X4(out1, AE_ZERO16(), f0123);
 
-    AE_SA16X4_IP(out1, align_dst_hf5, (ae_int16x4 *)p_o);
+    AE_SA16X4_IP(out1, align_dst_hf5, p_o);
   }
   AE_SA64POS_FP(align_dst_hf5, p_o);
 
@@ -669,13 +673,13 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
     ae_int16 *p16_in, *p16_out;
     p16_in = (ae_int16 *)p_in;
     p16_out = (ae_int16 *)p_o;
-    x0123 = p16_in[0];
+    x0123 = AE_MOVINT16X4_FROMINT16(p16_in[0]);
     if(rem_itr > 1)
-      x0123 = AE_SEL16_6543(x0123, p16_in[1]);
+      x0123 = AE_SEL16_6543(x0123, AE_MOVINT16X4_FROMINT16(p16_in[1]));
     if(rem_itr > 2)
-      x0123 = AE_SEL16_6543(x0123, p16_in[2]);
+      x0123 = AE_SEL16_6543(x0123, AE_MOVINT16X4_FROMINT16(p16_in[2]));
 
-    y0123 = AE_NEG16S(x0123);
+    y0123 = AE_MOVINT16X4_FROMF16X4(AE_NEG16S(AE_MOVF16X4_FROMINT16X4(x0123)));
     y0123 = AE_MIN16(y0123, x0123);
 
     EXP_2X_INP16X4(exp_y0123, fract_bits, y0123);
@@ -685,7 +689,7 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
     e0123 = AE_LT16(x0123, zero16);
 
     out1 = z0123;
-    AE_MOVT16X4(out1, AE_NEG16S(z0123), e0123);
+    AE_MOVT16X4(out1, AE_MOVINT16X4_FROMF16X4(AE_NEG16S(AE_MOVF16X4_FROMINT16X4(z0123))), e0123);
 
     //Check if input = 0
     f0123 = AE_EQ16(x0123, zero16);
@@ -693,15 +697,15 @@ WORD32 xa_nn_vec_tanh_16_16(WORD16 *p_out,
 
     if(rem_itr > 2)
     {
-      p16_out[2] = out1;
+      p16_out[2] = AE_MOVINT16_FROMINT16X4(out1);
       out1 = AE_SEL16_4321(out1, out1);
     }
     if(rem_itr > 1)
     {
-      p16_out[1] = out1;
+      p16_out[1] = AE_MOVINT16_FROMINT16X4(out1);
       out1 = AE_SEL16_4321(out1, out1);
     }
-    p16_out[0] = out1;
+    p16_out[0] = AE_MOVINT16_FROMINT16X4(out1);
   }
 #endif
 

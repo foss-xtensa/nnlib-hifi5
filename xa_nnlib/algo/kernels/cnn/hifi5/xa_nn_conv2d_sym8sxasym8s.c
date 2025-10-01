@@ -46,8 +46,8 @@ static WORD32 conv_x_left_pad(
   WORD32 left_shift, right_shift;
   out_width_over_x_pad = out_width_over_x_pad > out_width ? out_width : out_width_over_x_pad;
 
-  ae_int32x2 max_out = AE_MOVDA32(out_activation_max);
-  ae_int32x2 min_out = AE_MOVDA32(out_activation_min);
+  ae_int32x2 max_out = SW_MOVDA32(out_activation_max);
+  ae_int32x2 min_out = SW_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -67,12 +67,12 @@ static WORD32 conv_x_left_pad(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = 0;
+        ae_int32x2 acc = ZERO32;
         if(p_bias != NULL){
-          acc = AE_MOVDA32(p_bias[k]);
+          acc = SW_MOVDA32(p_bias[k]);
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
-        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_out, max_out);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
@@ -104,8 +104,8 @@ static WORD32 conv_x_right_pad(
   WORD32 left_shift, right_shift;
   WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad;
 
-  ae_int32x2 max_out = AE_MOVDA32(out_activation_max);
-  ae_int32x2 min_out = AE_MOVDA32(out_activation_min);
+  ae_int32x2 max_out = SW_MOVDA32(out_activation_max);
+  ae_int32x2 min_out = SW_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -125,12 +125,12 @@ static WORD32 conv_x_right_pad(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = 0;
+        ae_int32x2 acc = ZERO32;
         if(p_bias != NULL){
-          acc = AE_MOVDA32(p_bias[k]);
+          acc = SW_MOVDA32(p_bias[k]);
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
-        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_out, max_out);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
@@ -159,8 +159,8 @@ static void conv_y_pad_nhwc_out(
   out_width_offset = out_channels;
   out_height_offset = out_width * out_width_offset;
 
-  ae_int32x2 max_out = AE_MOVDA32(out_activation_max);
-  ae_int32x2 min_out = AE_MOVDA32(out_activation_min);
+  ae_int32x2 max_out = SW_MOVDA32(out_activation_max);
+  ae_int32x2 min_out = SW_MOVDA32(out_activation_min);
 
 #if TFLITE_SINGLE_ROUNDING
   /* Single rounding macro doesn't need two shifts so this is not used */
@@ -180,12 +180,12 @@ static void conv_y_pad_nhwc_out(
         left_shift  = p_out_shift[k] < 0 ? 0 : p_out_shift[k];
         right_shift = p_out_shift[k] > 0 ? 0 : -p_out_shift[k];
 #endif /* #if TFLITE_SINGLE_ROUNDING */
-        ae_int32x2 acc = 0;
+        ae_int32x2 acc = ZERO32;
         if(p_bias != NULL){
-          acc = AE_MOVDA32(p_bias[k]);
+          acc = SW_MOVDA32(p_bias[k]);
         }
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, p_out_multiplier[k], left_shift, right_shift);
-        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_out, max_out);
         p_out[i * out_height_offset + j * out_width_offset + k * out_channels_offset] = (WORD8)AE_MOVAD32_L(acc);
       }
@@ -723,6 +723,7 @@ static void xa_nn_rearrange_chw_to_hwc
               ,WORD32 channels
               ) 
 {
+        ae_int8x8 *p8x8_out = (ae_int8x8 *)p_out;
         const int inp_stride=width*height;
         int itr_ch, itr_h, itr_w;
         for(itr_h = 0; itr_h < height; itr_h++)
@@ -730,21 +731,21 @@ static void xa_nn_rearrange_chw_to_hwc
           WORD8 *p_inp1 = (WORD8 *) p_inp+(itr_h*width);
           for(itr_w = 0; itr_w < width; itr_w++)
           {
-            WORD8 *p_inp2 = p_inp1+(itr_w*1);
+            ae_int8 *p_inp2 = (ae_int8*)p_inp1+(itr_w*1);
             ae_valign a_out = AE_ZALIGN64();
             for(itr_ch = 0; itr_ch < (channels >> 3); itr_ch++)
             {
               ae_int8x8 d0, d1, d2, d3, d4, d5, d6, d7;
               ae_int8x8 tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6;
               
-              d1 = AE_L8_X ((ae_int8*)p_inp2, inp_stride);
-              d2 = AE_L8_X ((ae_int8*)p_inp2, 2*inp_stride);
-              d3 = AE_L8_X ((ae_int8*)p_inp2, 3*inp_stride);
-              d4 = AE_L8_X ((ae_int8*)p_inp2, 4*inp_stride);
-              d5 = AE_L8_X ((ae_int8*)p_inp2, 5*inp_stride);
-              d6 = AE_L8_X ((ae_int8*)p_inp2, 6*inp_stride);
-              d7 = AE_L8_X ((ae_int8*)p_inp2, 7*inp_stride);
-              AE_L8_XP(d0, (ae_int8*)p_inp2, 8*inp_stride);
+              d1 = AE_L8_X (p_inp2, inp_stride);
+              d2 = AE_L8_X (p_inp2, 2*inp_stride);
+              d3 = AE_L8_X (p_inp2, 3*inp_stride);
+              d4 = AE_L8_X (p_inp2, 4*inp_stride);
+              d5 = AE_L8_X (p_inp2, 5*inp_stride);
+              d6 = AE_L8_X (p_inp2, 6*inp_stride);
+              d7 = AE_L8_X (p_inp2, 7*inp_stride);
+              AE_L8_XP(d0, p_inp2, 8*inp_stride);
               
               tmp0 = AE_SEL8X8I(d0, d1, 20);
               tmp1 = AE_SEL8X8I(d2, d3, 20);
@@ -754,16 +755,18 @@ static void xa_nn_rearrange_chw_to_hwc
               tmp5 = AE_SEL8X8I(tmp2, tmp3, 24);
               tmp6 = AE_SEL8X8I(tmp4, tmp5, 1);
               
-              AE_SA8X8_IP(tmp6, a_out, (ae_int8x8 *)p_out);
+              AE_SA8X8_IP(tmp6, a_out, p8x8_out);
             }
-            AE_SA64POS_FP(a_out, p_out);
+            AE_SA64POS_FP(a_out, p8x8_out);
+            ae_int8 *p8_out = (ae_int8 *)p8x8_out;
 #pragma loop_count max=7
             for(itr_ch = 0; itr_ch < (channels & 7); itr_ch++)
             {
               ae_int8x8 d0;
-              AE_L8_XP(d0, (ae_int8*)p_inp2, inp_stride);
-              AE_S8_0_IP(d0, (ae_int8 *)p_out, 1);
+              AE_L8_XP(d0, p_inp2, inp_stride);
+              AE_S8_0_IP(d0, p8_out, 1);
             }
+            p8x8_out = (ae_int8x8 *)p8_out;
           }
         }
 

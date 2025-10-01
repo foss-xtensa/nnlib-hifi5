@@ -25,6 +25,9 @@
 #include "xa_nn_conv1d_std_state.h"
 #include "xa_nnlib_err_chk.h"
 
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+#define SW_ADD32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(inp1), AE_MOVF32X2_FROMINT32X2(inp2)));
+
 static WORD32 conv_y_top_pad(
     WORD32 y_padding,
     WORD32 kernel_height,
@@ -51,14 +54,14 @@ static WORD32 conv_y_top_pad(
   {
     for(j=0;j<out_channels;j++)
     {
-      ae_int32x2 acc = AE_MOVDA32(p_bias[j]);
+      ae_int32x2 acc = SW_MOVDA32(p_bias[j]);
       acc = AE_SLAA32(acc, left_shift);
-      acc = AE_MULFP32X2RAS(acc, AE_MOVDA32(out_multiplier));
+      acc = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(acc), AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_multiplier))));
       ae_int64 acc64 = AE_SLAI64(AE_MOVINT64_FROMINT32X2(acc), 32);
       acc64 = AE_SRAA64(acc64, right_shift);
-      acc = AE_ROUND32F64SSYM(acc64);
-      acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
-      acc = AE_MAX32(AE_MIN32(acc, AE_MOVDA32(255)), AE_ZERO32());
+      acc = AE_MOVINT32X2_FROMF32X2(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(acc64)));
+      acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
+      acc = AE_MAX32(AE_MIN32(acc, SW_MOVDA32(255)), AE_ZERO32());
       p_out[i*out_height_offset+j*out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
     }
   }
@@ -91,14 +94,14 @@ static WORD32 conv_y_bottom_pad(
   {
     for(j=0;j<out_channels;j++)
     {
-      ae_int32x2 acc = AE_MOVDA32(p_bias[j]);
+      ae_int32x2 acc = SW_MOVDA32(p_bias[j]);
       acc = AE_SLAA32(acc, left_shift);
-      acc = AE_MULFP32X2RAS(acc, AE_MOVDA32(out_multiplier));
+      acc = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RAS(AE_MOVF32X2_FROMINT32X2(acc), AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_multiplier))));
       ae_int64 acc64 = AE_SLAI64(AE_MOVINT64_FROMINT32X2(acc), 32);
       acc64 = AE_SRAA64(acc64, right_shift);
-      acc = AE_ROUND32F64SSYM(acc64);
-      acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
-      acc = AE_MAX32(AE_MIN32(acc, AE_MOVDA32(255)), AE_ZERO32());
+      acc = AE_MOVINT32X2_FROMF32X2(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(acc64)));
+      acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
+      acc = AE_MAX32(AE_MIN32(acc, SW_MOVDA32(255)), AE_ZERO32());
       p_out[i*out_height_offset+j*out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
     }
   }

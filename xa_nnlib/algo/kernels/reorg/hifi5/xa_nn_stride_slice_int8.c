@@ -106,45 +106,45 @@ WORD32 xa_nn_strided_slice_int8(WORD8 * __restrict__ p_out,
     int stop_3_start_3_a4 = (stop_3 - start_3)*a4;
     int stop_4_start_4 = (stop_4 - start_4);
     
-    WORD8 *p_inp0 = (WORD8*)p_inp+(start_0_a1);
-    
+    ae_int8 *p_inp0 = (ae_int8*)p_inp+(start_0_a1);
+    ae_int8 *p8_out = (ae_int8 *)p_out;
     for(i0 = start_0; i0<stop_0; i0++)
     {
-      WORD8 *p_inp1 = p_inp0+(start_1_a2);
+      ae_int8 *p_inp1 = p_inp0+(start_1_a2);
       for(i1 = start_1; i1<stop_1; i1++)
       {
-        WORD8 *p_inp2 = p_inp1+(start_2_a3);
+        ae_int8 *p_inp2 = p_inp1+(start_2_a3);
         if ((start_3==0) && (start_4==0) && (stop_3 == dims_3) && (stop_4 == dims_4))
         {
-          xa_nn_memcpy((void*)p_out, (void*)p_inp2, stop_2_start_2_a3);
-          AE_L8_XP(dummy, (ae_int8 *)p_out, stop_2_start_2_a3); //p_out += ((stop_2 - start_2)*dims_3*dims_4);
+          xa_nn_memcpy((void*)p8_out, (void*)p_inp2, stop_2_start_2_a3);
+          AE_L8_XP(dummy, p8_out, stop_2_start_2_a3); //p_out += ((stop_2 - start_2)*dims_3*dims_4);
         }
         else
         {
           for(i2 = start_2; i2<stop_2; i2++)
           {
-            WORD8 *p_inp3 = p_inp2+(start_3_a4);
+            ae_int8 *p_inp3 = p_inp2+(start_3_a4);
             if ((start_4==0) && (stop_4 == dims_4))
             {
-              xa_nn_memcpy((void*)p_out, (void*)p_inp3, stop_3_start_3_a4);
-              AE_L8_XP(dummy, (ae_int8 *)p_out, stop_3_start_3_a4); //p_out+=(stop_3 - start_3)*dims_4;
+              xa_nn_memcpy((void*)p8_out, (void*)p_inp3, stop_3_start_3_a4);
+              AE_L8_XP(dummy, p8_out, stop_3_start_3_a4); //p_out+=(stop_3 - start_3)*dims_4;
             }
             else
             {
               for(i3 = start_3; i3<stop_3; i3++)
               {
-                WORD8 *p_inp4 = p_inp3+start_4;
-                xa_nn_memcpy((void*)p_out, (void*)p_inp4, stop_4_start_4);
-                AE_L8_XP(dummy, (ae_int8 *)p_out, stop_4_start_4);
-                AE_L8_XP(dummy, (ae_int8 *)p_inp3, stride_3_a4);
+                ae_int8 *p_inp4 = p_inp3+start_4;
+                xa_nn_memcpy((void*)p8_out, (void*)p_inp4, stop_4_start_4);
+                AE_L8_XP(dummy, p8_out, stop_4_start_4);
+                AE_L8_XP(dummy, p_inp3, stride_3_a4);
               } // for i3
             }
-            AE_L8_XP(dummy, (ae_int8 *)p_inp2, stride_2_a3);
+            AE_L8_XP(dummy, p_inp2, stride_2_a3);
           } // for i2
         }
-        AE_L8_XP(dummy, (ae_int8 *)p_inp1, stride_1_a2);
+        AE_L8_XP(dummy, p_inp1, stride_1_a2);
       } //for i1
-      AE_L8_XP(dummy, (ae_int8 *)p_inp0, stride_0_a1);
+      AE_L8_XP(dummy, p_inp0, stride_0_a1);
     } //for i0
   }
   else
@@ -176,57 +176,57 @@ WORD32 xa_nn_strided_slice_int8(WORD8 * __restrict__ p_out,
     int stop_3_start_3_a4 = (stop_3 - start_3)*a4;
     int stop_4_start_4 = (stop_4-start_4);
     
-    WORD8 *p_inp0 = (WORD8*)p_inp+(start_0_a1);
-    
+    ae_int8 *p_inp0 = (ae_int8*)p_inp+(start_0_a1);
+    ae_int8 *p8_out = (ae_int8 *)p_out;
     for(i0 = 0; i0<i0_cnt; i0++)
     {
-      WORD8 *p_inp1 = p_inp0+(start_1_a2);
+      ae_int8 *p_inp1 = p_inp0+(start_1_a2);
       for(i1 = 0; i1<i1_cnt; i1++)
       {
-        WORD8 *p_inp2 = p_inp1+(start_2_a3);
+        ae_int8 *p_inp2 = p_inp1+(start_2_a3);
         if ((stride_2 == 1) && (stride_3 == 1) && (stride_4 == 1) && (start_3==0) && (start_4==0) && (stop_3 == dims_3) && (stop_4 == dims_4))
         {
-          xa_nn_memcpy((void*)p_out, (void*)p_inp2, stop_2_start_2_a3);
-          AE_L8_XP(dummy, (ae_int8 *)p_out, stop_2_start_2_a3); //p_out += ((stop_2 - start_2)*dims_3*dims_4);
+          xa_nn_memcpy((void*)p8_out, (void*)p_inp2, stop_2_start_2_a3);
+          AE_L8_XP(dummy, p8_out, stop_2_start_2_a3); //p_out += ((stop_2 - start_2)*dims_3*dims_4);
         }
         else
         {
           for(i2 = 0; i2<i2_cnt; i2++)
           {
-            WORD8 *p_inp3 = p_inp2+(start_3_a4);
+            ae_int8 *p_inp3 = p_inp2+(start_3_a4);
             if ((stride_3 == 1) && (stride_4 == 1) && (start_4==0) && (stop_4 == dims_4))
             {
-              xa_nn_memcpy((void*)p_out, (void*)p_inp3, stop_3_start_3_a4);
-              AE_L8_XP(dummy, (ae_int8 *)p_out, stop_3_start_3_a4); //p_out+=(stop_3 - start_3)*dims_4;
+              xa_nn_memcpy((void*)p8_out, (void*)p_inp3, stop_3_start_3_a4);
+              AE_L8_XP(dummy, p8_out, stop_3_start_3_a4); //p_out+=(stop_3 - start_3)*dims_4;
             }
             else
             {
               for(i3 = 0; i3<i3_cnt; i3++)
               {
-                WORD8 *p_inp4 = p_inp3+start_4;
+                ae_int8 *p_inp4 = p_inp3+start_4;
                 if(stride_4 == 1)
                 {
-                  xa_nn_memcpy((void*)p_out, (void*)p_inp4, stop_4_start_4);
-                  AE_L8_XP(dummy, (ae_int8 *)p_out, stop_4_start_4);
+                  xa_nn_memcpy((void*)p8_out, (void*)p_inp4, stop_4_start_4);
+                  AE_L8_XP(dummy, p8_out, stop_4_start_4);
                 }
                 else
                 {
                   ae_int8x8 d1;
                   for(i4 = 0; i4<i4_cnt; i4++)
                   {
-                    AE_L8_XP(d1, (ae_int8*)p_inp4, stride_4*sizeof(WORD8));
-                    AE_S8_0_IP(d1, (ae_int8 *)p_out, 1);
+                    AE_L8_XP(d1, p_inp4, stride_4*sizeof(WORD8));
+                    AE_S8_0_IP(d1, p8_out, 1);
                   } //for i4
                 }
-                AE_L8_XP(dummy, (ae_int8 *)p_inp3, stride_3_a4);
+                AE_L8_XP(dummy, p_inp3, stride_3_a4);
               } // for i3
             }
-            AE_L8_XP(dummy, (ae_int8 *)p_inp2, stride_2_a3);
+            AE_L8_XP(dummy, p_inp2, stride_2_a3);
           } // for i2
         }
-        AE_L8_XP(dummy, (ae_int8 *)p_inp1, stride_1_a2);
+        AE_L8_XP(dummy, p_inp1, stride_1_a2);
       } //for i1
-      AE_L8_XP(dummy, (ae_int8 *)p_inp0, stride_0_a1);
+      AE_L8_XP(dummy, p_inp0, stride_0_a1);
     } //for i0
   }
   return 0;

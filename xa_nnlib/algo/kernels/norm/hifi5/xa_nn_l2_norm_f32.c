@@ -24,6 +24,8 @@
 #include "xa_nnlib_err_chk.h"
 #include "xa_nnlib_kernels_api.h"
 
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+
 
 #if !HAVE_VFPU
 DISCARD_FUN_FOR_NONVOID_RETURN(
@@ -57,7 +59,7 @@ WORD32 xa_nn_l2_norm_f32(FLOAT32 * __restrict__ p_out,
 
     /* Calculate energy (squared sum) */
     inp_a = XT_LASX2PP(pt_inp);
-    enegx2 = XT_CONST_S(0);
+    enegx2 = XT_CONST_SX2(0);
     for(i=0;i < num_elm>>1;i++)
     {
         XT_LASX2IP(d_inpx2, inp_a, pt_inp);
@@ -72,7 +74,7 @@ WORD32 xa_nn_l2_norm_f32(FLOAT32 * __restrict__ p_out,
         XT_MADD_S(eneg, d_inp, d_inp);
     }
     eneg_sqrt = XT_SQRT_S(eneg);
-    eneg_sqrtx2 = XT_AE_MOVXTFLOATX2_FROMINT32X2(AE_MOVDA32(XT_RFR(eneg_sqrt)));
+    eneg_sqrtx2 = XT_AE_MOVXTFLOATX2_FROMINT32X2(SW_MOVDA32(XT_RFR(eneg_sqrt)));
 
     pt_inp = (xtfloatx2 *)p_inp;
     inp_a = XT_LASX2PP(pt_inp);

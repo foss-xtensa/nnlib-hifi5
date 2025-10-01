@@ -30,7 +30,7 @@ static inline WORD32 xa_nn_memset_32_32( void *p_dst,
   ae_int16x4 d_inp0;
   ae_int16x8 * __restrict__ pdest = (ae_int16x8 *)p_dst;
   ae_valignx2 MEMCPY_32b_d_align = AE_ZALIGN128();
-  d_inp0 = AE_MOVINT16X4_FROMINT32X2(AE_MOVDA32(val));
+  d_inp0 = AE_MOVINT16X4_FROMINT32X2(SW_MOVDA32(val));
   /* Need to flip 16-bit halves of 32 bit numbers to use 16-bit stores */
   d_inp0 = AE_SEL16_6543(d_inp0, d_inp0);
   for (i=0; i < (n >> 2); i++) {

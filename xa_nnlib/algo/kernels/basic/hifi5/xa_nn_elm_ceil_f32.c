@@ -89,13 +89,15 @@ WORD32 xa_nn_elm_ceil_f32_f32(FLOAT32 * __restrict__ p_out,
   }
 
   // Remainder Loop
+  xtfloat *inp_temp = (xtfloat *)inp;
+  xtfloat *out_temp = (xtfloat *)out;
   i = num_elm & (~7);
   for(; i < num_elm; i++)
   {
     xtfloat a1, a;
-    AE_LSIP(a1, (xtfloat *)inp, sizeof(FLOAT32));
+    AE_LSIP(a1, inp_temp, sizeof(FLOAT32));
     a = FICEIL_S(a1);
-    AE_SSIP(a, (xtfloat *)out, sizeof(FLOAT32));
+    AE_SSIP(a, out_temp, sizeof(FLOAT32));
   }
 
   return 0;

@@ -25,6 +25,7 @@
 #include "../../../ndsp/hifi5/include/NatureDSP_Signal_math.h"
 #include "xa_nnlib_err_chk.h"
 #include <math.h>
+#include "xa_nnlib_kernels_api.h"
 
 #if HAVE_VFPU
 

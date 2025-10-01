@@ -79,14 +79,17 @@ WORD32 xa_nn_elm_rsqrt_f32_f32(FLOAT32 * __restrict__ p_out,
 	    AE_SA128POS_FP(out_a, out);
   }
   // Remainder Loop
+  xtfloat *inp_t = (xtfloat *)inp;
+  xtfloat *out_t = (xtfloat *)out;
   i <<= 2;
 #pragma loop_count min=0,max=3
   for(; i < num_elm; i++)
   {
     xtfloat a1, a;
-    AE_LSIP(a1, (xtfloat *)inp, sizeof(FLOAT32));
-    a = RSQRT_SX2(a1);
-    AE_SSIP(a, (xtfloat *)out, sizeof(FLOAT32));
+    AE_LSIP(a1, inp_t, sizeof(FLOAT32));
+    xtfloatx2 a2 = AE_MOVXTFLOATX2_FROMXTFLOAT(a1);
+    a = AE_MOVXTFLOAT_FROMXTFLOATX2(RSQRT_SX2(a2));
+    AE_SSIP(a, out_t, sizeof(FLOAT32));
   }
 
   return 0;

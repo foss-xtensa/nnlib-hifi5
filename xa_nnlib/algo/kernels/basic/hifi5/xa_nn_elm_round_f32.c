@@ -91,13 +91,15 @@ WORD32 xa_nn_elm_round_f32_f32(FLOAT32 * __restrict__ p_out,
   }
 
   // Remainder Loop
+  xtfloat *inp_t = (xtfloat *)inp;
+  xtfloat *out_t = (xtfloat *)out;
   i = num_elm & (~7);
   for(; i < num_elm; i++)
   {
     xtfloat a1, a;
-    AE_LSIP(a1, (xtfloat *)inp, sizeof(FLOAT32));
+    AE_LSIP(a1, inp_t, sizeof(FLOAT32));
     a = FIRINT_S(a1);
-    AE_SSIP(a, (xtfloat *)out, sizeof(FLOAT32));
+    AE_SSIP(a, out_t, sizeof(FLOAT32));
   }
 
   return 0;

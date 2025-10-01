@@ -21,7 +21,11 @@
 ******************************************************************************/
 #include "xa_nnlib_common.h"
 
-#define ZERO64   AE_MOVINT64_FROMINT32X2(AE_MOVDA32(0))
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+#define SW_SLAA64S_INT64_INT64(inp1, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(AE_MOVF64_FROMINT64(inp1), bias_shift))
+
+
+#define ZERO64   AE_MOVINT64_FROMINT32X2(SW_MOVDA32(0))
 #if defined(CUST_UNROLL) && (CUST_UNROLL != 0)
 #define UNROLL_S CUST_UNROLL
 #else
@@ -34,14 +38,16 @@
   ae_int64 accu1_1_ ##N;\
   ae_int16x4 *p_mat1_ ##N = (ae_int16x4*)&p_mat[(row+N)*cols]; \
   accu1_1_ ##N = ZERO64;         \
-  accu1_ ##N = p_bias[row+N];            \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , bias_shift);
+  accu1_ ##N = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[row+N])),48);            \
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , bias_shift);
 
 #define KERNEL_ROW_S_8(N) \
 { \
   ae_int16x4 temp_in1; \
   ae_int16x4 temp_in2; \
-  AE_L16X4X2_IP(temp_in1,temp_in2,(ae_int16x8*) p_mat1_ ##N, 16); \
+  ae_int16x8* p16x8_mat1 = (ae_int16x8*) p_mat1_ ##N; \
+  AE_L16X4X2_IP(temp_in1,temp_in2,p16x8_mat1, 16); \
+  p_mat1_ ##N = (ae_int16x4*) p16x8_mat1; \
   AE_MULAAAA2Q16(accu1_ ##N, accu1_1_ ##N , temp_src1, temp_src1_1, temp_in1,temp_in2);\
 }
 
@@ -49,24 +55,26 @@
 { \
   ae_int16x4 temp_in1; \
   ae_int16x4 temp_in2; \
-  AE_L16X4X2_IP(temp_in1,temp_in2,(ae_int16x8*) p_mat1_ ##N, 16); \
+  ae_int16x8* p16x8_mat1 = (ae_int16x8*) p_mat1_ ##N; \
+  AE_L16X4X2_IP(temp_in1,temp_in2,p16x8_mat1, 16); \
+  p_mat1_ ##N = (ae_int16x4*) p16x8_mat1; \
   AE_L16X4_XC(temp_src1, p_src1, 8); \
   AE_L16X4_XC(temp_src1_1, p_src1, 8); \
   AE_MULAAAA2Q16(accu1_ ##N, accu1_1_ ##N , temp_src1, temp_src1_1, temp_in1,temp_in2);\
 }
 
 #define STORE_ROW_S_8(N) \
-  accu1_ ##N =accu1_ ##N + accu1_1_ ##N;  \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift); \
-  p_out[(row+N) * out_offset] =AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(accu1_ ##N),16),-16));
+  accu1_ ##N = AE_ADD64(accu1_ ##N, accu1_1_ ##N);  \
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , acc_shift); \
+  p_out[(row+N) * out_offset] =AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_ ##N)),16),-16));
 
 /******************  Marcos for multiple of 4 cols *****************/
 
 #define SETUP_ROW_S(N) \
   ae_int64 accu1_ ##N;\
   ae_int16x4 *p_mat1_ ##N = (ae_int16x4*)&p_mat[(row+N)*cols]; \
-  accu1_ ##N = p_bias[row+N];            \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , bias_shift);
+  accu1_ ##N = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[row+N])),48);            \
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , bias_shift);
 
 #define KERNEL_ROW_S(N) \
 { \
@@ -84,8 +92,8 @@
 }
 
 #define STORE_ROW_S(N) \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift); \
-  p_out[(row+N)*out_offset] = AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(accu1_ ##N),16),-16));
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , acc_shift); \
+  p_out[(row+N)*out_offset] = AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_ ##N)),16),-16));
 
 #if (UNROLL_S == 1)
 #define SETUP_S SETUP_ROW_S(0)
@@ -121,7 +129,7 @@
 #endif
 
 WORD32 xa_nn_matXvec_16x16_16_circ_nb(
-  WORD16 * __restrict__ p_out,
+  WORD16 * __restrict__ pt_out,
   WORD16 * __restrict__ p_mat,
   WORD16 * __restrict__ p_vec,
   WORD16 * __restrict__ p_bias,
@@ -131,6 +139,7 @@ WORD32 xa_nn_matXvec_16x16_16_circ_nb(
   WORD32 bias_shift,
   WORD32 acc_shift)
 {
+  ae_int16 *p_out  = (ae_int16 *)pt_out;
   WORD32 row, col;
 
   if ((NULL == p_out) || (NULL == p_mat) || (NULL == p_vec))

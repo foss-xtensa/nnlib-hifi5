@@ -69,7 +69,7 @@ WORD32 xa_nn_shuffle_3D_8_8(WORD8 * __restrict__ p_out
         ae_int8 *inp_ptr2 = (ae_int8 *)(p_inp + y * output_channel + w);
         for(x=0; x<interleave_groups; x++)
         {
-          AE_L8_XP(d_inp, (ae_int8 *)inp_ptr2, channel_per_group);
+          AE_L8_XP(d_inp, inp_ptr2, channel_per_group);
           AE_S8_0_XP(d_inp, out_ptr, 1);
         }
       }
@@ -82,11 +82,11 @@ WORD32 xa_nn_shuffle_3D_8_8(WORD8 * __restrict__ p_out
       out_ptr = (ae_int8 *)(p_out + x);
       for(y=0; y<hw_plane_count; y++)
       {
-        inp_ptr = (WORD8 *)(p_inp + x * channel_per_group + y * output_channel);
-        inp_align = AE_LA64_PP(inp_ptr);
+        ae_int8x8 *inp8x8_ptr = (ae_int8x8 *)(p_inp + x * channel_per_group + y * output_channel);
+        inp_align = AE_LA64_PP(inp8x8_ptr);
         for(w=0; w<(channel_per_group & ~(8-1)); w+=8)
         {
-          AE_LA8X8_IP(d_inp,inp_align,(ae_int8x8 *)inp_ptr);
+          AE_LA8X8_IP(d_inp,inp_align,inp8x8_ptr);
           AE_SW_S8_7_XP(d_inp, out_ptr, interleave_groups);
           AE_SW_S8_6_XP(d_inp, out_ptr, interleave_groups);
           AE_SW_S8_5_XP(d_inp, out_ptr, interleave_groups);
@@ -96,11 +96,13 @@ WORD32 xa_nn_shuffle_3D_8_8(WORD8 * __restrict__ p_out
           AE_SW_S8_1_XP(d_inp, out_ptr, interleave_groups);
           AE_S8_0_XP(d_inp, out_ptr, interleave_groups);
         }
+        ae_int8 *inp8_ptr = (ae_int8 *)inp8x8_ptr;
         for(;w<channel_per_group;w++)
         {
-          AE_L8_IP(d_inp, (ae_int8 *)inp_ptr, 1);
+          AE_L8_IP(d_inp, inp8_ptr, 1);
           AE_S8_0_XP(d_inp, out_ptr, interleave_groups);
         }
+        inp8x8_ptr = (ae_int8x8 *)inp8_ptr;
       }
     }
   }

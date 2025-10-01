@@ -25,6 +25,8 @@
 #include "xa_nn_conv1d_std_state.h"
 #include "xa_nnlib_err_chk.h"
 
+#define SW_SLAA64S_INT64_INT64(inp1, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(AE_MOVF64_FROMINT64(inp1), bias_shift))
+
 static WORD32 conv_y_top_pad(
     WORD32 y_padding,
     WORD32 kernel_height,
@@ -34,11 +36,12 @@ static WORD32 conv_y_top_pad(
     WORD32 out_channels_offset,
     WORD32 out_height_offset,
     WORD16 *p_bias,
-    WORD16 *p_out,
+    WORD16 *pt_out,
     WORD32 bias_shift,
     WORD32 acc_shift)
 {
   WORD32 i,j;
+  ae_int16 *p_out = (ae_int16 *)pt_out;
   WORD32 out_height_over_y_pad = (y_padding - kernel_height)/y_stride + 1;
   out_height_over_y_pad = out_height_over_y_pad > out_height ? out_height : out_height_over_y_pad;
 
@@ -47,10 +50,10 @@ static WORD32 conv_y_top_pad(
   {
     for(j=0;j<out_channels;j++)
     {
-      ae_int64 acc = p_bias[j];
-      acc = AE_SLAA64S(acc, bias_shift);
-      acc = AE_SLAA64S(acc, acc_shift);
-      p_out[i*out_height_offset+j*out_channels_offset] = AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(acc),16),-16));
+      ae_int64 acc = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[j])),48);
+      acc = SW_SLAA64S_INT64_INT64(acc, bias_shift);
+      acc = SW_SLAA64S_INT64_INT64(acc, acc_shift);
+      p_out[i*out_height_offset+j*out_channels_offset] = AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(acc)),16),-16));
     }
   }
   return out_height_over_y_pad;
@@ -65,11 +68,12 @@ static WORD32 conv_y_bottom_pad(
     WORD32 out_channels_offset,
     WORD32 out_height_offset,
     WORD16 *p_bias,
-    WORD16 *p_out,
+    WORD16 *pt_out,
     WORD32 bias_shift,
     WORD32 acc_shift)
 {
   WORD32 i,j;
+  ae_int16 *p_out = (ae_int16 *)pt_out;
   WORD32 idx_out_height_over_y_b_pad = (y_padding + input_height + y_stride - 1)/y_stride + 1;
   WORD32 out_height_over_y_b_pad = out_height - idx_out_height_over_y_b_pad;
 
@@ -78,10 +82,10 @@ static WORD32 conv_y_bottom_pad(
   {
     for(j=0;j<out_channels;j++)
     {
-      ae_int64 acc = p_bias[j];
-      acc = AE_SLAA64S(acc, bias_shift);
-      acc = AE_SLAA64S(acc, acc_shift);
-      p_out[i*out_height_offset+j*out_channels_offset] = AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(acc),16),-16));
+      ae_int64 acc = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16(p_bias[j])),48);
+      acc = SW_SLAA64S_INT64_INT64(acc, bias_shift);
+      acc = SW_SLAA64S_INT64_INT64(acc, acc_shift);
+      p_out[i*out_height_offset+j*out_channels_offset] = AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(acc)),16),-16));
     }
   }
   return out_height_over_y_b_pad;

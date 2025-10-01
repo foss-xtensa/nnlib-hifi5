@@ -177,13 +177,13 @@ const FLOAT32* __restrict__ p_inp,
                 {
                     xtfloat temp, i1, i2, i3, out;
 
-                    i1 = ((FLOAT32 *)p_src1_temp)[0];
-                    i2 = ((FLOAT32 *)p_src2_temp)[0];
-                    i3 = ((FLOAT32 *)p_src3_temp)[0];
+                    i1 = ((xtfloat *)p_src1_temp)[0];
+                    i2 = ((xtfloat *)p_src2_temp)[0];
+                    i3 = ((xtfloat *)p_src3_temp)[0];
 
                     temp = XT_ADD_S(i1, i2);
                     out  = XT_ADD_S(temp, i3);
-                    ((FLOAT32 *)p_dst_temp)[0] = out;
+                    ((FLOAT32 *)p_dst_temp)[0] = *(FLOAT32*)&out;
                 }
 
 
@@ -277,14 +277,14 @@ const FLOAT32* __restrict__ p_inp,
                     {
                         xtfloat i1, i2, i3, out;
 
-                        i1 = ((FLOAT32 *)p_src1_temp)[0];
-                        i2 = ((FLOAT32 *)p_src2_temp)[0];
-                        i3 = ((FLOAT32 *)p_src3_temp)[0];
+                        i1 = ((xtfloat *)p_src1_temp)[0];
+                        i2 = ((xtfloat *)p_src2_temp)[0];
+                        i3 = ((xtfloat *)p_src3_temp)[0];
 
                         out = XT_ADD_S(i1, i2);
                         out = XT_ADD_S(out, i3);
 
-                        ((FLOAT32 *)p_dst_temp)[0] = out;
+                        ((FLOAT32 *)p_dst_temp)[0] = *(FLOAT32*)&out;
                     }
 
 
@@ -304,10 +304,10 @@ const FLOAT32* __restrict__ p_inp,
                 p_dst_pad = (FLOAT32 *)p_dst;
                 for(i = 0; i < input_channels; i++)
                 {
-                    xtfloat i1, out;
+                    FLOAT32 i1, out;
 
                     i1 = p_dst_pad[i];
-                    out = i1 * recip_den_s;
+                    out = i1 * (*(FLOAT32*)&recip_den_s);
                     p_dst_pad[i] = out;
                 }
             }

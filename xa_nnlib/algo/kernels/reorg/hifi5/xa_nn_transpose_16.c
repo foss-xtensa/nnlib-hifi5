@@ -200,11 +200,11 @@ WORD32 xa_nn_transpose_16_16(WORD16 * __restrict__ p_out
             ae_int16x4 d0,d1;
             for(itr4 = 0; itr4 < (out_dim4 >> 3); itr4++)
             {
-              AE_LA16X4X2_IP(d0, d1, a_inp, (ae_int16x8*)pae_i);
-              AE_SA16X4X2_IP(d0, d1, a_out, (ae_int16x8*)pae_o);
+              AE_LA16X4X2_IP(d0, d1, a_inp, pae_i);
+              AE_SA16X4X2_IP(d0, d1, a_out, pae_o);
             }
-            AE_LAV16X4X2_XP(d0, d1, a_inp, (ae_int16x8*)pae_i, (out_dim4 & 7)<<1);
-            AE_SAV16X4X2_XP(d0, d1, a_out, (ae_int16x8*)pae_o, (out_dim4 & 7)<<1);
+            AE_LAV16X4X2_XP(d0, d1, a_inp, pae_i, (out_dim4 & 7)<<1);
+            AE_SAV16X4X2_XP(d0, d1, a_out, pae_o, (out_dim4 & 7)<<1);
             AE_SA128POS_FP(a_out, pae_o);
           }
         }
@@ -215,6 +215,7 @@ WORD32 xa_nn_transpose_16_16(WORD16 * __restrict__ p_out
   {
     int itr0, itr1, itr2, itr3, itr4;
     WORD16 *p_inp0 = (WORD16*)p_inp;
+    ae_int16x4 *p16x4_out = (ae_int16x4 *)p_out;
     for(itr0 = 0; itr0 < out_dim0; itr0++)
     {
       WORD16 *p_inp1 = p_inp0+(itr0*inp_stride[p_5D_permute_vec[0]]);
@@ -226,7 +227,7 @@ WORD32 xa_nn_transpose_16_16(WORD16 * __restrict__ p_out
           WORD16 *p_inp3 = p_inp2+(itr2*inp_stride[p_5D_permute_vec[2]]);
           for(itr3 = 0; itr3 < out_dim3; itr3++)
           {
-            WORD16 *p_inp4 = p_inp3+(itr3*inp_stride[p_5D_permute_vec[3]]);
+            ae_int16 *p_inp4 = (ae_int16*)(p_inp3+(itr3*inp_stride[p_5D_permute_vec[3]]));
 
             ae_valign a_out = AE_ZALIGN64();
             for(itr4 = 0; itr4 < (out_dim4 >> 2); itr4++)
@@ -234,25 +235,27 @@ WORD32 xa_nn_transpose_16_16(WORD16 * __restrict__ p_out
               ae_int16x4 d0, d1, d2, d3;
               ae_int16x4 tmp0;
               
-              d1 = AE_L16_X ((ae_int16*)p_inp4, inp_stride[p_5D_permute_vec[4]]<<1);
-              d2 = AE_L16_X ((ae_int16*)p_inp4, 2*inp_stride[p_5D_permute_vec[4]]<<1);
-              d3 = AE_L16_X ((ae_int16*)p_inp4, 3*inp_stride[p_5D_permute_vec[4]]<<1);
-              AE_L16_XP(d0, (ae_int16*)p_inp4, 4*inp_stride[p_5D_permute_vec[4]]<<1);
+              d1 = AE_L16_X (p_inp4, inp_stride[p_5D_permute_vec[4]]<<1);
+              d2 = AE_L16_X (p_inp4, 2*inp_stride[p_5D_permute_vec[4]]<<1);
+              d3 = AE_L16_X (p_inp4, 3*inp_stride[p_5D_permute_vec[4]]<<1);
+              AE_L16_XP(d0, p_inp4, 4*inp_stride[p_5D_permute_vec[4]]<<1);
               
               tmp0 = AE_SEL16_6543(d0, d1);
               tmp0 = AE_SEL16_6543(tmp0, d2);
               tmp0 = AE_SEL16_6543(tmp0, d3);
               
-              AE_SA16X4_IP(tmp0, a_out, (ae_int16x4 *)p_out);
+              AE_SA16X4_IP(tmp0, a_out, p16x4_out);
             }
-            AE_SA64POS_FP(a_out, p_out);
+            AE_SA64POS_FP(a_out, p16x4_out);
 #pragma loop_count max=3
+            ae_int16 *p16_out = (ae_int16 *)p16x4_out;
             for(itr4 = 0; itr4 < (out_dim4 & 3); itr4++)
             {
               ae_int16x4 d0;
-              AE_L16_XP(d0, (ae_int16*)p_inp4, inp_stride[p_5D_permute_vec[4]]<<1);
-              AE_S16_0_IP(d0, (ae_int16 *)p_out, 2);
+              AE_L16_XP(d0, p_inp4, inp_stride[p_5D_permute_vec[4]]<<1);
+              AE_S16_0_IP(d0, p16_out, 2);
             }
+            p16x4_out = (ae_int16x4 *)p16_out;
           }
         }
       }

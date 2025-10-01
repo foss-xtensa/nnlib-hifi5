@@ -44,8 +44,8 @@ static WORD32 conv_x_left_pad(
   WORD32 left_shift, right_shift;
   out_width_over_x_pad = out_width_over_x_pad > out_width ? out_width : out_width_over_x_pad;
 
-  ae_int32x2 max_uint8 = AE_MOVDA32(255);
-  ae_int32x2 min_uint8 = AE_MOVDA32(0);
+  ae_int32x2 max_uint8 = SW_MOVDA32(255);
+  ae_int32x2 min_uint8 = SW_MOVDA32(0);
 
 #if TFLITE_SINGLE_ROUNDING
   left_shift = out_shift;
@@ -64,9 +64,9 @@ static WORD32 conv_x_left_pad(
     {
       for(k=0;k<out_channels;k++)
       {
-        ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+        ae_int32x2 acc = SW_MOVDA32(p_bias[k]);
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, out_multiplier, left_shift, right_shift);
-        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_uint8, max_uint8);
         p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }
@@ -96,8 +96,8 @@ static WORD32 conv_x_right_pad(
   WORD32 left_shift, right_shift;
   WORD32 out_width_over_x_r_pad = out_width - idx_out_width_over_x_r_pad;
 
-  ae_int32x2 max_uint8 = AE_MOVDA32(255);
-  ae_int32x2 min_uint8 = AE_MOVDA32(0);
+  ae_int32x2 max_uint8 = SW_MOVDA32(255);
+  ae_int32x2 min_uint8 = SW_MOVDA32(0);
 
 #if TFLITE_SINGLE_ROUNDING
   left_shift = out_shift;
@@ -115,9 +115,9 @@ static WORD32 conv_x_right_pad(
     {
       for(k=0;k<out_channels;k++)
       {
-        ae_int32x2 acc = AE_MOVDA32(p_bias[k]);
+        ae_int32x2 acc = SW_MOVDA32(p_bias[k]);
         MPY_BY_QUANT_MULT_X2_OUT32(acc, acc, out_multiplier, left_shift, right_shift);
-        acc = AE_ADD32S(acc, AE_MOVDA32(out_zero_bias));
+        acc = SW_ADD32S_INT32X2_INT32X2(acc, SW_MOVDA32(out_zero_bias));
         AE_MINMAX32(acc, min_uint8, max_uint8);
         p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = (UWORD8)AE_MOVAD32_L(acc);
       }

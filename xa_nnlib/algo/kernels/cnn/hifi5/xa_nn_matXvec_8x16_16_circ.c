@@ -21,7 +21,10 @@
 ******************************************************************************/
 #include "xa_nnlib_common.h"
 
-#define ZERO64   AE_MOVINT64_FROMINT32X2(AE_MOVDA32(0))
+#define SW_SLAA64S_INT64_INT64(inp1, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(AE_MOVF64_FROMINT64(inp1), bias_shift))
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+
+#define ZERO64   AE_MOVINT64_FROMINT32X2(SW_MOVDA32(0))
 
 #if defined(CUST_UNROLL) && (CUST_UNROLL != 0)
 #define UNROLL_D CUST_UNROLL
@@ -53,9 +56,12 @@
 #define KERNEL_ROW_D_I(N) \
 {\
   ae_int16x4 temp_in1; \
+  ae_f16x4 temp_src1_f16x4, temp_src2_f16x4; \
   AE_L16X4_XC(temp_in1, p_mat1_ ##N, sizeof(ae_int16x4)); \
-  AE_L8X4F_IP(temp_src1, p_src1, 4); \
-  AE_L8X4F_IP(temp_src2, p_src2, 4); \
+  AE_L8X4F_IP(temp_src1_f16x4, p_src1, 4); \
+  AE_L8X4F_IP(temp_src2_f16x4, p_src2, 4); \
+  temp_src1 = AE_MOVINT16X4_FROMF16X4(temp_src1_f16x4); \
+  temp_src2 = AE_MOVINT16X4_FROMF16X4(temp_src2_f16x4);\
   AE_MULAAAAQ16(accu1_ ##N, temp_src1, temp_in1);\
   AE_MULAAAAQ16(accu2_ ##N, temp_src2, temp_in1); \
 }
@@ -63,16 +69,16 @@
 #define STORE_ROW_D(N) \
   accu1_ ##N = AE_SRAA64(accu1_ ##N , 8);\
   accu2_ ##N = AE_SRAA64(accu2_ ##N , 8);\
-  ae_int64 temp1_ ##N = p_bias[vec];            \
-  ae_int64 temp2_ ##N = p_bias[vec+1];            \
-  temp1_ ##N = AE_SLAA64S(temp1_ ##N , bias_shift);\
-  temp2_ ##N = AE_SLAA64S(temp2_ ##N , bias_shift);\
+  ae_int64 temp1_ ##N = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);            \
+  ae_int64 temp2_ ##N = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+1])),48);            \
+  temp1_ ##N = SW_SLAA64S_INT64_INT64(temp1_ ##N , bias_shift);\
+  temp2_ ##N = SW_SLAA64S_INT64_INT64(temp2_ ##N , bias_shift);\
   accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N);\
   accu2_ ##N = AE_ADD64(accu2_ ##N , temp2_ ##N);\
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift);\
-  accu2_ ##N = AE_SLAA64S(accu2_ ##N , acc_shift);\
-  p_dst1[(row+N) * out_row_offset] =AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_ ##N),16),16)); \
-  p_dst2[(row+N) * out_row_offset] =AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_ ##N),16),16));
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , acc_shift);\
+  accu2_ ##N = SW_SLAA64S_INT64_INT64(accu2_ ##N , acc_shift);\
+  p_dst1[(row+N) * out_row_offset] =AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_ ##N)),16)),16)); \
+  p_dst2[(row+N) * out_row_offset] =AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu2_ ##N)),16)),16));
 
 /******************  Marcos for multiple of 4 cols *****************/
 
@@ -135,18 +141,20 @@
 #define KERNEL_ROW_S_I(N) \
 { \
   ae_int16x4 temp_in1; \
+  ae_f16x4 temp_src1_f16x4; \
   AE_L16X4_XC(temp_in1, p_mat1_ ##N, sizeof(ae_int16x4)); \
-  AE_L8X4F_IP(temp_src1, p_src1, 4); \
+  AE_L8X4F_IP(temp_src1_f16x4, p_src1, 4); \
+  temp_src1 = AE_MOVINT16X4_FROMF16X4(temp_src1_f16x4);\
   AE_MULAAAAQ16(accu1_ ##N, temp_src1, temp_in1);\
 }
 
 #define STORE_ROW_S(N) \
   accu1_ ##N = AE_SRAI64(accu1_ ##N , 8);\
-  ae_int64 temp1_ ##N = p_bias[vec];            \
-  temp1_ ##N = AE_SLAA64S(temp1_ ##N , bias_shift);\
+  ae_int64 temp1_ ##N = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);            \
+  temp1_ ##N = SW_SLAA64S_INT64_INT64(temp1_ ##N , bias_shift);\
   accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N);\
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift);\
-  p_dst1[(row+N) * out_row_offset] =AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_ ##N),16),16)); \
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , acc_shift);\
+  p_dst1[(row+N) * out_row_offset] =AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_ ##N)),16)),16)); \
 
 #if (UNROLL_S == 1)
 #define SETUP_S SETUP_ROW_S(0)
@@ -206,10 +214,10 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
         for(vec = 0; vec < (vec_count & (~0x3)) ; vec+=4)
         {
 
-          WORD16 *p_dst1 = (WORD16 *)&p_out[vec*out_col_offset];
-          WORD16 *p_dst2 = (WORD16 *)&p_out[(vec+1)*out_col_offset];
-          WORD16 *p_dst3 = (WORD16 *)&p_out[(vec+2)*out_col_offset];
-          WORD16 *p_dst4 = (WORD16 *)&p_out[(vec+3)*out_col_offset];
+          ae_int16 *p_dst1 = (ae_int16 *)&p_out[vec*out_col_offset];
+          ae_int16 *p_dst2 = (ae_int16 *)&p_out[(vec+1)*out_col_offset];
+          ae_int16 *p_dst3 = (ae_int16 *)&p_out[(vec+2)*out_col_offset];
+          ae_int16 *p_dst4 = (ae_int16 *)&p_out[(vec+3)*out_col_offset];
 
           row = 0;
 
@@ -217,41 +225,43 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
           {
             for (row = 0; row < (rows & (~0x1)) ; row+=2)
             {
-              ae_int8x8 *p_src1 = (ae_int8x8 *)&p_vec[vec * vec_offset];
-              ae_int8x8 *p_src2 = (ae_int8x8 *)&p_vec[(vec+1) * vec_offset];
-              ae_int8x8 *p_src3 = (ae_int8x8 *)&p_vec[(vec+2) * vec_offset];
-              ae_int8x8 *p_src4 = (ae_int8x8 *)&p_vec[(vec+3) * vec_offset];
+              ae_int8x16 *p_src1 = (ae_int8x16 *)&p_vec[vec * vec_offset];
+              ae_int8x16 *p_src2 = (ae_int8x16 *)&p_vec[(vec+1) * vec_offset];
+              ae_int8x16 *p_src3 = (ae_int8x16 *)&p_vec[(vec+2) * vec_offset];
+              ae_int8x16 *p_src4 = (ae_int8x16 *)&p_vec[(vec+3) * vec_offset];
 
               ae_int64 accu1_0, accu2_0;
               ae_int64 accu3_0, accu4_0;
-              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p_mat;
-              AE_ADDCIRC16X4_XC((ae_int16x4*)p_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x4* p16x4_mat1_0 = (ae_int16x4*)p_mat;
+              AE_ADDCIRC16X4_XC(p16x4_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p16x4_mat1_0;
               ae_valignx2 p_mat1_0_align;
               AE_LA16X4X2POS_PC(p_mat1_0_align,p_mat1_0);
-              accu1_0 = p_bias[vec];
-              accu2_0 = p_bias[vec+1];
-              accu3_0 = p_bias[vec+2];
-              accu4_0 = p_bias[vec+3];
-              accu1_0 = AE_SLAA64S(accu1_0 , bias_shift);
-              accu2_0 = AE_SLAA64S(accu2_0 , bias_shift);
-              accu3_0 = AE_SLAA64S(accu3_0 , bias_shift);
-              accu4_0 = AE_SLAA64S(accu4_0 , bias_shift);
+              accu1_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);
+              accu2_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+1])),48);
+              accu3_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+2])),48);
+              accu4_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+3])),48);
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , bias_shift);
+              accu2_0 = SW_SLAA64S_INT64_INT64(accu2_0 , bias_shift);
+              accu3_0 = SW_SLAA64S_INT64_INT64(accu3_0 , bias_shift);
+              accu4_0 = SW_SLAA64S_INT64_INT64(accu4_0 , bias_shift);
 
               ae_int64 accu1_1, accu2_1;
               ae_int64 accu3_1, accu4_1;
-              ae_int16x8 *p_mat1_1 = (ae_int16x8*) p_mat;
-              AE_ADDCIRC16X4_XC((ae_int16x4*)p_mat1_1, (row+1) * row_offset * sizeof(WORD16));
+              ae_int16x4* p16x4_mat1_1 = (ae_int16x4*)p_mat;
+              AE_ADDCIRC16X4_XC(p16x4_mat1_1, (row+1) * row_offset * sizeof(WORD16));
+              ae_int16x8 *p_mat1_1 = (ae_int16x8*) p16x4_mat1_1;
               ae_valignx2 p_mat1_1_align;
               AE_LA16X4X2POS_PC(p_mat1_1_align,p_mat1_1);
 
-              accu1_1 = p_bias[vec];
-              accu2_1 = p_bias[vec+1];
-              accu3_1 = p_bias[vec+2];
-              accu4_1 = p_bias[vec+3];
-              accu1_1 = AE_SLAA64S(accu1_1 , bias_shift);
-              accu2_1 = AE_SLAA64S(accu2_1 , bias_shift);
-              accu3_1 = AE_SLAA64S(accu3_1 , bias_shift);
-              accu4_1 = AE_SLAA64S(accu4_1 , bias_shift);
+              accu1_1 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);
+              accu2_1 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+1])),48);
+              accu3_1 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+2])),48);
+              accu4_1 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+3])),48);
+              accu1_1 = SW_SLAA64S_INT64_INT64(accu1_1 , bias_shift);
+              accu2_1 = SW_SLAA64S_INT64_INT64(accu2_1 , bias_shift);
+              accu3_1 = SW_SLAA64S_INT64_INT64(accu3_1 , bias_shift);
+              accu4_1 = SW_SLAA64S_INT64_INT64(accu4_1 , bias_shift);
               ae_int16x4 temp_in1_0;
               ae_int16x4 temp_in2_0;
               ae_int16x4 temp_in3_0;
@@ -262,59 +272,60 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
               ae_int16x4 temp_in4_1;
               for (col = 0; col < cols>>4; col++)
               {
-                  AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, (ae_int16x8 *) p_mat1_0);
-                  AE_LA16X4X2_IC(temp_in3_0, temp_in4_0,p_mat1_0_align, (ae_int16x8 *) p_mat1_0);
-                  AE_LA16X4X2_IC(temp_in1_1, temp_in2_1,p_mat1_1_align, (ae_int16x8 *) p_mat1_1);
-                  AE_LA16X4X2_IC(temp_in3_1, temp_in4_1,p_mat1_1_align, (ae_int16x8 *) p_mat1_1);
-                  AE_L8X8X2_IP(temp_src1, temp_src1_1,(ae_int8x16 *) p_src1, 16);
-                  AE_L8X8X2_IP(temp_src2, temp_src2_1,(ae_int8x16 *) p_src2, 16);
-                  AE_L8X8X2_IP(temp_src3, temp_src3_1,(ae_int8x16 *) p_src3, 16);
-                  AE_L8X8X2_IP(temp_src4, temp_src4_1,(ae_int8x16 *) p_src4, 16);
+                  AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, p_mat1_0);
+                  AE_LA16X4X2_IC(temp_in3_0, temp_in4_0,p_mat1_0_align, p_mat1_0);
+                  AE_LA16X4X2_IC(temp_in1_1, temp_in2_1,p_mat1_1_align, p_mat1_1);
+                  AE_LA16X4X2_IC(temp_in3_1, temp_in4_1,p_mat1_1_align, p_mat1_1);
+                  AE_L8X8X2_IP(temp_src1, temp_src1_1,p_src1, 16);
+                  AE_L8X8X2_IP(temp_src2, temp_src2_1,p_src2, 16);
+                  AE_L8X8X2_IP(temp_src3, temp_src3_1,p_src3, 16);
+                  AE_L8X8X2_IP(temp_src4, temp_src4_1,p_src4, 16);
                   AE_MULA8QW8X16(accu1_0, accu2_0, accu3_0, accu4_0, temp_src1,temp_src2,temp_src3,temp_src4,temp_in1_0,temp_in2_0);
                   AE_MULA8QW8X16(accu1_1, accu2_1, accu3_1, accu4_1, temp_src1,temp_src2,temp_src3,temp_src4,temp_in1_1,temp_in2_1);
                   AE_MULA8QW8X16(accu1_0, accu2_0, accu3_0, accu4_0, temp_src1_1,temp_src2_1,temp_src3_1,temp_src4_1,temp_in3_0,temp_in4_0);
                   AE_MULA8QW8X16(accu1_1, accu2_1, accu3_1, accu4_1, temp_src1_1,temp_src2_1,temp_src3_1,temp_src4_1,temp_in3_1,temp_in4_1);
               }
-              accu1_0 = AE_SLAA64S(accu1_0 , acc_shift);
-              accu2_0 = AE_SLAA64S(accu2_0 , acc_shift);
-              accu3_0 = AE_SLAA64S(accu3_0 , acc_shift);
-              accu4_0 = AE_SLAA64S(accu4_0 , acc_shift);
-              accu1_1 = AE_SLAA64S(accu1_1 , acc_shift);
-              accu2_1 = AE_SLAA64S(accu2_1 , acc_shift);
-              accu3_1 = AE_SLAA64S(accu3_1 , acc_shift);
-              accu4_1 = AE_SLAA64S(accu4_1 , acc_shift);
-              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_0),16),16));
-              p_dst2[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_0),16),16));
-              p_dst3[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu3_0),16),16));
-              p_dst4[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu4_0),16),16));
-              p_dst1[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_1),16),16));
-              p_dst2[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_1),16),16));
-              p_dst3[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu3_1),16),16));
-              p_dst4[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu4_1),16),16));
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , acc_shift);
+              accu2_0 = SW_SLAA64S_INT64_INT64(accu2_0 , acc_shift);
+              accu3_0 = SW_SLAA64S_INT64_INT64(accu3_0 , acc_shift);
+              accu4_0 = SW_SLAA64S_INT64_INT64(accu4_0 , acc_shift);
+              accu1_1 = SW_SLAA64S_INT64_INT64(accu1_1 , acc_shift);
+              accu2_1 = SW_SLAA64S_INT64_INT64(accu2_1 , acc_shift);
+              accu3_1 = SW_SLAA64S_INT64_INT64(accu3_1 , acc_shift);
+              accu4_1 = SW_SLAA64S_INT64_INT64(accu4_1 , acc_shift);
+              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_0)),16)),16));
+              p_dst2[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu2_0)),16)),16));
+              p_dst3[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu3_0)),16)),16));
+              p_dst4[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu4_0)),16)),16));
+              p_dst1[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_1)),16)),16));
+              p_dst2[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu2_1)),16)),16));
+              p_dst3[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu3_1)),16)),16));
+              p_dst4[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu4_1)),16)),16));
             }
           }
           // Handle remaining rows
           for (; row < rows ; row++)
           {
-              ae_int8x8 *p_src1 = (ae_int8x8 *)&p_vec[vec * vec_offset];
-              ae_int8x8 *p_src2 = (ae_int8x8 *)&p_vec[(vec+1) * vec_offset];
-              ae_int8x8 *p_src3 = (ae_int8x8 *)&p_vec[(vec+2) * vec_offset];
-              ae_int8x8 *p_src4 = (ae_int8x8 *)&p_vec[(vec+3) * vec_offset];
+              ae_int8x16 *p_src1 = (ae_int8x16 *)&p_vec[vec * vec_offset];
+              ae_int8x16 *p_src2 = (ae_int8x16 *)&p_vec[(vec+1) * vec_offset];
+              ae_int8x16 *p_src3 = (ae_int8x16 *)&p_vec[(vec+2) * vec_offset];
+              ae_int8x16 *p_src4 = (ae_int8x16 *)&p_vec[(vec+3) * vec_offset];
               ae_int64 accu1_0, accu2_0;
               ae_int64 accu3_0, accu4_0;
-              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p_mat;
-              AE_ADDCIRC16X4_XC((ae_int16x4*)p_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x4* p16x4_mat1_0 = (ae_int16x4*)p_mat;
+              AE_ADDCIRC16X4_XC(p16x4_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p16x4_mat1_0;
               ae_valignx2 p_mat1_0_align;
               AE_LA16X4X2POS_PC(p_mat1_0_align,p_mat1_0);
 
-              accu1_0 = p_bias[vec];
-              accu2_0 = p_bias[vec+1];
-              accu3_0 = p_bias[vec+2];
-              accu4_0 = p_bias[vec+3];
-              accu1_0 = AE_SLAA64S(accu1_0 , bias_shift);
-              accu2_0 = AE_SLAA64S(accu2_0 , bias_shift);
-              accu3_0 = AE_SLAA64S(accu3_0 , bias_shift);
-              accu4_0 = AE_SLAA64S(accu4_0 , bias_shift);
+              accu1_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);
+              accu2_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+1])),48);
+              accu3_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+2])),48);
+              accu4_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+3])),48);
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , bias_shift);
+              accu2_0 = SW_SLAA64S_INT64_INT64(accu2_0 , bias_shift);
+              accu3_0 = SW_SLAA64S_INT64_INT64(accu3_0 , bias_shift);
+              accu4_0 = SW_SLAA64S_INT64_INT64(accu4_0 , bias_shift);
 #pragma ymemory (p_mat1_0)
               ae_int16x4 temp_in1_0;
               ae_int16x4 temp_in2_0;
@@ -322,23 +333,23 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
               ae_int16x4 temp_in4_0;
               for (col = 0; col < cols>>4; col++)
               {
-                  AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, (ae_int16x8 *) p_mat1_0);
-                  AE_LA16X4X2_IC(temp_in3_0, temp_in4_0,p_mat1_0_align, (ae_int16x8 *) p_mat1_0);
-                  AE_L8X8X2_IP(temp_src1, temp_src1_1,(ae_int8x16 *) p_src1, 16);
-                  AE_L8X8X2_IP(temp_src2, temp_src2_1,(ae_int8x16 *) p_src2, 16);
-                  AE_L8X8X2_IP(temp_src3, temp_src3_1,(ae_int8x16 *) p_src3, 16);
-                  AE_L8X8X2_IP(temp_src4, temp_src4_1,(ae_int8x16 *) p_src4, 16);
+                  AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, p_mat1_0);
+                  AE_LA16X4X2_IC(temp_in3_0, temp_in4_0,p_mat1_0_align, p_mat1_0);
+                  AE_L8X8X2_IP(temp_src1, temp_src1_1, p_src1, 16);
+                  AE_L8X8X2_IP(temp_src2, temp_src2_1, p_src2, 16);
+                  AE_L8X8X2_IP(temp_src3, temp_src3_1, p_src3, 16);
+                  AE_L8X8X2_IP(temp_src4, temp_src4_1, p_src4, 16);
                   AE_MULA8QW8X16(accu1_0, accu2_0, accu3_0, accu4_0, temp_src1,temp_src2,temp_src3,temp_src4,temp_in1_0,temp_in2_0);
                   AE_MULA8QW8X16(accu1_0, accu2_0, accu3_0, accu4_0, temp_src1_1,temp_src2_1,temp_src3_1,temp_src4_1,temp_in3_0,temp_in4_0);
               }
-              accu1_0 = AE_SLAA64S(accu1_0 , acc_shift);
-              accu2_0 = AE_SLAA64S(accu2_0 , acc_shift);
-              accu3_0 = AE_SLAA64S(accu3_0 , acc_shift);
-              accu4_0 = AE_SLAA64S(accu4_0 , acc_shift);
-              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_0),16),16));
-              p_dst2[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_0),16),16));
-              p_dst3[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu3_0),16),16));
-              p_dst4[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu4_0),16),16));
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , acc_shift);
+              accu2_0 = SW_SLAA64S_INT64_INT64(accu2_0 , acc_shift);
+              accu3_0 = SW_SLAA64S_INT64_INT64(accu3_0 , acc_shift);
+              accu4_0 = SW_SLAA64S_INT64_INT64(accu4_0 , acc_shift);
+              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_0)),16)),16));
+              p_dst2[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu2_0)),16)),16));
+              p_dst3[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu3_0)),16)),16));
+              p_dst4[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu4_0)),16)),16));
           }
         }
       }
@@ -347,7 +358,7 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
         // Process one vectors at a time
         for(; vec < vec_count; vec++)
         {
-            WORD16 *p_dst1 = (WORD16 *)&p_out[vec*out_col_offset];
+            ae_int16 *p_dst1 = (ae_int16 *)&p_out[vec*out_col_offset];
             row = 0;
 
             for (row=0; row < rows ; row++)
@@ -356,24 +367,25 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
               ae_int64 accu1_0 = ZERO64, accu2_0 = ZERO64;
               ae_int64 accu3_0 = ZERO64, accu4_0 = ZERO64;
 
-              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p_mat;
-              AE_ADDCIRC16X4_XC((ae_int16x4*)p_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x4* p16x4_mat1_0 = (ae_int16x4*)p_mat;
+              AE_ADDCIRC16X4_XC(p16x4_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p16x4_mat1_0;
               ae_valignx2 p_mat1_0_align;
               AE_LA16X4X2POS_PC(p_mat1_0_align,p_mat1_0);
 
-              accu1_0 = p_bias[vec];
-              accu1_0 = AE_SLAA64S(accu1_0 , bias_shift);
+              accu1_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , bias_shift);
 
               ae_int16x4 temp_in1_0;
               ae_int16x4 temp_in2_0;
               for (col = 0; col < cols>>3; col++)
               {
-                AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, (ae_int16x8 *) p_mat1_0);
+                AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, p_mat1_0);
                 AE_L8X8_IP(temp_src1, p_src1, 8);
                 AE_MULA8QW8X16(accu1_0, accu2_0, accu3_0, accu4_0, temp_src1,temp_src1,temp_src1,temp_src1,temp_in1_0,temp_in2_0);
               }
-              accu1_0 = AE_SLAA64S(accu1_0 , acc_shift);
-              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_0),16),16));
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , acc_shift);
+              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_0)),16)),16));
             }
          }
       }
@@ -389,10 +401,10 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
         for(vec = 0; vec < (vec_count & (~0x3)); vec+=4)
         {
 
-          WORD16 *p_dst1 = (WORD16 *)&p_out[vec*out_col_offset];
-          WORD16 *p_dst2 = (WORD16 *)&p_out[(vec+1)*out_col_offset];
-          WORD16 *p_dst3 = (WORD16 *)&p_out[(vec+2)*out_col_offset];
-          WORD16 *p_dst4 = (WORD16 *)&p_out[(vec+3)*out_col_offset];
+          ae_int16 *p_dst1 = (ae_int16 *)&p_out[vec*out_col_offset];
+          ae_int16 *p_dst2 = (ae_int16 *)&p_out[(vec+1)*out_col_offset];
+          ae_int16 *p_dst3 = (ae_int16 *)&p_out[(vec+2)*out_col_offset];
+          ae_int16 *p_dst4 = (ae_int16 *)&p_out[(vec+3)*out_col_offset];
 
           row = 0;
           if(rows>=2)
@@ -406,35 +418,37 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
 
               ae_int64 accu1_0, accu2_0;
               ae_int64 accu3_0, accu4_0;
-              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p_mat;
-              AE_ADDCIRC16X4_XC((ae_int16x4*)p_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x4* p16x4_mat1_0 = (ae_int16x4*)p_mat;
+              AE_ADDCIRC16X4_XC(p16x4_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p16x4_mat1_0;
               ae_valignx2 p_mat1_0_align;
               AE_LA16X4X2POS_PC(p_mat1_0_align,p_mat1_0);
 
-              accu1_0 = p_bias[vec];
-              accu2_0 = p_bias[vec+1];
-              accu3_0 = p_bias[vec+2];
-              accu4_0 = p_bias[vec+3];
-              accu1_0 = AE_SLAA64S(accu1_0 , bias_shift);
-              accu2_0 = AE_SLAA64S(accu2_0 , bias_shift);
-              accu3_0 = AE_SLAA64S(accu3_0 , bias_shift);
-              accu4_0 = AE_SLAA64S(accu4_0 , bias_shift);
+              accu1_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);
+              accu2_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+1])),48);
+              accu3_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+2])),48);
+              accu4_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+3])),48);
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , bias_shift);
+              accu2_0 = SW_SLAA64S_INT64_INT64(accu2_0 , bias_shift);
+              accu3_0 = SW_SLAA64S_INT64_INT64(accu3_0 , bias_shift);
+              accu4_0 = SW_SLAA64S_INT64_INT64(accu4_0 , bias_shift);
 
               ae_int64 accu1_1, accu2_1;
               ae_int64 accu3_1, accu4_1;
-              ae_int16x8 *p_mat1_1 = (ae_int16x8*) p_mat;
-              AE_ADDCIRC16X4_XC((ae_int16x4*)p_mat1_1, (row+1) * row_offset * sizeof(WORD16));
+              ae_int16x4* p16x4_mat1_1 = (ae_int16x4*)p_mat;
+              AE_ADDCIRC16X4_XC(p16x4_mat1_1, (row+1) * row_offset * sizeof(WORD16));
+              ae_int16x8 *p_mat1_1 = (ae_int16x8*) p16x4_mat1_1;
               ae_valignx2 p_mat1_1_align;
               AE_LA16X4X2POS_PC(p_mat1_1_align,p_mat1_1);
 
-              accu1_1 = p_bias[vec];
-              accu2_1 = p_bias[vec+1];
-              accu3_1 = p_bias[vec+2];
-              accu4_1 = p_bias[vec+3];
-              accu1_1 = AE_SLAA64S(accu1_1 , bias_shift);
-              accu2_1 = AE_SLAA64S(accu2_1 , bias_shift);
-              accu3_1 = AE_SLAA64S(accu3_1 , bias_shift);
-              accu4_1 = AE_SLAA64S(accu4_1 , bias_shift);
+              accu1_1 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);
+              accu2_1 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+1])),48);
+              accu3_1 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+2])),48);
+              accu4_1 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+3])),48);
+              accu1_1 = SW_SLAA64S_INT64_INT64(accu1_1 , bias_shift);
+              accu2_1 = SW_SLAA64S_INT64_INT64(accu2_1 , bias_shift);
+              accu3_1 = SW_SLAA64S_INT64_INT64(accu3_1 , bias_shift);
+              accu4_1 = SW_SLAA64S_INT64_INT64(accu4_1 , bias_shift);
               ae_int16x4 temp_in1_0;
               ae_int16x4 temp_in2_0;
               ae_int16x4 temp_in1_1;
@@ -445,8 +459,8 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
 #pragma ymemory (p_src4)
               for (col = 0; col < cols>>3; col++)
               {
-                  AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, (ae_int16x8 *) p_mat1_0);
-                  AE_LA16X4X2_IC(temp_in1_1, temp_in2_1,p_mat1_1_align, (ae_int16x8 *) p_mat1_1);
+                  AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, p_mat1_0);
+                  AE_LA16X4X2_IC(temp_in1_1, temp_in2_1,p_mat1_1_align, p_mat1_1);
                   AE_L8X8_IP(temp_src1, p_src1, 8);
                   AE_L8X8_IP(temp_src2, p_src2, 8);
                   AE_L8X8_IP(temp_src3, p_src3, 8);
@@ -454,22 +468,22 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
                   AE_MULA8QW8X16(accu1_0, accu2_0, accu3_0, accu4_0, temp_src1,temp_src2,temp_src3,temp_src4,temp_in1_0,temp_in2_0);
                   AE_MULA8QW8X16(accu1_1, accu2_1, accu3_1, accu4_1, temp_src1,temp_src2,temp_src3,temp_src4,temp_in1_1,temp_in2_1);
               }
-              accu1_0 = AE_SLAA64S(accu1_0 , acc_shift);
-              accu2_0 = AE_SLAA64S(accu2_0 , acc_shift);
-              accu3_0 = AE_SLAA64S(accu3_0 , acc_shift);
-              accu4_0 = AE_SLAA64S(accu4_0 , acc_shift);
-              accu1_1 = AE_SLAA64S(accu1_1 , acc_shift);
-              accu2_1 = AE_SLAA64S(accu2_1 , acc_shift);
-              accu3_1 = AE_SLAA64S(accu3_1 , acc_shift);
-              accu4_1 = AE_SLAA64S(accu4_1 , acc_shift);
-              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_0),16),16));
-              p_dst2[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_0),16),16));
-              p_dst3[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu3_0),16),16));
-              p_dst4[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu4_0),16),16));
-              p_dst1[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_1),16),16));
-              p_dst2[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_1),16),16));
-              p_dst3[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu3_1),16),16));
-              p_dst4[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu4_1),16),16));
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , acc_shift);
+              accu2_0 = SW_SLAA64S_INT64_INT64(accu2_0 , acc_shift);
+              accu3_0 = SW_SLAA64S_INT64_INT64(accu3_0 , acc_shift);
+              accu4_0 = SW_SLAA64S_INT64_INT64(accu4_0 , acc_shift);
+              accu1_1 = SW_SLAA64S_INT64_INT64(accu1_1 , acc_shift);
+              accu2_1 = SW_SLAA64S_INT64_INT64(accu2_1 , acc_shift);
+              accu3_1 = SW_SLAA64S_INT64_INT64(accu3_1 , acc_shift);
+              accu4_1 = SW_SLAA64S_INT64_INT64(accu4_1 , acc_shift);
+              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_0)),16)),16));
+              p_dst2[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu2_0)),16)),16));
+              p_dst3[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu3_0)),16)),16));
+              p_dst4[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu4_0)),16)),16));
+              p_dst1[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_1)),16)),16));
+              p_dst2[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu2_1)),16)),16));
+              p_dst3[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu3_1)),16)),16));
+              p_dst4[(row+1) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu4_1)),16)),16));
             }
           }
           // Handle remaining rows
@@ -481,24 +495,25 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
               ae_int8x8 *p_src4 = (ae_int8x8 *)&p_vec[(vec+3) * vec_offset];
               ae_int64 accu1_0, accu2_0;
               ae_int64 accu3_0, accu4_0;
-              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p_mat;
-              AE_ADDCIRC16X4_XC((ae_int16x4*)p_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x4* p16x4_mat1_0 = (ae_int16x4*)p_mat;
+              AE_ADDCIRC16X4_XC(p16x4_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p16x4_mat1_0;
               ae_valignx2 p_mat1_0_align;
               AE_LA16X4X2POS_PC(p_mat1_0_align,p_mat1_0);
 
-              accu1_0 = p_bias[vec];
-              accu2_0 = p_bias[vec+1];
-              accu3_0 = p_bias[vec+2];
-              accu4_0 = p_bias[vec+3];
-              accu1_0 = AE_SLAA64S(accu1_0 , bias_shift);
-              accu2_0 = AE_SLAA64S(accu2_0 , bias_shift);
-              accu3_0 = AE_SLAA64S(accu3_0 , bias_shift);
-              accu4_0 = AE_SLAA64S(accu4_0 , bias_shift);
+              accu1_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);
+              accu2_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+1])),48);
+              accu3_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+2])),48);
+              accu4_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec+3])),48);
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , bias_shift);
+              accu2_0 = SW_SLAA64S_INT64_INT64(accu2_0 , bias_shift);
+              accu3_0 = SW_SLAA64S_INT64_INT64(accu3_0 , bias_shift);
+              accu4_0 = SW_SLAA64S_INT64_INT64(accu4_0 , bias_shift);
 #pragma ymemory (p_mat1_0)
               ae_int16x4 temp_in1_0;
               ae_int16x4 temp_in2_0;
               for (col = 0; col < cols>>3; col++) {
-                  AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, (ae_int16x8 *) p_mat1_0);
+                  AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, p_mat1_0);
                   //AE_L16X4X2_XC(temp_in1_0, temp_in2_0,(ae_int16x8 *) p_mat1_0, 2*sizeof(ae_int16x4));
                   AE_L8X8_IP(temp_src1, p_src1, 8);
                   AE_L8X8_IP(temp_src2, p_src2, 8);
@@ -507,14 +522,14 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
                   AE_MULA8QW8X16(accu1_0, accu2_0, accu3_0, accu4_0, temp_src1,temp_src2,temp_src3,temp_src4,temp_in1_0,temp_in2_0);
 
               }
-              accu1_0 = AE_SLAA64S(accu1_0 , acc_shift);
-              accu2_0 = AE_SLAA64S(accu2_0 , acc_shift);
-              accu3_0 = AE_SLAA64S(accu3_0 , acc_shift);
-              accu4_0 = AE_SLAA64S(accu4_0 , acc_shift);
-              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_0),16),16));
-              p_dst2[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu2_0),16),16));
-              p_dst3[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu3_0),16),16));
-              p_dst4[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu4_0),16),16));
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , acc_shift);
+              accu2_0 = SW_SLAA64S_INT64_INT64(accu2_0 , acc_shift);
+              accu3_0 = SW_SLAA64S_INT64_INT64(accu3_0 , acc_shift);
+              accu4_0 = SW_SLAA64S_INT64_INT64(accu4_0 , acc_shift);
+              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_0)),16)),16));
+              p_dst2[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu2_0)),16)),16));
+              p_dst3[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu3_0)),16)),16));
+              p_dst4[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu4_0)),16)),16));
           }
         }
       }
@@ -523,32 +538,33 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
         // Process one vectors at a time
         for(; vec < vec_count; vec++)
         {
-            WORD16 *p_dst1 = (WORD16 *)&p_out[vec*out_col_offset];
+            ae_int16 *p_dst1 = (ae_int16*)((WORD16 *)&p_out[vec*out_col_offset]);          
             row = 0;
             for (row=0; row < rows ; row++)
             {
               ae_int8x8 *p_src1 = (ae_int8x8 *)&p_vec[vec * vec_offset];
               ae_int64 accu1_0 = ZERO64, accu2_0 = ZERO64;
               ae_int64 accu3_0 = ZERO64, accu4_0 = ZERO64;
-              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p_mat;
-              AE_ADDCIRC16X4_XC((ae_int16x4*)p_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x4* p16x4_mat1_0 = (ae_int16x4*)p_mat;
+              AE_ADDCIRC16X4_XC(p16x4_mat1_0, (row+0) * row_offset * sizeof(WORD16));
+              ae_int16x8 *p_mat1_0 = (ae_int16x8*) p16x4_mat1_0;
               ae_valignx2 p_mat1_0_align;
               AE_LA16X4X2POS_PC(p_mat1_0_align,p_mat1_0);
-              accu1_0 = p_bias[vec];
-              accu1_0 = AE_SLAA64S(accu1_0 , bias_shift);
+              accu1_0 = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[vec])),48);
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , bias_shift);
               ae_int16x4 temp_in1_0;
               ae_int16x4 temp_in2_0;
               for (col = 0; col < cols>>3; col++)
               {
                 //AE_L16X4X2_XC(temp_in1_0, temp_in2_0,(ae_int16x8 *) p_mat1_0, 2*sizeof(ae_int16x4));
-                AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, (ae_int16x8 *) p_mat1_0);
+                AE_LA16X4X2_IC(temp_in1_0, temp_in2_0,p_mat1_0_align, p_mat1_0);
                 //AE_L16X4_XC(temp_in1_0,p_mat1_0, sizeof(ae_int16x4));
                 //AE_L16X4_XC(temp_in2_0,p_mat1_0, sizeof(ae_int16x4));
                 AE_L8X8_IP(temp_src1, p_src1, 8);
                 AE_MULA8QW8X16(accu1_0, accu2_0, accu3_0, accu4_0, temp_src1,temp_src1,temp_src1,temp_src1,temp_in1_0,temp_in2_0);
               }
-              accu1_0 = AE_SLAA64S(accu1_0 , acc_shift);
-              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32(AE_SRAI32(AE_SLAI32S(AE_ROUND32F64SSYM(accu1_0),16),16));
+              accu1_0 = SW_SLAA64S_INT64_INT64(accu1_0 , acc_shift);
+              p_dst1[(row+0) * out_row_offset] = AE_MOVINT16_FROMINT32X2(AE_SRAI32(AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_0)),16)),16));
             }
          }
       }
@@ -562,8 +578,8 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
         for(vec = 0; vec < (vec_count & (~0x1)); vec+=2)
         {
 
-          WORD16 *p_dst1 = (WORD16 *)&p_out[vec*out_col_offset];
-          WORD16 *p_dst2 = (WORD16 *)&p_out[(vec+1)*out_col_offset];
+          ae_int16 *p_dst1 = (ae_int16 *)&p_out[vec*out_col_offset];
+          ae_int16 *p_dst2 = (ae_int16 *)&p_out[(vec+1)*out_col_offset];
 
           row = 0;
           if(rows > UNROLL_D)
@@ -598,7 +614,7 @@ WORD32 xa_nn_matXvec_8x16_16_circ(
       }
       if(vec_count & 0x1)
       {
-        WORD16 *p_dst1 = (WORD16 *)&p_out[vec*out_col_offset];
+        ae_int16 *p_dst1 = (ae_int16 *)&p_out[vec*out_col_offset];
 
         row = 0;
         if(rows > UNROLL_S)

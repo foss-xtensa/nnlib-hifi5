@@ -537,15 +537,15 @@ WORD32 xa_nn_matXvec_8x8_8(
         ADD_BIAS_8b_ACC_FOR_8bx8b(0);
         ADD_BIAS_8b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
-        temp32_1 = AE_SLAI32S(temp32_1,24);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        temp32_1 = SW_SLAI32S_INT32X2_INT32X2(temp32_1,24);
         temp32_1 = AE_SRAI32(temp32_1,24);
-        temp32_2 = AE_SLAI32S(temp32_2,24);
+        temp32_2 = SW_SLAI32S_INT32X2_INT32X2(temp32_2,24);
         temp32_2 = AE_SRAI32(temp32_2,24);
         AE_S8_0_IP(AE_MOVINT8X8_FROMINT32X2(AE_SEL32_HH(temp32_1,temp32_1)),output_ptr,sizeof(ae_int8));
         AE_S8_0_IP(AE_MOVINT8X8_FROMINT32X2(AE_SEL32_LL(temp32_1,temp32_1)),output_ptr,sizeof(ae_int8));
@@ -673,16 +673,16 @@ WORD32 xa_nn_matXvec_8x8_8(
         UNROLL_ADD_BIAS_ACC(0);UNROLL_ADD_BIAS_ACC(1);
 
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
 
-        temp32_1 = AE_SLAI32S(temp32_1,24);
+        temp32_1 = SW_SLAI32S_INT32X2_INT32X2(temp32_1,24);
         temp32_1 = AE_SRAI32(temp32_1,24);
-        temp32_2 = AE_SLAI32S(temp32_2,24);
+        temp32_2 = SW_SLAI32S_INT32X2_INT32X2(temp32_2,24);
         temp32_2 = AE_SRAI32(temp32_2,24);
         AE_S8_0_IP(AE_MOVINT8X8_FROMINT32X2(AE_SEL32_HH(temp32_1,temp32_1)),output_ptr,sizeof(ae_int8));
         AE_S8_0_IP(AE_MOVINT8X8_FROMINT32X2(AE_SEL32_LL(temp32_1,temp32_1)),output_ptr,sizeof(ae_int8));
@@ -861,15 +861,15 @@ WORD32 xa_nn_matXvec_8x8_16(
         ADD_BIAS_8b_ACC_FOR_8bx8b(0);
         ADD_BIAS_8b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
-        temp32_1 = AE_SLAI32S(temp32_1, 16);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        temp32_1 = SW_SLAI32S_INT32X2_INT32X2(temp32_1, 16);
         temp32_1 = AE_SRAI32(temp32_1,16);
-        temp32_2 = AE_SLAI32S(temp32_2, 16);
+        temp32_2 = SW_SLAI32S_INT32X2_INT32X2(temp32_2, 16);
         temp32_2 = AE_SRAI32(temp32_2,16);
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_HH(temp32_1,temp32_1)),output_ptr,sizeof(ae_int16));
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_LL(temp32_1,temp32_1)),output_ptr,sizeof(ae_int16));
@@ -979,15 +979,15 @@ WORD32 xa_nn_matXvec_8x8_16(
         ADD_BIAS_8b_ACC_FOR_8bx8b(0);
         ADD_BIAS_8b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
-        temp32_1 = AE_SLAI32S(temp32_1, 16);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        temp32_1 = SW_SLAI32S_INT32X2_INT32X2(temp32_1, 16);
         temp32_1 = AE_SRAI32(temp32_1,16);
-        temp32_2 = AE_SLAI32S(temp32_2, 16);
+        temp32_2 = SW_SLAI32S_INT32X2_INT32X2(temp32_2, 16);
         temp32_2 = AE_SRAI32(temp32_2,16);
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_HH(temp32_1,temp32_1)),output_ptr,sizeof(ae_int16));
         AE_S16_0_IP(AE_MOVINT16X4_FROMINT32X2(AE_SEL32_LL(temp32_1,temp32_1)),output_ptr,sizeof(ae_int16));
@@ -1155,12 +1155,12 @@ WORD32 xa_nn_matXvec_8x8_32(
         ADD_BIAS_8b_ACC_FOR_8bx8b(0);
         ADD_BIAS_8b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
         AE_S32X2X2_IP(temp32_1,temp32_2, output_ptr, sizeof(ae_int32x4));
 #endif
       }
@@ -1261,12 +1261,12 @@ WORD32 xa_nn_matXvec_8x8_32(
         ADD_BIAS_8b_ACC_FOR_8bx8b(0);
         ADD_BIAS_8b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
         AE_S32X2X2_IP(temp32_1,temp32_2, output_ptr, sizeof(ae_int32x4));
 #endif
       }
@@ -1410,6 +1410,7 @@ WORD32 xa_nn_matXvec_8x8_8_tanh(
         {
             /* All four pointers are non-null */
             SETUP_BIAS;
+            ae_int32 *temp_int32ptr;
             if(rows > ROW_UNROLL_OPT)
             {
               for(m_itr = 0; m_itr < (rows & ~(ROW_UNROLL_OPT-1)); m_itr += ROW_UNROLL_OPT)
@@ -1456,12 +1457,12 @@ WORD32 xa_nn_matXvec_8x8_8_tanh(
         ADD_BIAS_32b_ACC_FOR_8bx8b(0);
         ADD_BIAS_32b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
         AE_S32X2X2_IP(temp32_1,temp32_2, output_ptr, sizeof(ae_int32x4));
 #endif
 
@@ -1571,12 +1572,12 @@ WORD32 xa_nn_matXvec_8x8_8_tanh(
         ADD_BIAS_32b_ACC_FOR_8bx8b(0);
         ADD_BIAS_32b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
         AE_S32X2X2_IP(temp32_1,temp32_2, output_ptr, sizeof(ae_int32x4));
 #endif
             }
@@ -1589,7 +1590,7 @@ WORD32 xa_nn_matXvec_8x8_8_tanh(
               UNROLL_SETUP_ACC(0); SETUP_VEC1; UNROLL_SETUP_MAT1(0);
               UNROLL_SETUP_ACC(1);
               ZER0_8x8_Temp_Variable;
-              for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
+              for(c_itr = 0; c_itr < (cols1 >> 4); c_itr++)
               {
                   LOAD_VEC1;
                   LOAD_ROW_MAT1_8b(0);
@@ -1729,6 +1730,7 @@ WORD32 xa_nn_matXvec_8x8_8_sigmoid(
             /* All four pointers are non-null */
             //printf("Running inside\n");
             SETUP_BIAS;
+            ae_int32 *temp_int32ptr;
             if(rows > ROW_UNROLL_OPT)
             {
               for(m_itr = 0; m_itr < (rows & ~(ROW_UNROLL_OPT-1)); m_itr += ROW_UNROLL_OPT)
@@ -1775,12 +1777,12 @@ WORD32 xa_nn_matXvec_8x8_8_sigmoid(
         ADD_BIAS_32b_ACC_FOR_8bx8b(0);
         ADD_BIAS_32b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
         AE_S32X2X2_IP(temp32_1,temp32_2, output_ptr, sizeof(ae_int32x4));
 #endif
 
@@ -1890,12 +1892,12 @@ WORD32 xa_nn_matXvec_8x8_8_sigmoid(
         ADD_BIAS_32b_ACC_FOR_8bx8b(0);
         ADD_BIAS_32b_ACC_FOR_8bx8b(1);
         ae_int32x2 temp32_1, temp32_2;
-        _ae_int64_acc_0 = AE_SLAA64S(_ae_int64_acc_0 ,acc_shift);
-        _ae_int64_acc_1 = AE_SLAA64S(_ae_int64_acc_1 ,acc_shift);
-        _ae_int64_acc_1_0 = AE_SLAA64S(_ae_int64_acc_1_0 ,acc_shift);
-        _ae_int64_acc_1_1 = AE_SLAA64S(_ae_int64_acc_1_1 ,acc_shift);
-        temp32_1  = AE_ROUND32X2F64SSYM(_ae_int64_acc_0, _ae_int64_acc_1_0);
-        temp32_2  = AE_ROUND32X2F64SSYM(_ae_int64_acc_1, _ae_int64_acc_1_1);
+        _ae_int64_acc_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_0 ,acc_shift);
+        _ae_int64_acc_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1 ,acc_shift);
+        _ae_int64_acc_1_0 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_0 ,acc_shift);
+        _ae_int64_acc_1_1 = SW_SLAA64S_INT64_INT64(_ae_int64_acc_1_1 ,acc_shift);
+        temp32_1  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_0, _ae_int64_acc_1_0);
+        temp32_2  =  SW_ROUND32X2F64SSYM_INT64_INT64_INT32X2(_ae_int64_acc_1, _ae_int64_acc_1_1);
         AE_S32X2X2_IP(temp32_1,temp32_2, output_ptr, sizeof(ae_int32x4));
 #endif
             }
@@ -1908,7 +1910,7 @@ WORD32 xa_nn_matXvec_8x8_8_sigmoid(
               UNROLL_SETUP_ACC(0); SETUP_VEC1; UNROLL_SETUP_MAT1(0);
               UNROLL_SETUP_ACC(1);
               ZER0_8x8_Temp_Variable;
-              for(c_itr = 0; c_itr < (cols1 >> 2); c_itr++)
+              for(c_itr = 0; c_itr < (cols1 >> 4); c_itr++)
               {
                   LOAD_VEC1;
                   LOAD_ROW_MAT1_8b(0);

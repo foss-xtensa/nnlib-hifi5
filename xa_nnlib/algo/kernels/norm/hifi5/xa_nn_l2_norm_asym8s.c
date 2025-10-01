@@ -29,10 +29,10 @@
 //input:  input (ae_int32x2) , reverse_shift (int)
 #define GET_INV_SQRT_QUANTIZED_MULTIPLIER_EXP(output_inv_sqrt, output_shift, input, reverse_shift){\
   ae_int32x2 CT_Q31_minus_1, /*CT_Q31,*/ CT_Q29, CT_ONE;\
-  CT_Q31_minus_1 = AE_MOVDA32(Q31_minus_1);\
+  CT_Q31_minus_1 = SW_MOVDA32(Q31_minus_1);\
   /*CT_Q31 = AE_MOVDA32(Q31);*/\
-  CT_Q29 = AE_MOVDA32(Q29);\
-  CT_ONE = AE_MOVDA32(1);\
+  CT_Q29 = SW_MOVDA32(Q29);\
+  CT_ONE = SW_MOVDA32(1);\
 \
   xtbool2 b1, b2;\
   b1 = AE_LE32(input, CT_ONE);\
@@ -63,29 +63,29 @@
     ae_int32x2 fixedpoint_input, fixedpoint_half_input, fixedpoint_half_three, x, x2, x3, y1, y2;\
     fixedpoint_input = AE_SRAI32(input, 1);\
     fixedpoint_half_input = AE_SRAI32R(fixedpoint_input, 1);\
-    fixedpoint_half_three = AE_MOVDA32(FIXED_POINT_HALF_THREE);\
-    x = AE_MOVDA32(FIXED_POINT_ONE);\
+    fixedpoint_half_three = SW_MOVDA32(FIXED_POINT_HALF_THREE);\
+    x = SW_MOVDA32(FIXED_POINT_ONE);\
 \
     int i = 0;\
     for(i=0; i<5; i++)\
     {\
-      x2 = AE_MULFP32X2RS(x, x);\
-      x3 = AE_MULFP32X2RS(x2, x);\
-      x3 = AE_SLAI32S(x3, 6);\
+      x2 = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(x), AE_MOVF32X2_FROMINT32X2(x)));\
+      x3 = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(x2), AE_MOVF32X2_FROMINT32X2(x)));\
+      x3 = AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_MOVF32X2_FROMINT32X2(x3), 6));\
 \
-      y1 = AE_MULFP32X2RS(fixedpoint_half_three, x);\
-      y2 = AE_MULFP32X2RS(fixedpoint_half_input, x3);\
+      y1 = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(fixedpoint_half_three), AE_MOVF32X2_FROMINT32X2(x)));\
+      y2 = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(fixedpoint_half_input), AE_MOVF32X2_FROMINT32X2(x3)));\
 \
-      x = AE_SUB32S(y1, y2);\
-      x = AE_SLAI32S(x, 3);\
+      x = AE_MOVINT32X2_FROMF32X2(AE_SUB32S(AE_MOVF32X2_FROMINT32X2(y1), AE_MOVF32X2_FROMINT32X2(y2)));\
+      x = AE_MOVINT32X2_FROMF32X2(AE_SLAI32S(AE_MOVF32X2_FROMINT32X2(x), 3));\
     }\
 \
     ae_int32x2 fixedpoint_half_sqrt_2;\
-    fixedpoint_half_sqrt_2 = AE_MOVDA32(FIXED_POINT_HALF_SQRT_2);\
-    output_inv_sqrt = AE_MULFP32X2RS(x, fixedpoint_half_sqrt_2);\
+    fixedpoint_half_sqrt_2 = SW_MOVDA32(FIXED_POINT_HALF_SQRT_2);\
+    output_inv_sqrt = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(x), AE_MOVF32X2_FROMINT32X2(fixedpoint_half_sqrt_2)));\
     if(output_shift < 0)\
     {\
-      output_inv_sqrt = AE_SLAA32S(output_inv_sqrt, -output_shift);\
+      output_inv_sqrt = AE_MOVINT32X2_FROMF32X2(AE_SLAA32S(AE_MOVF32X2_FROMINT32X2(output_inv_sqrt), -output_shift));\
       output_shift = 0;\
     }\
     output_shift *= reverse_shift;\
@@ -135,7 +135,7 @@ WORD32 xa_nn_l2_norm_asym8s_asym8s(WORD8 *p_out,
   ae_int8x8 m1, m2, z_8x8;
   ae_int16x4 z76, z54, z32, z10;
   ae_int32x2 acc;
-  ae_int64 acc_0 = 0, acc_1 = 0;
+  ae_int64 acc_0 = ZERO64, acc_1 = ZERO64;
   z_8x8 = AE_MOVDA8(zero_point);
 
   for(i=0; i<(num_elm >> 4); i++)
@@ -203,10 +203,10 @@ WORD32 xa_nn_l2_norm_asym8s_asym8s(WORD8 *p_out,
     AE_MUL16X4(x76, x54, z32, one_16x4);
     AE_MUL16X4(x32, x10, z10, one_16x4);
 
-    MPY_BY_QUANT_MULT_X2X2_OUT16(z76, y76, y54, inv_l2norm_multiplier, left_shift, right_shift); 
-    MPY_BY_QUANT_MULT_X2X2_OUT16(z54, y32, y10, inv_l2norm_multiplier, left_shift, right_shift);
-    MPY_BY_QUANT_MULT_X2X2_OUT16(z32, x76, x54, inv_l2norm_multiplier, left_shift, right_shift); 
-    MPY_BY_QUANT_MULT_X2X2_OUT16(z10, x32, x10, inv_l2norm_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16_MULTPLIERINX2(z76, y76, y54, inv_l2norm_multiplier, left_shift, right_shift); 
+    MPY_BY_QUANT_MULT_X2X2_OUT16_MULTPLIERINX2(z54, y32, y10, inv_l2norm_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16_MULTPLIERINX2(z32, x76, x54, inv_l2norm_multiplier, left_shift, right_shift); 
+    MPY_BY_QUANT_MULT_X2X2_OUT16_MULTPLIERINX2(z10, x32, x10, inv_l2norm_multiplier, left_shift, right_shift);
 
     m1 = AE_SAT8X8X16(z76, z54);
     m2 = AE_SAT8X8X16(z32, z10);
@@ -228,8 +228,8 @@ WORD32 xa_nn_l2_norm_asym8s_asym8s(WORD8 *p_out,
     AE_MUL16X4(y76, y54, z76, one_16x4);
     AE_MUL16X4(y32, y10, z54, one_16x4);
 
-    MPY_BY_QUANT_MULT_X2X2_OUT16(z76, y76, y54, inv_l2norm_multiplier, left_shift, right_shift); 
-    MPY_BY_QUANT_MULT_X2X2_OUT16(z54, y32, y10, inv_l2norm_multiplier, left_shift, right_shift);
+    MPY_BY_QUANT_MULT_X2X2_OUT16_MULTPLIERINX2(z76, y76, y54, inv_l2norm_multiplier, left_shift, right_shift); 
+    MPY_BY_QUANT_MULT_X2X2_OUT16_MULTPLIERINX2(z54, y32, y10, inv_l2norm_multiplier, left_shift, right_shift);
 
     m1 = AE_SAT8X8X16(z76, z54);
 
@@ -243,8 +243,8 @@ WORD32 xa_nn_l2_norm_asym8s_asym8s(WORD8 *p_out,
       AE_MUL16X4(x76, x54, z32, one_16x4);
       AE_MUL16X4(x32, x10, z10, one_16x4);
 
-      MPY_BY_QUANT_MULT_X2X2_OUT16(z32, x76, x54, inv_l2norm_multiplier, left_shift, right_shift); 
-      MPY_BY_QUANT_MULT_X2X2_OUT16(z10, x32, x10, inv_l2norm_multiplier, left_shift, right_shift);
+      MPY_BY_QUANT_MULT_X2X2_OUT16_MULTPLIERINX2(z32, x76, x54, inv_l2norm_multiplier, left_shift, right_shift); 
+      MPY_BY_QUANT_MULT_X2X2_OUT16_MULTPLIERINX2(z10, x32, x10, inv_l2norm_multiplier, left_shift, right_shift);
 
       m2 = AE_SAT8X8X16(z32, z10);
     }

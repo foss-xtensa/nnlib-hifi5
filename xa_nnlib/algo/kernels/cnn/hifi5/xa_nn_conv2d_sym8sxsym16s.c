@@ -57,7 +57,7 @@ static WORD32 conv_x_left_pad(
       ae_int64 q1;
       for(k = 0; k < out_channels; k++)
       {
-        q1 = 0;
+        q1 = ZERO64;
         if(pbias != NULL){
           AE_L64_IP(q1, pbias, 8);
         }
@@ -106,7 +106,7 @@ static WORD32 conv_x_right_pad(
       ae_int64 q1;
       for(k = 0; k < out_channels; k++)
       {
-        q1 = 0;
+        q1 = ZERO64;
         if(pbias != NULL){
           AE_L64_IP(q1, pbias, 8);
         }

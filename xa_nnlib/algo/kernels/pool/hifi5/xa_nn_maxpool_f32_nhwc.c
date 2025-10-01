@@ -162,13 +162,13 @@ const FLOAT32* __restrict__ p_inp,
                 {
                     xtfloat temp, i1, i2, i3, out;
 
-                    i1 = ((FLOAT32 *)p_src1_temp)[0];
-                    i2 = ((FLOAT32 *)p_src2_temp)[0];
-                    i3 = ((FLOAT32 *)p_src3_temp)[0];
+                    i1 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src1_temp[0]);
+                    i2 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src2_temp[0]);
+                    i3 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src3_temp[0]);
 
                     temp = XT_MAX_S(i1, i2);
                     out = XT_MAX_S(temp, i3);
-                    ((FLOAT32 *)p_dst_temp)[0] = out;
+                    ((FLOAT32 *)p_dst_temp)[0] = *(FLOAT32*)&out;
                 }
 
 
@@ -254,13 +254,13 @@ const FLOAT32* __restrict__ p_inp,
                     {
                         xtfloat temp, i1, i2, i3, out;
 
-                        i1 = ((FLOAT32 *)p_src1_temp)[0];
-                        i2 = ((FLOAT32 *)p_src2_temp)[0];
-                        i3 = ((FLOAT32 *)p_src3_temp)[0];
+                        i1 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src1_temp[0]);
+                        i2 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src2_temp[0]);
+                        i3 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src3_temp[0]);
 
                         temp = XT_MAX_S(i1, i2);
                         out  = XT_MAX_S(temp, i3);
-                        ((FLOAT32 *)p_dst_temp)[0] = out;
+                        ((FLOAT32 *)p_dst_temp)[0] = *(FLOAT32*)&out;
                     }
 
 

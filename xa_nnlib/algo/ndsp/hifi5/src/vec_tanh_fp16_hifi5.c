@@ -56,6 +56,7 @@
 /* Tables and constants. */
 #include "../include/tanh_fp16_tbl.h"
  
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
 /*-------------------------------------------------------------------------
   Hyperbolic Tangent
   The functions compute the hyperbolic tangent of input argument. 32-bit
@@ -135,34 +136,34 @@ static void __tanh_fp16(float16_t * y, const float16_t * x, int N, float16_t* sc
       /* exponential part  */
       n0 = AE_TRUNCI16X4F32S(d0, d1, 1);
       n1 = AE_TRUNCI16X4F32S(d2, d3, 1);
-      d0 = AE_AND32(d0, 0x7fff);
-      d1 = AE_AND32(d1, 0x7fff);
-      d2 = AE_AND32(d2, 0x7fff);
-      d3 = AE_AND32(d3, 0x7fff);
+      d0 = AE_AND32(d0, SW_MOVDA32(0x7fff));
+      d1 = AE_AND32(d1, SW_MOVDA32(0x7fff));
+      d2 = AE_AND32(d2, SW_MOVDA32(0x7fff));
+      d3 = AE_AND32(d3, SW_MOVDA32(0x7fff));
       /* mantissa          */
       a0 = AE_TRUNCI16X4F32S(d0, d1, 16);
       a1 = AE_TRUNCI16X4F32S(d2, d3, 16);
       /* compute 2^a, 0..1 in Q14 */
-      a2 = AE_MULFP16X4S(a0, a0);
-      a3 = AE_MULFP16X4S(a1, a1);
+      a2 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(a0), AE_MOVF16X4_FROMINT16X4(a0)));
+      a3 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(a1), AE_MOVF16X4_FROMINT16X4(a1)));
       y1 = AE_L16_I((ae_int16 *)pT, 4 * 2);
       y2 = AE_L16_I((ae_int16 *)pT, 5 * 2);
       y3 = AE_L16_I((ae_int16 *)pT, 6 * 2);
-      t0 = AE_MULFP16X4S(a2, y1); t1 = AE_MULFP16X4S(a3, y1);
-      y0 = AE_ADD16S(y3, t0); y1 = AE_ADD16S(y3, t1);
+      t0 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(a2), AE_MOVF16X4_FROMINT16X4(y1))); t1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(a3), AE_MOVF16X4_FROMINT16X4(y1)));
+      y0 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(y3), AE_MOVF16X4_FROMINT16X4(t0))); y1 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(y3), AE_MOVF16X4_FROMINT16X4(t1)));
 
       y3 = AE_L16_I((ae_int16 *)pT, 7 * 2);
-      t0 = AE_MULFP16X4S(a2, y2); t1 = AE_MULFP16X4S(a3, y2);
-      y2 = AE_ADD16S(y3, t0); y3 = AE_ADD16S(y3, t1);
+      t0 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(a2), AE_MOVF16X4_FROMINT16X4(y2))); t1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(a3), AE_MOVF16X4_FROMINT16X4(y2)));
+      y2 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(y3), AE_MOVF16X4_FROMINT16X4(t0))); y3 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(y3), AE_MOVF16X4_FROMINT16X4(t1)));
 
-      t0 = AE_MULFP16X4S(a0, y0); t1 = AE_MULFP16X4S(a1, y1);
-      y0 = AE_ADD16S(y2, t0);
-      y1 = AE_ADD16S(y3, t1);
+      t0 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(a0), AE_MOVF16X4_FROMINT16X4(y0))); t1 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4S(AE_MOVF16X4_FROMINT16X4(a1), AE_MOVF16X4_FROMINT16X4(y1)));
+      y0 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(y2), AE_MOVF16X4_FROMINT16X4(t0)));
+      y1 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(y3), AE_MOVF16X4_FROMINT16X4(t1)));
 
       z0 = FLOAT16_HX4(y0, 7);
       z1 = FLOAT16_HX4(y1, 7);
-      n0 = AE_SLLI16S(AE_ADD16S(n0, _7), 10);
-      n1 = AE_SLLI16S(AE_ADD16S(n1, _7), 10);
+      n0 = AE_MOVINT16X4_FROMF16X4(AE_SLLI16S(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(n0), AE_MOVF16X4_FROMINT16X4(_7)), 10));
+      n1 = AE_MOVINT16X4_FROMF16X4(AE_SLLI16S(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(n1), AE_MOVF16X4_FROMINT16X4(_7)), 10));
       MUL_HX4X2(z0, z1, z0, z1, AE_MOVXTHALFX4_FROMINT16X4(n0), AE_MOVXTHALFX4_FROMINT16X4(n1));
       /* convert exp(2x)/2 to tanh */
       ADD_HX4X2(z0, z1, z0, z1, CONST_HX4(3), CONST_HX4(3));
@@ -359,21 +360,30 @@ void xa_nnlib_vec_tanh_fp16(float16_t* restrict y, const float16_t* restrict x, 
     AE_SHX4X2_I(CONST_HX4(0), CONST_HX4(0), pX, 1 * sizeof(xthalfx8));
     AE_SHX4X2_I(CONST_HX4(0), CONST_HX4(0), pY, 0 * sizeof(xthalfx8));
     AE_SHX4X2_I(CONST_HX4(0), CONST_HX4(0), pY, 1 * sizeof(xthalfx8));
+    
+    xthalf* x_t = castxcc(xthalf, x);
+    xthalf* pX_t = castxcc(xthalf, pX);
     for (n = 0; n<(N & 15); n++)
     {
       xthalf t;
 
-      AE_LHIP(t, castxcc(xthalf, x), sizeof(float16_t));
-      AE_SHIP(t, castxcc(xthalf, pX), sizeof(float16_t));
+      AE_LHIP(t, x_t, sizeof(float16_t));
+      AE_SHIP(t, pX_t, sizeof(float16_t));
     }
+    x = (float16_t*)x_t;  
     pX = (xthalfx8 *)xbuf;
     __tanh_fp16((float16_t*)pY, (float16_t*)pX, 16, scr);
+    
+    xthalf* y_t = castxcc(xthalf, y);
+    xthalf* pY_t = castxcc(xthalf, pY);
     for (n = 0; n<(N & 15); n++)
     {
       xthalf t;
-      AE_LHIP(t, castxcc(xthalf, pY), sizeof(float16_t));
-      AE_SHIP(t, castxcc(xthalf, y), sizeof(float16_t));
+      AE_LHIP(t, pY_t, sizeof(float16_t));
+      AE_SHIP(t, y_t, sizeof(float16_t));
     }
+    pY = (xthalfx8*)pY_t; 
+    y = (float16_t*)y_t;
     N &= ~15;
   }
   if (N <= 0) return;

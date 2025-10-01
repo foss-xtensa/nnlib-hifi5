@@ -34,10 +34,11 @@ ifeq ($(CPU), x86)
   MKPATH = mkdir -p
   RM = rm -f
   RM_R = rm -rf
-  LDFLAGS =
+  LDFLAGS = -m32 -lm
   CPU_PREFIX = xgcc
 
-  CFLAGS = -I$(ROOTDIR)/include $(EXTRA_CFLAGS)
+  CFLAGS = -m32 -std=c99 -I$(ROOTDIR)/include $(EXTRA_CFLAGS)
+  CFLAGS += -DCSTUB=1
 
 else
 
@@ -144,6 +145,13 @@ RNNOBJS = \
 UTILOBJS = \
     xt_manage_buffers.o \
     file_io.o
+
+ifeq ($(CPU), x86)
+cfg_path = $(shell grep -w "config-prefix"  "$$XTENSA_SYSTEM/$$XTENSA_CORE"-params | awk -- '{ print $$3 }')
+vpath %.c $(cfg_path)/src/cstub
+INCLUDES += \
+    -I$(cfg_path)/src/cstub
+endif
 
 OBJS_MATMULOBJS  = $(addprefix $(OBJDIR)/,$(MATMULOBJS))
 OBJS_CONVOBJS  = $(addprefix $(OBJDIR)/,$(CONVOBJS))

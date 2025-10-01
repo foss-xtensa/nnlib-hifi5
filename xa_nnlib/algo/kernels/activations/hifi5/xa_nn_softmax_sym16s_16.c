@@ -23,7 +23,12 @@
 #include "xa_nnlib_err_chk.h"
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
-const WORD16 exp_lut[513] = {
+
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+
+#define SW_ADD32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32X2(inp1), AE_MOVF32X2_FROMINT32X2(inp2)));
+
+WORD16 exp_lut[513] = {
       2,     2,     2,     2,     2,     2,     2,     2,
       2,     2,     2,     2,     2,     2,     2,     2,
       2,     2,     2,     2,     2,     2,     2,     2,
@@ -90,7 +95,7 @@ const WORD16 exp_lut[513] = {
   28027, 28580, 29143, 29718, 30304, 30902, 31512, 32133,
   32767};
 
-const WORD16 one_over_one_plus_x_lut[513] = {
+WORD16 one_over_one_plus_x_lut[513] = {
   32767, 32704, 32640, 32578, 32514, 32451, 32388, 32326,
   32264, 32202, 32141, 32079, 32018, 31957, 31896, 31835,
   31775, 31715, 31655, 31596, 31537, 31476, 31418, 31359,
@@ -157,11 +162,11 @@ const WORD16 one_over_one_plus_x_lut[513] = {
   16513, 16497, 16480, 16464, 16448, 16432, 16416, 16400,
   16384};
 
-static inline ae_int16x4 LUTLookUpX4(ae_int16x4 value, const WORD16* lut)
+static inline ae_int16x4 LUTLookUpX4(ae_int16x4 value, WORD16* lut)
 {
   ae_int16x4 shifted_value = AE_SRAI16(value, 7);
-  ae_int16x4 index = AE_ADD16S(AE_MOVDA16(256), shifted_value);
-  ae_int16x4 offset = AE_SLAI16S(AE_AND16(value, AE_MOVDA16(0x7f)),8);
+  ae_int16x4 index = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(256)), AE_MOVF16X4_FROMINT16X4(shifted_value)));
+  ae_int16x4 offset = AE_MOVINT16X4_FROMF16X4(AE_SLAI16S(AE_MOVF16X4_FROMINT16X4(AE_AND16(value, AE_MOVDA16(0x7f))),8));
   WORD32 index0, index1, index2, index3;
   index0 = AE_MOVAD16_3(index);
   index1 = AE_MOVAD16_2(index);
@@ -169,43 +174,43 @@ static inline ae_int16x4 LUTLookUpX4(ae_int16x4 value, const WORD16* lut)
   index3 = AE_MOVAD16_0(index);
   
   ae_int16 *p_ae_lut = (ae_int16 *)lut;
-  ae_int16x4 base0123 = p_ae_lut[index0];
-  base0123 = AE_SEL16_6543(base0123, p_ae_lut[index1]);
-  base0123 = AE_SEL16_6543(base0123, p_ae_lut[index2]);
-  base0123 = AE_SEL16_6543(base0123, p_ae_lut[index3]);
+  ae_int16x4 base0123 = AE_MOVINT16X4_FROMINT16(p_ae_lut[index0]);
+  base0123 = AE_SEL16_6543(base0123, AE_MOVINT16X4_FROMINT16(p_ae_lut[index1]));
+  base0123 = AE_SEL16_6543(base0123, AE_MOVINT16X4_FROMINT16(p_ae_lut[index2]));
+  base0123 = AE_SEL16_6543(base0123, AE_MOVINT16X4_FROMINT16(p_ae_lut[index3]));
   
-  ae_int16x4 slope0123 = p_ae_lut[index0 + 1];
-  slope0123 = AE_SEL16_6543(slope0123, p_ae_lut[index1 + 1]);
-  slope0123 = AE_SEL16_6543(slope0123, p_ae_lut[index2 + 1]);
-  slope0123 = AE_SEL16_6543(slope0123, p_ae_lut[index3 + 1]);
-  slope0123 = AE_SUB16S(slope0123, base0123);
+  ae_int16x4 slope0123 = AE_MOVINT16X4_FROMINT16(p_ae_lut[index0 + 1]);
+  slope0123 = AE_SEL16_6543(slope0123, AE_MOVINT16X4_FROMINT16(p_ae_lut[index1 + 1]));
+  slope0123 = AE_SEL16_6543(slope0123, AE_MOVINT16X4_FROMINT16(p_ae_lut[index2 + 1]));
+  slope0123 = AE_SEL16_6543(slope0123, AE_MOVINT16X4_FROMINT16(p_ae_lut[index3 + 1]));
+  slope0123 = AE_MOVINT16X4_FROMF16X4(AE_SUB16S(AE_MOVF16X4_FROMINT16X4(slope0123), AE_MOVF16X4_FROMINT16X4(base0123)));
   
   ae_int16x4 delta0123; 
-  delta0123 = AE_MULFP16X4RAS(slope0123, offset);
-  ae_int16x4 result0123 = AE_ADD16S(base0123, delta0123);
+  delta0123 = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(slope0123), AE_MOVF16X4_FROMINT16X4(offset)));
+  ae_int16x4 result0123 = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(base0123), AE_MOVF16X4_FROMINT16X4(delta0123)));
   
   return result0123;
 }
 
-static inline ae_int16x4 LUTLookUp(ae_int16x4 value, const WORD16* lut)
+static inline ae_int16x4 LUTLookUp(ae_int16x4 value, WORD16* lut)
 {
   ae_int16x4 shifted_value = AE_SRAI16(value, 7);
-  ae_int16x4 index = AE_ADD16S(AE_MOVDA16(256), shifted_value);
-  ae_int16x4 offset = AE_SLAI16S(AE_AND16(value, AE_MOVDA16(0x7f)),8);
+  ae_int16x4 index = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(256)), AE_MOVF16X4_FROMINT16X4(shifted_value)));
+  ae_int16x4 offset = AE_MOVINT16X4_FROMF16X4(AE_SLAI16S(AE_MOVF16X4_FROMINT16X4(AE_AND16(value, AE_MOVDA16(0x7f))),8));
 
   WORD32 index0;
   index0 = AE_MOVAD16_3(index);
   
   ae_int16 *p_ae_lut = (ae_int16 *)lut;
-  ae_int16x4 base = p_ae_lut[index0];
+  ae_int16x4 base = AE_MOVINT16X4_FROMINT16(p_ae_lut[index0]);
   
-  ae_int16x4 slope = p_ae_lut[index0 + 1];
-  slope = AE_SUB16S(slope, base);
+  ae_int16x4 slope = AE_MOVINT16X4_FROMINT16(p_ae_lut[index0 + 1]);
+  slope = AE_MOVINT16X4_FROMF16X4(AE_SUB16S(AE_MOVF16X4_FROMINT16X4(slope), AE_MOVF16X4_FROMINT16X4(base)));
   
   ae_int16x4 delta; 
-  delta = AE_MULFP16X4RAS(slope, offset);
+  delta = AE_MOVINT16X4_FROMF16X4(AE_MULFP16X4RAS(AE_MOVF16X4_FROMINT16X4(slope), AE_MOVF16X4_FROMINT16X4(offset)));
   
-  ae_int16x4 result = AE_ADD16S(base, delta);
+  ae_int16x4 result = AE_MOVINT16X4_FROMF16X4(AE_ADD16S(AE_MOVF16X4_FROMINT16X4(base), AE_MOVF16X4_FROMINT16X4(delta)));
   
   return result;
 }
@@ -240,10 +245,10 @@ static inline ae_int16x4 softmaxCalculateExp(WORD32 input_beta_left_shift,
 #else
   MPY_BY_QUANT_MULT_SLS_X2X2_OUT32(scaled_diff1, scaled_diff2, input_diff1, input_diff2, input_beta_multiplier, left_shift, right_shift);
 #endif  
-  ae_int32x2 max_int16s = AE_MOVDA32(32767);
+  ae_int32x2 max_int16s = SW_MOVDA32(32767);
 
-  sym_scaled_diff1 = AE_ADD32S(scaled_diff1, max_int16s);
-  sym_scaled_diff2 = AE_ADD32S(scaled_diff2, max_int16s);
+  sym_scaled_diff1 = SW_ADD32S_INT32X2_INT32X2(scaled_diff1, max_int16s);
+  sym_scaled_diff2 = SW_ADD32S_INT32X2_INT32X2(scaled_diff2, max_int16s);
   ae_int16x4 sat_sym_shifted_sum = AE_SAT16X4(sym_scaled_diff1,sym_scaled_diff2); 
 
   ae_int16x4 result = LUTLookUpX4(sat_sym_shifted_sum, exp_lut);
@@ -253,7 +258,7 @@ static inline ae_int16x4 softmaxCalculateExp(WORD32 input_beta_left_shift,
 
 UWORD8 count_leading_zeros(ae_int32x2 integer_input)
 {
-  WORD32 value = AE_MOVDA32(integer_input);
+  WORD32 value = AE_MOVAD32_L(integer_input);
   if(value == 0)
   {
     return 32;
@@ -295,15 +300,16 @@ WORD32 xa_nn_vec_softmax_sym16s_16( WORD16 * __restrict__ p_out,
     }
 
     ae_valign align_input64 = AE_LA64_PP(p_inp);
+    ae_int16x4 *p16x4_inp = (ae_int16x4 *)p_inp;
     for(i = 0; i < ((vec_length & 7) >> 2); i++)
     {
-      AE_LA16X4_IP(m1, align_input64, (ae_int16x4 *)p_inp);
+      AE_LA16X4_IP(m1, align_input64, p16x4_inp);
       m0 = AE_MAX16(m0, m1);
     }
-
+    ae_int16 *p16_inp = (ae_int16 *)p16x4_inp;
     for(i = 0; i < (vec_length & 3); i++)
     {
-      AE_L16_IP(m1, (ae_int16 *)p_inp, sizeof(ae_int16));
+      AE_L16_IP(m1, p16_inp, sizeof(ae_int16));
       m0 = AE_MAX16(m0, m1);
     }
 
@@ -314,7 +320,10 @@ WORD32 xa_nn_vec_softmax_sym16s_16( WORD16 * __restrict__ p_out,
     else
     {
       ae_int32x2 temp1, temp2;
-      AE_CVTI32X4F16(temp1, temp2, m0, 0);
+      ae_f32x2 temp1_f, temp2_f;
+      AE_CVTI32X4F16(temp1_f, temp2_f, m0, 0);
+      temp1 = AE_MOVINT32X2_FROMF32X2(temp1_f);
+      temp2 = AE_MOVINT32X2_FROMF32X2(temp2_f);
       temp2 = AE_MAX32(temp1, temp2);
 
       temp1 = AE_SEL32_LH(temp2, temp2);
@@ -332,8 +341,8 @@ WORD32 xa_nn_vec_softmax_sym16s_16( WORD16 * __restrict__ p_out,
     ae_int16x4 d_inp1, d_inp2;
     ae_valign align_input64 = AE_LA64_PP(p_inp);
     ae_int32x2 acc1, acc2, acc;
-    acc1 = AE_MOVDA32(0);
-    acc2 = AE_MOVDA32(0);
+    acc1 = SW_MOVDA32(0);
+    acc2 = SW_MOVDA32(0);
     ae_valign align_output64 = AE_ZALIGN64();
     ae_int16x4 exp1, exp2;
     exp2 = AE_MOVDA16(0);
@@ -346,35 +355,37 @@ WORD32 xa_nn_vec_softmax_sym16s_16( WORD16 * __restrict__ p_out,
     }
     AE_SA64POS_FP(align_output64,(void *)temp_out);
     
+    ae_int16x8 *p16x8_inp = (ae_int16x8 *)p_inp;
+    ae_int16x8 *temp16x8_out = (ae_int16x8 *)temp_out;
     int rem_length = vec_length & 3;
     if(rem_length)
     {
-      ae_valignx2 align_input128 = AE_LA128_PP((ae_int16x8 *)p_inp);
+      ae_valignx2 align_input128 = AE_LA128_PP(p16x8_inp);
       ae_valignx2 align_output128 = AE_ZALIGN128();
-      AE_LAV16X4X2_XP(d_inp1, d_inp2, align_input128, (ae_int16x8 *)p_inp, rem_length * 2);
+      AE_LAV16X4X2_XP(d_inp1, d_inp2, align_input128, p16x8_inp, rem_length * 2);
       exp1 = softmaxCalculateExp(input_beta_left_shift, input_beta_multiplier, d_inp1, max);
       
-      ae_int64 mask = AE_MOVF64_FROMF32X2(AE_MOVDA32(-1));
+      ae_int64 mask = AE_MOVINT64_FROMINT32X2(SW_MOVDA32(-1));
       mask = AE_SLAA64(mask, 16 * (4 - rem_length));
-      ae_int16x4 mask16x4 = AE_MOVF16X4_FROMF64(mask);
+      ae_int16x4 mask16x4 = AE_MOVINT16X4_FROMINT64(mask);
       
       exp1 = AE_AND16(exp1, mask16x4);
       AE_ACCW16(acc1, acc2, exp1, d_inp2);
-      AE_SAV16X4X2_XP(exp1, d_inp2, align_output128, (ae_int16x8 *)temp_out, rem_length * 2);
-      AE_SA128POS_FP(align_output128,(void *)temp_out);
+      AE_SAV16X4X2_XP(exp1, d_inp2, align_output128, temp16x8_out, rem_length * 2);
+      AE_SA128POS_FP(align_output128,(void *)temp16x8_out);
     }
     
-    acc = AE_ADD32S(acc1, acc2);
-    acc1 = AE_MOVDA32(AE_MOVAD32_H(acc));
-    acc2 = AE_MOVDA32(AE_MOVAD32_L(acc));
-    sum_of_exps = AE_ADD32S(acc1, acc2);
+    acc = SW_ADD32S_INT32X2_INT32X2(acc1, acc2);
+    acc1 = SW_MOVDA32(AE_MOVAD32_H(acc));
+    acc2 = SW_MOVDA32(AE_MOVAD32_L(acc));
+    sum_of_exps = SW_ADD32S_INT32X2_INT32X2(acc1, acc2);
   }
 
   // Calculate 1/sum_of_exps
   UWORD8 headroom_plus_one = count_leading_zeros(sum_of_exps);
-  ae_int32x2 shifted_sum = AE_SRAA32RS(sum_of_exps, 14 - (headroom_plus_one - 1));
-  ae_int32x2 plus_one_sym = AE_MOVDA32(-((1<<15) + (1<<16)));
-  ae_int32x2 sym_shifted_sum = AE_ADD32S(shifted_sum, plus_one_sym);
+  ae_int32x2 shifted_sum = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sum_of_exps), 14 - (headroom_plus_one - 1)));
+  ae_int32x2 plus_one_sym = SW_MOVDA32(-((1<<15) + (1<<16)));
+  ae_int32x2 sym_shifted_sum = SW_ADD32S_INT32X2_INT32X2(shifted_sum, plus_one_sym);
   ae_int16x4 sat_sym_shifted_sum = AE_SAT16X4(sym_shifted_sum, sym_shifted_sum);
   ae_int16x4 reciprocal_scale_q015 = LUTLookUp(sat_sym_shifted_sum, one_over_one_plus_x_lut);
   
@@ -396,10 +407,10 @@ WORD32 xa_nn_vec_softmax_sym16s_16( WORD16 * __restrict__ p_out,
       AE_LA16X4X2_IP(exp1, exp2, exp_aligner, temp_out1);
       AE_MUL16X4S(sfmx1, sfmx2, exp1, reciprocal_scale_q015);
       AE_MUL16X4S(sfmx3, sfmx4, exp2, reciprocal_scale_q015);
-      shifted_sfmx1 = AE_SRAA32RS(sfmx1, right_shift);
-      shifted_sfmx2 = AE_SRAA32RS(sfmx2, right_shift);
-      shifted_sfmx3 = AE_SRAA32RS(sfmx3, right_shift);
-      shifted_sfmx4 = AE_SRAA32RS(sfmx4, right_shift);
+      shifted_sfmx1 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sfmx1), right_shift));
+      shifted_sfmx2 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sfmx2), right_shift));
+      shifted_sfmx3 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sfmx3), right_shift));
+      shifted_sfmx4 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sfmx4), right_shift));
       sfmx12 = AE_SAT16X4(shifted_sfmx1, shifted_sfmx2);
       sfmx34 = AE_SAT16X4(shifted_sfmx3, shifted_sfmx4);
       sfmx12 = AE_MAX16(sfmx12, zero);
@@ -411,8 +422,8 @@ WORD32 xa_nn_vec_softmax_sym16s_16( WORD16 * __restrict__ p_out,
     {
       AE_LAV16X4X2_XP(exp1, exp2, exp_aligner, temp_out1, rem_length * 2);
       AE_MUL16X4S(sfmx1, sfmx2, exp1, reciprocal_scale_q015);
-      shifted_sfmx1 = AE_SRAA32RS(sfmx1, right_shift);
-      shifted_sfmx2 = AE_SRAA32RS(sfmx2, right_shift);
+      shifted_sfmx1 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sfmx1), right_shift));
+      shifted_sfmx2 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sfmx2), right_shift));
  
       sfmx12 = AE_SAT16X4(shifted_sfmx1, shifted_sfmx2);
       sfmx12 = AE_MAX16(sfmx12, zero);
@@ -420,8 +431,8 @@ WORD32 xa_nn_vec_softmax_sym16s_16( WORD16 * __restrict__ p_out,
       if(rem_length > 4)
       {
         AE_MUL16X4S(sfmx3, sfmx4, exp2, reciprocal_scale_q015);
-        shifted_sfmx3 = AE_SRAA32RS(sfmx3, right_shift);
-        shifted_sfmx4 = AE_SRAA32RS(sfmx4, right_shift);
+        shifted_sfmx3 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sfmx3), right_shift));
+        shifted_sfmx4 = AE_MOVINT32X2_FROMF32X2(AE_SRAA32RS(AE_MOVF32X2_FROMINT32X2(sfmx4), right_shift));
         sfmx34 = AE_SAT16X4(shifted_sfmx3, shifted_sfmx4);
         sfmx34 = AE_MAX16(sfmx34, zero);
         AE_SAV16X4X2_XP(sfmx12, sfmx34, align_output128, temp_out2, rem_length * 2);

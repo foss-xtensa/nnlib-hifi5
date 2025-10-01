@@ -21,7 +21,10 @@
 ******************************************************************************/
 #include "xa_nnlib_common.h"
 
-#define ZERO64   AE_MOVINT64_FROMINT32X2(AE_MOVDA32(0))
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+#define SW_SLAA64S_INT64_INT64(inp1, bias_shift) AE_MOVINT64_FROMF64(AE_SLAA64S(AE_MOVF64_FROMINT64(inp1), bias_shift))
+
+#define ZERO64   AE_MOVINT64_FROMINT32X2(SW_MOVDA32(0))
 
 #if defined(CUST_UNROLL) && (CUST_UNROLL != 0)
 #define UNROLL_S CUST_UNROLL
@@ -50,11 +53,11 @@
   AE_L16X4_XC(temp_src1_3, p_src1, 8); \
 
 #define STORE_ROW_S_16(N) \
-  ae_int64 temp1_ ##N = p_bias[row+N];            \
-  temp1_ ##N = AE_SLAA64S(temp1_ ##N , bias_shift);\
+  ae_int64 temp1_ ##N = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[row+N])),48);            \
+  temp1_ ##N = SW_SLAA64S_INT64_INT64(temp1_ ##N , bias_shift);\
   accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N);\
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift);\
-  p_out[(row+N)*out_offset] =AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(accu1_ ##N),16),-16));
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , acc_shift);\
+  p_out[(row+N)*out_offset] =AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_ ##N)),16),-16));
 
 /**************************** Multiple of 8 ***********************************************************/
 #define SETUP_ROW_S_8(N) \
@@ -73,11 +76,11 @@
   AE_L16X4_XC(temp_src1_1, p_src1, 8); \
 
 #define STORE_ROW_S_8(N) \
-  ae_int64 temp1_ ##N = p_bias[row+N];            \
-  temp1_ ##N = AE_SLAA64S(temp1_ ##N , bias_shift);\
+  ae_int64 temp1_ ##N = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[row+N])),48);            \
+  temp1_ ##N = SW_SLAA64S_INT64_INT64(temp1_ ##N , bias_shift);\
   accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N);\
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift);\
-  p_out[(row+N)*out_offset] =AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(accu1_ ##N),16),-16));
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , acc_shift);\
+  p_out[(row+N)*out_offset] =AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_ ##N)),16),-16));
 
 /**************************** Multiple of 4 ***********************************************************/
 
@@ -88,26 +91,26 @@
 
 #define KERNEL_ROW_S(N) \
 { \
-  ae_int16x4 temp_in1; \
+  ae_f16x4 temp_in1; \
   AE_L8X4F_IP(temp_in1, p_mat1_ ##N, 4); \
-  AE_MULAAAAQ16(accu1_ ##N, temp_src1, temp_in1);\
+  AE_MULAAAAQ16(accu1_ ##N, temp_src1, AE_MOVINT16X4_FROMF16X4(temp_in1));\
 }
 
 #define KERNEL_ROW_S_I(N) \
 { \
-  ae_int16x4 temp_in1; \
+  ae_f16x4 temp_in1; \
   AE_L8X4F_IP(temp_in1, p_mat1_ ##N, 4); \
   AE_L16X4_XC(temp_src1, p_src1, 8); \
-  AE_MULAAAAQ16(accu1_ ##N, temp_src1, temp_in1);\
+  AE_MULAAAAQ16(accu1_ ##N, temp_src1, AE_MOVINT16X4_FROMF16X4(temp_in1));\
 }
 
 #define STORE_ROW_S(N) \
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , -8);\
-  ae_int64 temp1_ ##N = p_bias[row+N];            \
-  temp1_ ##N = AE_SLAA64S(temp1_ ##N , bias_shift);\
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , -8);\
+  ae_int64 temp1_ ##N = AE_SRAI64(AE_MOVINT64_FROMINT16X4(AE_MOVDA16((WORD32)p_bias[row+N])),48);            \
+  temp1_ ##N = SW_SLAA64S_INT64_INT64(temp1_ ##N , bias_shift);\
   accu1_ ##N = AE_ADD64(accu1_ ##N , temp1_ ##N);\
-  accu1_ ##N = AE_SLAA64S(accu1_ ##N , acc_shift);\
-  p_out[(row+N)*out_offset] =AE_MOVINT16_FROMINT32(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(accu1_ ##N),16),-16));
+  accu1_ ##N = SW_SLAA64S_INT64_INT64(accu1_ ##N , acc_shift);\
+  p_out[(row+N)*out_offset] =AE_MOVINT16_FROMF32X2(AE_SLAA32S(AE_SLAA32S(AE_ROUND32F64SSYM(AE_MOVF64_FROMINT64(accu1_ ##N)),16),-16));
 
 /************************** Multiple of 4 **************************************************************/
 
@@ -159,7 +162,7 @@
 #endif
 
 WORD32 xa_nn_matXvec_8x16_16_circ_nb(
-  WORD16 * __restrict__ p_out,
+  WORD16 * __restrict__ pt_out,
   WORD8  * __restrict__ p_mat,
   WORD16 * __restrict__ p_vec,
   WORD16 * __restrict__ p_bias,
@@ -169,6 +172,7 @@ WORD32 xa_nn_matXvec_8x16_16_circ_nb(
   WORD32 bias_shift,
   WORD32 acc_shift)
 {
+  ae_int16 *p_out = (ae_int16 *)pt_out;
   WORD32 row, col;
   ae_int16x4 temp_src1;
   ae_int16x4 temp_src1_1;

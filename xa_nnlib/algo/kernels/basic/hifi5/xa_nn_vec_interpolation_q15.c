@@ -38,11 +38,11 @@ WORD32 xa_nn_vec_interpolation_q15(WORD16 * __restrict__ p_out,
     ae_f16x4 *p_si = (ae_f16x4 *)p_inp1;
     ae_f16x4 *p_ti = (ae_f16x4 *)p_inp2;
     ae_f16x4 *p_r  = (ae_f16x4 *)p_out, one;
-    one = AE_MOVDA16(0x7fff);
+    one = AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(0x7fff));
 
     for(i=0; i<num_elements>>2; i++)
     {
-        p_si[i] = p_r[i]  = AE_ADD16S(AE_MULFP16X4S(p_fi[i], p_si[i]), AE_MULFP16X4S(one-p_fi[i], p_ti[i]));
+        p_si[i] = p_r[i]  = AE_ADD16S(AE_MULFP16X4S(p_fi[i], p_si[i]), AE_MULFP16X4S(AE_SUB16S(one, p_fi[i]), p_ti[i]));
     }
 
     return 0;

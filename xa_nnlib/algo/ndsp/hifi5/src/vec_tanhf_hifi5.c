@@ -50,7 +50,7 @@
 #include "../include/expf_tbl.h"
 #include "../include/nanf_tbl.h"
 #include "../include/pow2f_tbl.h"
-
+#define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
 /*-------------------------------------------------------------------------
   Hyperbolic Tangent
   The functions compute the hyperbolic tangent of input argument. 32-bit
@@ -89,24 +89,33 @@ void xa_nnlib_vec_tanhf(float32_t* restrict y, const float32_t* restrict x, int 
         float32_t ALIGN(32) xbuf[32],ybuf[32];
         pX=(xtfloatx4 *)xbuf;
         pY=(xtfloatx4 *)ybuf;
-        AE_SSX2X2_I(XT_CONST_S(0),XT_CONST_S(0),pX,0*sizeof(xtfloatx4));
-        AE_SSX2X2_I(XT_CONST_S(0),XT_CONST_S(0),pX,1*sizeof(xtfloatx4));
-        AE_SSX2X2_I(XT_CONST_S(0),XT_CONST_S(0),pY,0*sizeof(xtfloatx4));
-        AE_SSX2X2_I(XT_CONST_S(0),XT_CONST_S(0),pY,1*sizeof(xtfloatx4));
+        AE_SSX2X2_I(XT_CONST_SX2(0),XT_CONST_SX2(0),pX,0*sizeof(xtfloatx4));
+        AE_SSX2X2_I(XT_CONST_SX2(0),XT_CONST_SX2(0),pX,1*sizeof(xtfloatx4));
+        AE_SSX2X2_I(XT_CONST_SX2(0),XT_CONST_SX2(0),pY,0*sizeof(xtfloatx4));
+        AE_SSX2X2_I(XT_CONST_SX2(0),XT_CONST_SX2(0),pY,1*sizeof(xtfloatx4));
+        
+        xtfloat* x_t = castxcc(xtfloat,x  );
+        xtfloat* pX_t = castxcc(xtfloat,pX );
         for (n=0; n<(N&7); n++) 
         {
             xtfloat t;
-            XT_LSIP(t,castxcc(xtfloat,x  ),sizeof(float32_t));
-            XT_SSIP(t,castxcc(xtfloat,pX ),sizeof(float32_t));
+            XT_LSIP(t,x_t,sizeof(float32_t));
+            XT_SSIP(t,pX_t,sizeof(float32_t));
         }
         pX=(xtfloatx4 *)xbuf;
+        x = (float32_t*)x_t;        
         __tanhf((float32_t*)pY,(float32_t*)pX,8);
+        
+        xtfloat* y_t = castxcc(xtfloat,y  );
+        xtfloat* pY_t = castxcc(xtfloat,pY );
         for (n=0; n<(N&7); n++) 
         {
             xtfloat t;
-            XT_LSIP(t,castxcc(xtfloat,pY),sizeof(float32_t));
-            XT_SSIP(t,castxcc(xtfloat,y ),sizeof(float32_t));
+            XT_LSIP(t,pY_t,sizeof(float32_t));
+            XT_SSIP(t,y_t,sizeof(float32_t));
         }
+        y = (float32_t*)y_t;
+        pY = (xtfloatx4*)pY_t;
         N&=~7;
     }
     if (N<=0) return;
@@ -124,9 +133,9 @@ static void __tanhf(float32_t* restrict y, const float32_t* restrict x, int N)
     ae_valignx2 X_va, Y_va;
     /* Block size, blkLen <= blkSize */
     const int blkSize = 2*MAX_ALLOCA_SZ/sz_f32;
-    xtfloatx2 one = XT_CONST_S(1);
-    xtfloatx2 two = XT_CONST_S(2);
-    xtfloatx2 half = XT_CONST_S(3);
+    xtfloatx2 one = XT_CONST_SX2(1);
+    xtfloatx2 two = XT_CONST_SX2(2);
+    xtfloatx2 half = XT_CONST_SX2(3);
     /* Allocate a fixed-size scratch area on the stack. */
     float32_t ALIGN(32) scr[2*blkSize];
     int n,M;
@@ -149,24 +158,27 @@ static void __tanhf(float32_t* restrict y, const float32_t* restrict x, int N)
         __Pragma("loop_count factor=2")
         for ( n=0; n<(M>>2); n++ )
         {
-                xtfloatx2 x0, x1, p0, p1, y0, y1, t0, t1;
+            xtfloatx2 x0, x1, p0, p1, y0, y1, t0, t1;
             AE_LASX2X2_IP(x0, x1, X_va, X);
             ABS_SX2X2(x0, x1, x0, x1);
             MULQ_S(x0, x1, x0, x1, two);
-            t0 = (xtfloatx2)80.f;
+            float d = 80.f;
+            float e = 129.0f;
+            float f = -151.0f;
+            t0 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&d);
             x0 = XT_MIN_SX2(x0, t0);
             x1 = XT_MIN_SX2(x1, t0);
             /* scale input to 1/ln(2) */
-            MULQ_S(p0, p1, x0, x1, xa_nnlib_log2_e[0].f);
+            MULQ_S(p0, p1, x0, x1, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_log2_e[0].f));
             p0 = XT_FIROUND_SX2(p0);
             p1 = XT_FIROUND_SX2(p1);
             NEG_SX2X2(y0, y1, p0, p1);
-            MADDQ_S(y0, y1, x0, x1, xa_nnlib_log2_e[0].f);
-            MADDQ_S(y0, y1, x0, x1, xa_nnlib_log2_e[1].f);
+            MADDQ_S(y0, y1, x0, x1, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_log2_e[0].f));
+            MADDQ_S(y0, y1, x0, x1, AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&xa_nnlib_log2_e[1].f));
             AE_SSX2X2_IP(y0, y1, S_wr, 4 * sz_f32);
             /* saturating p0 to the right values */
-            t0 = (xtfloatx2) 129.f; p0 = XT_MIN_SX2(p0, t0); p1 = XT_MIN_SX2(p1, t0);
-            t1 = (xtfloatx2)-151.f; p0 = XT_MAX_SX2(p0, t1); p1 = XT_MAX_SX2(p1, t1);
+            t0 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&e); p0 = XT_MIN_SX2(p0, t0); p1 = XT_MIN_SX2(p1, t0);
+            t1 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&f); p0 = XT_MAX_SX2(p0, t1); p1 = XT_MAX_SX2(p1, t1);
             AE_SSX2X2_IP(p0, p1, S_wr, 4 * sz_f32);
         }
 
@@ -191,8 +203,8 @@ static void __tanhf(float32_t* restrict y, const float32_t* restrict x, int N)
             AE_L32_IP(tmp,pPolytanhf,sizeof(float32_t));           y2 = XT_AE_MOVXTFLOATX2_FROMINT32X2(tmp);
             AE_L32_IP(tmp,pPolytanhf,sizeof(float32_t));           y3 = XT_AE_MOVXTFLOATX2_FROMINT32X2(tmp);
             AE_L32_XP(tmp,pPolytanhf,-4*(int)sizeof(float32_t));   y4 = XT_AE_MOVXTFLOATX2_FROMINT32X2(tmp);
-            y5 = xa_nnlib_pow2f_coef[5].f;
-            y6 = xa_nnlib_pow2f_coef[6].f;
+            y5 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&(xa_nnlib_pow2f_coef[5].f));
+            y6 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&(xa_nnlib_pow2f_coef[6].f));
             c0_0 = c1_0 = y1;      MADDQ_S(c0_0, c1_0, x0, x1, y0);
             c0_1 = c1_1 = y3;      MADDQ_S(c0_1, c1_1, x0, x1, y2);
             c0_2 = c1_2 = y5;      MADDQ_S(c0_2, c1_2, x0, x1, y4);
@@ -224,13 +236,13 @@ static void __tanhf(float32_t* restrict y, const float32_t* restrict x, int N)
             t0 = XT_TRUNC_SX2(p0, 0);
             t1 = XT_TRUNC_SX2(p1, 0);
 
-            t0 = AE_SUB32S(t0, 1);
-            t1 = AE_SUB32S(t1, 1);
+            t0 = AE_MOVINT32X2_FROMF32X2(AE_SUB32S(AE_MOVF32X2_FROMINT32X2(t0), AE_MOVF32X2_FROMINT32(AE_MOVDA32(1))));
+            t1 = AE_MOVINT32X2_FROMF32X2(AE_SUB32S(AE_MOVF32X2_FROMINT32X2(t1), AE_MOVF32X2_FROMINT32(AE_MOVDA32(1))));
 
             s0_0=FLOATEXP_SX2(AE_MOVINT8X8_FROMINT32X2(AE_SRLI32(t0,1)));
             s0_1=FLOATEXP_SX2(AE_MOVINT8X8_FROMINT32X2(AE_SRLI32(t1,1)));
-            s1_0=FLOATEXP_SX2(AE_MOVINT8X8_FROMINT32X2(AE_SUB32S(t0,AE_SRLI32(t0,1))));
-            s1_1=FLOATEXP_SX2(AE_MOVINT8X8_FROMINT32X2(AE_SUB32S(t1,AE_SRLI32(t1,1))));
+            s1_0=FLOATEXP_SX2(AE_MOVINT8X8_FROMINT32X2(AE_MOVINT32X2_FROMF32X2(AE_SUB32S(AE_MOVF32X2_FROMINT32X2(t0),AE_MOVF32X2_FROMINT32X2(AE_SRLI32(t0,1))))));
+            s1_1=FLOATEXP_SX2(AE_MOVINT8X8_FROMINT32X2(AE_MOVINT32X2_FROMF32X2(AE_SUB32S(AE_MOVF32X2_FROMINT32X2(t1),AE_MOVF32X2_FROMINT32X2(AE_SRLI32(t1,1))))));
             MUL_SX2X2(y0, y1, y0, y1, s1_0,s1_1);
             MUL_SX2X2(y0, y1, y0, y1, s0_0,s0_1);
             ADD_SX2X2(z0, z1, y0, y1, half, half);
@@ -295,11 +307,11 @@ static void __tanhf(float32_t* restrict y, const float32_t* restrict x, int N)
             AE_LASX2X2_IP(x0, x1, X_va, X);
             ux0 = XT_AE_MOVINT32X2_FROMXTFLOATX2(x0);
             ux1 = XT_AE_MOVINT32X2_FROMXTFLOATX2(x1);
-            b0sign = AE_LT32(ux0, 0);
-            b1sign = AE_LT32(ux1, 0);
+            b0sign = AE_LT32(ux0, SW_MOVDA32(0));
+            b1sign = AE_LT32(ux1, SW_MOVDA32(0));
             ABS_SX2X2(x0, x1, x0, x1);
-            b0big = XT_OLT_SX2(xa_nnlib_halfln3.f, x0);
-            b1big = XT_OLT_SX2(xa_nnlib_halfln3.f, x1);
+            b0big = XT_OLT_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&(xa_nnlib_halfln3.f)), x0);
+            b1big = XT_OLT_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&(xa_nnlib_halfln3.f)), x1);
             AE_LSX2X2_XP(z0big, z1big, S_rd, +4 * sz_f32);
             AE_LSX2X2_XP(z0, z1, S_rd, +4 * sz_f32);
             XT_MOVT_SX2(z0, z0big, b0big);
@@ -346,7 +358,7 @@ void xa_nnlib_vec_tanhf(float32_t* restrict y, const float32_t* restrict x, int 
             */
             r = zero; XT_MADDN_S(r, two, x); x = r;
             {
-                xtfloat t=(xtfloat)80.f;
+                xtfloat t = (xtfloat)80.f;
                 x = XT_MIN_S(x, t);
             }
 

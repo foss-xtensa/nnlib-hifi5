@@ -33,16 +33,16 @@
 
 #define CLAMP_VAL(out, val, min, max){\
     ae_f32x2 temp_max;\
-    temp_max = AE_MAX32(min, val);\
-    out = AE_MIN32(temp_max, max);\
+    temp_max = AE_MOVF32X2_FROMINT32X2(AE_MAX32(min, val));\
+    out = AE_MOVF32X2_FROMINT32X2(AE_MIN32(AE_MOVINT32X2_FROMF32X2(temp_max), max));\
 }
 
 #define STORE_8X4_FROM_32X4(out_ptr, val12, val34){\
     int o1, o2, o3, o4;\
-    o1 = AE_MOVAD32_H(val12);\
-    o2 = AE_MOVAD32_L(val12);\
-    o3 = AE_MOVAD32_H(val34);\
-    o4 = AE_MOVAD32_L(val34);\
+    o1 = AE_MOVAD32_H(AE_MOVINT32X2_FROMF32X2(val12));\
+    o2 = AE_MOVAD32_L(AE_MOVINT32X2_FROMF32X2(val12));\
+    o3 = AE_MOVAD32_H(AE_MOVINT32X2_FROMF32X2(val34));\
+    o4 = AE_MOVAD32_L(AE_MOVINT32X2_FROMF32X2(val34));\
     *out_ptr++ = (UWORD8)o1;\
     *out_ptr++ = (UWORD8)o2;\
     *out_ptr++ = (UWORD8)o3;\
