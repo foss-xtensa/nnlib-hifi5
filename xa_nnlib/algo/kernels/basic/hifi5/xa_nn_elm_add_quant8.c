@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -255,7 +255,11 @@ WORD32 xa_nn_elm_add_asym8xasym8_asym8(UWORD8 * __restrict__ p_out,
     return 0;
 }
 
+#ifdef __XCC__
 static inline void __attribute__((always_inline)) internal_elm_add_broadcast_2D_asym8sxasym8s_asym8s(void * __restrict__ p_out,
+#else
+static inline void internal_elm_add_broadcast_2D_asym8sxasym8s_asym8s(void * __restrict__ p_out,
+#endif
                     const    void * __restrict__ p_inp1,
                     const    void * __restrict__ p_inp2,
                     bcast_args_t* args)
@@ -477,7 +481,11 @@ static inline void __attribute__((always_inline)) internal_elm_add_broadcast_2D_
   }
 }
 
+#ifdef __XCC__
 static inline void __attribute__((always_inline)) internal_elm_add_broadcast_asym8sxasym8s_asym8s(void * __restrict__ p_out,
+#else
+static inline void internal_elm_add_broadcast_asym8sxasym8s_asym8s(void * __restrict__ p_out,
+#endif
                     const    void * __restrict__ p_inp1,
                     const    void * __restrict__ p_inp2,
                     bcast_args_t* args)

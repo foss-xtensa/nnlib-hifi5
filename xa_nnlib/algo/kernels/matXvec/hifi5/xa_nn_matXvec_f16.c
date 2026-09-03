@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -24,7 +24,22 @@
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
 
+
 #if !HAVE_HP_VFPU
+
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_v2_f16xf16_f16, (
+      WORD16  * __restrict__ p_out,
+      const WORD16  * __restrict__ p_mat,
+      const WORD16  * __restrict__ p_vec,
+      const WORD16  * __restrict__ p_bias,
+      WORD32 rows,
+      WORD32 cols,
+      WORD32 row_stride,
+      const WORD16  * p_out_activation_min,
+      const WORD16  * p_out_activation_max,
+      xa_dma_cfg_t *p_dma_cfg
+      ) )
+
 DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matXvec_f16xf16_f16,(
 			WORD16  * __restrict__ p_out,          
 			const WORD16  * __restrict__ p_mat1,    
@@ -68,7 +83,8 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matXvec_f16xf16_f16,(
 
 static void mtx_vecmpyf_bias_add_aligned( WORD16 * pout,
      const WORD16 * pmat,  const WORD16 * pvec, const WORD16 * pbias, 
-     int rows, int cols, int row_stride)
+     int rows, int cols, int row_stride,
+     xthalfx4 vec_act_min, xthalfx4 vec_act_max)
 {
   WORD32 i, j;
 
@@ -197,6 +213,8 @@ static void mtx_vecmpyf_bias_add_aligned( WORD16 * pout,
       AE_LAHX4X2_IP(b0, b1, alignbias, pb);
     }
     ADD_HX4X2(acc00, acc40, acc00, acc40, b0, b1);
+    acc00 = MAX_HX4(MIN_HX4(acc00, vec_act_max), vec_act_min);
+    acc40 = MAX_HX4(MIN_HX4(acc40, vec_act_max), vec_act_min);
 
     AE_SAHX4X2_IP(acc00, acc40, alignout0, pout0);
   }
@@ -260,6 +278,7 @@ static void mtx_vecmpyf_bias_add_aligned( WORD16 * pout,
       AE_LAHX4IP(b0, alignbias_rem, pb_rem);
     }
     acc00 = ADD_HX4(acc00, b0);
+    acc00 = MAX_HX4(MIN_HX4(acc00, vec_act_max), vec_act_min);
 
     AE_SAHX4IP(acc00, alignout_rem, pout0_rem);
   }
@@ -268,7 +287,8 @@ static void mtx_vecmpyf_bias_add_aligned( WORD16 * pout,
 
 static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
      const WORD16 * pmat,  const WORD16 * pvec, const WORD16 * pbias, 
-     int rows, int cols, int row_stride)
+     int rows, int cols, int row_stride,
+     xthalfx4 vec_act_min, xthalfx4 vec_act_max)
 {
   WORD32 i, j;
 
@@ -388,6 +408,7 @@ static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
         AE_LAHX4IP(b0, alignb, pb_hx4);
       }
       acc00 = ADD_HX4(acc00, b0);
+      acc00 = MAX_HX4(MIN_HX4(acc00, vec_act_max), vec_act_min);
   
       AE_SAHX4IP(acc00, alignout, pout0_hx4);
     }
@@ -486,6 +507,8 @@ static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
       }
       acc00 = ADD_HX4(acc00, b0);
       acc10 = ADD_HX4(acc10, b1);
+      acc00 = MAX_HX4(MIN_HX4(acc00, vec_act_max), vec_act_min);
+      acc10 = MAX_HX4(MIN_HX4(acc10, vec_act_max), vec_act_min);
   
       AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(acc00)), pout0, sizeof(xthalf));
       AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(acc10)), pout0, sizeof(xthalf));
@@ -543,18 +566,77 @@ static void mtx_vecmpyf_bias_add_generic( WORD16 * pout,
       b0 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(b0_tmp));
     }
     out_temp = ADD_HX4(out_temp, b0);
+    out_temp = MAX_HX4(MIN_HX4(out_temp, vec_act_max), vec_act_min);
     
     AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(out_temp)), pout0, sizeof(xthalf));
   }
 }
 
+WORD32 xa_nn_matXvec_v2_f16xf16_f16(
+      WORD16  * __restrict__ p_out,
+      const WORD16  * __restrict__ p_mat,
+      const WORD16  * __restrict__ p_vec,
+      const WORD16  * __restrict__ p_bias,
+      WORD32 rows,
+      WORD32 cols,
+      WORD32 row_stride,
+      const WORD16  * p_out_activation_min,
+      const WORD16  * p_out_activation_max,
+      xa_dma_cfg_t *p_dma_cfg
+      )
+{
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_mat, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_mat, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD16), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((cols <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((row_stride < cols), -1);
+
+  /* Decode activation limits from f16 bit-patterns stored in WORD16.
+     Defaults: 0xFC00 = -inf (f16), 0x7C00 = +inf (f16). */
+  WORD16 act_min_bits = (p_out_activation_min != NULL) ? *p_out_activation_min : (WORD16)0xFC00;
+  WORD16 act_max_bits = (p_out_activation_max != NULL) ? *p_out_activation_max : (WORD16)0x7C00;
+  xthalfx4 vec_act_min = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(act_min_bits)));
+  xthalfx4 vec_act_max = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(act_max_bits)));
+
+  /* If matrix is aligned, use the fast aligned path for the bulk of rows */
+  if(((cols&7) == 0) && ((row_stride&7) == 0) && ((((unsigned)p_mat)&15) == 0) )
+  {
+    WORD32 rows_mul4 = rows&~0x03;
+    mtx_vecmpyf_bias_add_aligned(p_out, p_mat, p_vec, p_bias,
+                                  rows_mul4, cols, row_stride,
+                                  vec_act_min, vec_act_max);
+    rows    -= rows_mul4;
+    p_out   += rows_mul4;
+    if(p_bias != NULL) p_bias += rows_mul4;
+    p_mat   += (rows_mul4 * row_stride);
+  }
+
+  /* Generic path: handles unaligned cases and remaining rows */
+  if(rows != 0)
+  {
+    mtx_vecmpyf_bias_add_generic(p_out, p_mat, p_vec, p_bias,
+                                  rows, cols, row_stride,
+                                  vec_act_min, vec_act_max);
+  }
+
+  return 0;
+}
+
 WORD32 xa_nn_matXvec_f16xf16_f16(
-	WORD16  * __restrict__ p_out,                /*!< [out] f32b result: rows x 1 */
-	const WORD16  * __restrict__ p_mat1,         /*!< [in] f32b mat1: rows x cols1 */
-	const WORD16  * __restrict__ p_mat2,         /*!< [in] f32b mat2: rows x cols2 */
-	const WORD16  * __restrict__ p_vec1,         /*!< [in] f32b vec1: cols1 x 1 */
-	const WORD16  * __restrict__ p_vec2,         /*!< [in] f32b vec2: cols2 x 1 */
-	const WORD16  * __restrict__ p_bias,         /*!< [in] f32b bias: rows x 1 */
+	WORD16  * __restrict__ p_out,                /*!< [out] f16b result: rows x 1 */
+	const WORD16  * __restrict__ p_mat1,         /*!< [in] f16b mat1: rows x cols1 */
+	const WORD16  * __restrict__ p_mat2,         /*!< [in] f16b mat2: rows x cols2 */
+	const WORD16  * __restrict__ p_vec1,         /*!< [in] f16b vec1: cols1 x 1 */
+	const WORD16  * __restrict__ p_vec2,         /*!< [in] f16b vec2: cols2 x 1 */
+	const WORD16  * __restrict__ p_bias,         /*!< [in] f16b bias: rows x 1 */
 	WORD32 rows,                                  /*!< [in] number of rows */
 	WORD32 cols1,                                 /*!< [in] number of columns of mat1 */
 	WORD32 cols2,                                 /*!< [in] number of columns of mat2 */
@@ -562,7 +644,6 @@ WORD32 xa_nn_matXvec_f16xf16_f16(
 	WORD32 row_stride2                            /*!< [in] row stride for mat2 */
 	)
 {
-
   /* NULL pointer checks */
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
   XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
@@ -577,38 +658,22 @@ WORD32 xa_nn_matXvec_f16xf16_f16(
   XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
 
-  if(p_mat2 != NULL)
-  {
-    XA_NNLIB_ARG_CHK_PTR(p_vec2, -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_mat2, sizeof(WORD16), -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_vec2, sizeof(WORD16), -1);
-    /* Basic Parameter checks */
-    XA_NNLIB_ARG_CHK_COND((cols2 <= 0), -1);
-    XA_NNLIB_ARG_CHK_COND((row_stride2 < cols2), -1);
-  }
-
   if(p_mat2 != NULL){
     return -1; /* dual matXvec functionality not implemented. */
   }
 
-  /* If matrix rows are aligned, process (rows&~0x03) rows */
-  if(((cols1&7) == 0) && ((row_stride1&7) == 0) && ((((unsigned)p_mat1)&15) == 0) )
-  {
-    WORD32 rows_mul4 = rows&~0x03;
-    mtx_vecmpyf_bias_add_aligned(p_out, p_mat1, p_vec1, p_bias, rows_mul4, cols1, row_stride1);
-    rows = (rows%4);
-    p_out += rows_mul4;
-    p_bias += rows_mul4;
-    p_mat1 += (rows_mul4*row_stride1);
-  }
-
-  /* Generic case. Used also for remaining rows in case of aligned matrix-rows */
-  if(rows != 0)
-  {
-    mtx_vecmpyf_bias_add_generic(p_out, p_mat1, p_vec1, p_bias, rows, cols1, row_stride1);
-  }
-
-  return 0;
-
+  /* Delegate to v2 with no activation limits (NULL -> +/- inf defaults). */
+  return xa_nn_matXvec_v2_f16xf16_f16(
+      p_out,
+      p_mat1,
+      p_vec1,
+      p_bias,
+      rows,
+      cols1,
+      row_stride1,
+      NULL,   /* p_out_activation_min: no clamp */
+      NULL,   /* p_out_activation_max: no clamp */
+      NULL    /* p_dma_cfg */
+  );
 }
 #endif /* !HAVE_HP_VFPU */

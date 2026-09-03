@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -21,6 +21,7 @@
 ******************************************************************************/
 #include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_common.h"
+#include <math.h>
 
 #if !HAVE_VFPU
 DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_f32_circ,(
@@ -36,6 +37,21 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_f32_circ,(
     WORD32 bias_row_offset,
     WORD32 out_col_offset,
     WORD32 out_row_offset))
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_v2_f32_circ,(
+    FLOAT32 *__restrict__ p_out,
+    FLOAT32 * __restrict__ p_mat,
+    FLOAT32 * __restrict__ p_vec,
+    FLOAT32 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols,
+    WORD32 row_offset,
+    WORD32 vec_count,
+    WORD32 vec_offset,
+    WORD32 bias_row_offset,
+    WORD32 out_col_offset,
+    WORD32 out_row_offset,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max))
 #else /* #if !HAVE_VFPU */
 #ifdef ROW_UNROLL
 #undef ROW_UNROLL
@@ -43,6 +59,26 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_f32_circ,(
 #define ROW_UNROLL 4
 
 #define INCREMENT_IN_BYTES_FOR_FLOAT32      sizeof(FLOAT32)
+
+#define CLAMP_F32(value) \
+    { \
+        xtfloat value_pre = value; \
+        xtbool value_nan = xtbool2_extract_0(UN_SX2( \
+            AE_MOVXTFLOATX2_FROMXTFLOAT(value), \
+            AE_MOVXTFLOATX2_FROMXTFLOAT(value))); \
+        value = MAX_S(value, activation_min); \
+        value = MIN_S(value, activation_max); \
+        MOVT_S(value, value_pre, value_nan); \
+    }
+
+#define CLAMP_F32X2(value) \
+    { \
+        xtfloatx2 value_pre = value; \
+        xtbool2 value_nan = UN_SX2(value, value); \
+        value = XT_MAX_SX2(value, activation_min_x2); \
+        value = XT_MIN_SX2(value, activation_max_x2); \
+        MOVT_SX2(value, value_pre, value_nan); \
+    }
 
 #define SETUP_ACC_BATCH_ROW_FOR_f32(idx_row)\
     SETUP_ACC_BATCH_VEC_UNROLL(idx_row);
@@ -109,6 +145,7 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_f32_circ,(
 #define STORE_ACC_BATCH_AT_OUT_OFFSET_f32(idx_row,idx_vec) \
     /*p_out value stored in a tmp pointer to make it inout for ISA */\
     p_out_tmp = (xtfloat*)(&(p_out[(vec_itr + idx_vec)*out_col_offset + (m_itr + idx_row)*out_row_offset]));\
+    CLAMP_F32(_xtfloat_acc_ ##idx_row ##_ ##idx_vec);\
     AE_SSIP(_xtfloat_acc_ ##idx_row ##_ ##idx_vec,p_out_tmp,0);
 
 #define VEC_UNROLL 2
@@ -173,7 +210,7 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_matXvec_f32_circ,(
 #endif /* (ROW_UNROLL == 4 && VEC_UNROLL == 2)*/
 
 #if NO_AGGR_FLOAT_OPT
-WORD32 xa_nn_matXvec_f32_circ(
+WORD32 xa_nn_matXvec_v2_f32_circ(
     FLOAT32 *__restrict__ p_out,            /* output pointer */
     FLOAT32 *__restrict__ p_mat,            /* matrix: rows x cols */
     FLOAT32 *__restrict__ p_vec,            /* vec: cols x 1 */
@@ -184,9 +221,15 @@ WORD32 xa_nn_matXvec_f32_circ(
     WORD32 vec_count,                       /* number of vectors: 2, 4, 2n */
     WORD32 vec_offset,                      /* offset from current to next vector */
     WORD32 out_col_offset,
-    WORD32 out_row_offset)
+    WORD32 out_row_offset,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max)
 {
     xtfloat *p_bias = (xtfloat *)pt_bias;
+    xtfloat activation_min = *((xtfloat *)&out_activation_min);
+    xtfloat activation_max = *((xtfloat *)&out_activation_max);
+    xtfloatx2 activation_min_x2 = AE_MOVXTFLOATX2_FROMXTFLOAT(activation_min);
+    xtfloatx2 activation_max_x2 = AE_MOVXTFLOATX2_FROMXTFLOAT(activation_max);
     /* Iterators used in for loops */
     int m_itr, c_itr, vec_itr;
     xtfloat* p_out_tmp;
@@ -253,6 +296,10 @@ WORD32 xa_nn_matXvec_f32_circ(
                 }
                 ADD_SX2X2(acc_row0_vec01, acc_row0_vec23, acc_row0_vec01, acc_row0_vec23, _xtfloatx2_bias_01, _xtfloatx2_bias_23);
                 ADD_SX2X2(acc_row1_vec01, acc_row1_vec23, acc_row1_vec01, acc_row1_vec23, _xtfloatx2_bias_01, _xtfloatx2_bias_23);
+                CLAMP_F32X2(acc_row0_vec01);
+                CLAMP_F32X2(acc_row0_vec23);
+                CLAMP_F32X2(acc_row1_vec01);
+                CLAMP_F32X2(acc_row1_vec23);
  
                 p_out_tmp = (xtfloat*)(&(p_out[(vec_itr)*out_col_offset + (m_itr)*out_row_offset]));
                 AE_SSIP(HIGH_S(acc_row0_vec01),p_out_tmp,0);
@@ -314,6 +361,8 @@ WORD32 xa_nn_matXvec_f32_circ(
                     ADD_SX2X2(acc_row0_vec01, acc_row0_vec23, acc_row0_vec01, acc_row0_vec23, _xtfloatx2_temp_00, _xtfloatx2_temp_01);
                 }
                 ADD_SX2X2(acc_row0_vec01, acc_row0_vec23, acc_row0_vec01, acc_row0_vec23, _xtfloatx2_bias_01, _xtfloatx2_bias_23);
+                CLAMP_F32X2(acc_row0_vec01);
+                CLAMP_F32X2(acc_row0_vec23);
  
                 p_out_tmp = (xtfloat *)(&(p_out[(vec_itr)*out_col_offset + (m_itr)*out_row_offset]));
                 AE_SSIP(HIGH_S(acc_row0_vec01),p_out_tmp,0);
@@ -366,6 +415,8 @@ WORD32 xa_nn_matXvec_f32_circ(
                     ADD_SX2X2(acc_row0_vec0, acc_row0_vec1, acc_row0_vec0, acc_row0_vec1, _xtfloatx2_temp_00, _xtfloatx2_temp_20);
                 }
                 ADD_SX2X2(acc_row0_vec0, acc_row0_vec1, acc_row0_vec0, acc_row0_vec1, AE_MOVXTFLOATX2_FROMXTFLOAT(_xtfloat_bias_0), AE_MOVXTFLOATX2_FROMXTFLOAT(_xtfloat_bias_1));
+                CLAMP_F32X2(acc_row0_vec0);
+                CLAMP_F32X2(acc_row0_vec1);
  
                 p_out_tmp = (xtfloat *)(&(p_out[(vec_itr)*out_col_offset + (m_itr)*out_row_offset]));
                 AE_SSIP(HIGH_S(acc_row0_vec0),p_out_tmp,0);
@@ -409,6 +460,8 @@ WORD32 xa_nn_matXvec_f32_circ(
                     ADD_SX2X2(acc_row0_vec0, acc_row0_vec1, acc_row0_vec0, acc_row0_vec1, _xtfloatx2_temp_00, _xtfloatx2_temp_20);
                 }
                 ADD_SX2X2(acc_row0_vec0, acc_row0_vec1, acc_row0_vec0, acc_row0_vec1, AE_MOVXTFLOATX2_FROMXTFLOAT(_xtfloat_bias_0), AE_MOVXTFLOATX2_FROMXTFLOAT(_xtfloat_bias_1));
+                CLAMP_F32X2(acc_row0_vec0);
+                CLAMP_F32X2(acc_row0_vec1);
  
                 p_out_tmp = (xtfloat *)(&(p_out[(vec_itr)*out_col_offset + (m_itr)*out_row_offset]));
                 AE_SSIP(HIGH_S(acc_row0_vec0),p_out_tmp,0);
@@ -442,6 +495,7 @@ WORD32 xa_nn_matXvec_f32_circ(
                     _xtfloat_acc_0_0 = ADD_S(_xtfloat_acc_0_0,_xtfloat_temp_0_0);
                 }
                 _xtfloat_acc_0_0=ADD_S(_xtfloat_acc_0_0,_xtfloat_bias);
+                CLAMP_F32(_xtfloat_acc_0_0);
                 p_out_tmp = (xtfloat *)(&(p_out[(vec_itr)*out_col_offset + (m_itr)*out_row_offset]));
                 AE_SSIP(_xtfloat_acc_0_0,p_out_tmp,0);
             }
@@ -450,7 +504,7 @@ WORD32 xa_nn_matXvec_f32_circ(
     return 0;
 }
 #else /* NO_AGGR_FLOAT_OPT */
-WORD32 xa_nn_matXvec_f32_circ(
+WORD32 xa_nn_matXvec_v2_f32_circ(
     FLOAT32 *__restrict__ p_out,            /* output pointer */
     FLOAT32 *__restrict__ p_mat,            /* matrix: rows x cols */
     FLOAT32 *__restrict__ p_vec,            /* vec: cols x 1 */
@@ -461,9 +515,13 @@ WORD32 xa_nn_matXvec_f32_circ(
     WORD32 vec_count,                       /* number of vectors: 2, 4, 2n */
     WORD32 vec_offset,                      /* offset from current to next vector */
     WORD32 out_col_offset,
-    WORD32 out_row_offset)
+    WORD32 out_row_offset,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max)
 {
     xtfloat *p_bias = (xtfloat *)pt_bias;
+    xtfloat activation_min = *((xtfloat *)&out_activation_min);
+    xtfloat activation_max = *((xtfloat *)&out_activation_max);
     /* Iterators used in for loops */
     int m_itr, c_itr, vec_itr;
     xtfloat* p_out_tmp;
@@ -721,6 +779,11 @@ WORD32 xa_nn_matXvec_f32_circ(
                     _xtfloat_acc_1_0=ADD_S(_xtfloat_acc_1_0,AE_MOVXTFLOAT_FROMXTFLOATX2(_xtfloat_bias_0));
                     _xtfloat_acc_1_1=ADD_S(_xtfloat_acc_1_1,AE_MOVXTFLOAT_FROMXTFLOATX2(_xtfloat_bias_1));
 
+                    CLAMP_F32(_xtfloat_acc_0_0);
+                    CLAMP_F32(_xtfloat_acc_0_1);
+                    CLAMP_F32(_xtfloat_acc_1_0);
+                    CLAMP_F32(_xtfloat_acc_1_1);
+
                     p_out_tmp = (xtfloat*)(&(p_out[(vec_itr)*out_col_offset + (m_itr)*out_row_offset]));
                     AE_SSIP(_xtfloat_acc_0_0,p_out_tmp,0);
                     p_out_tmp = (xtfloat*)(&(p_out[(vec_itr)*out_col_offset + (m_itr+1)*out_row_offset]));
@@ -763,6 +826,8 @@ WORD32 xa_nn_matXvec_f32_circ(
                     }
                     _xtfloatx2_acc_0_0=ADD_S(_xtfloatx2_acc_0_0,_xtfloat_bias_0);
                     _xtfloatx2_acc_0_1=ADD_S(_xtfloatx2_acc_0_1,_xtfloat_bias_1);
+                    CLAMP_F32(_xtfloatx2_acc_0_0);
+                    CLAMP_F32(_xtfloatx2_acc_0_1);
                     p_out_tmp = (xtfloat*)(&(p_out[(vec_itr)*out_col_offset + (m_itr)*out_row_offset]));
                     AE_SSIP(_xtfloatx2_acc_0_0,p_out_tmp,0);
                     p_out_tmp = (xtfloat*)(&(p_out[(vec_itr+1)*out_col_offset + (m_itr)*out_row_offset]));
@@ -793,6 +858,7 @@ WORD32 xa_nn_matXvec_f32_circ(
                         MADD_S(_xtfloatx2_acc_0_0, _xtfloatx2_vec_batch_0, _xtfloatx2_mat_0);
                     }
                     _xtfloatx2_acc_0_0=ADD_S(_xtfloatx2_acc_0_0,_xtfloat_bias);
+                    CLAMP_F32(_xtfloatx2_acc_0_0);
                     p_out_tmp = (xtfloat*)(&(p_out[(vec_itr)*out_col_offset + (m_itr)*out_row_offset]));
                     AE_SSIP(_xtfloatx2_acc_0_0,p_out_tmp,0);
                 }
@@ -802,5 +868,27 @@ WORD32 xa_nn_matXvec_f32_circ(
     return 0;
 }
 #endif /* NO_AGGR_FLOAT_OPT */
+
+WORD32 xa_nn_matXvec_f32_circ(
+    FLOAT32 *__restrict__ p_out,
+    FLOAT32 *__restrict__ p_mat,
+    FLOAT32 *__restrict__ p_vec,
+    FLOAT32 *__restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols,
+    WORD32 row_offset,
+    WORD32 vec_count,
+    WORD32 vec_offset,
+    WORD32 out_col_offset,
+    WORD32 out_row_offset)
+{
+    return xa_nn_matXvec_v2_f32_circ(
+        p_out, p_mat, p_vec, p_bias,
+        rows, cols, row_offset, vec_count, vec_offset,
+        out_col_offset, out_row_offset, -INFINITY, INFINITY);
+}
+
+    #undef CLAMP_F32
+    #undef CLAMP_F32X2
 
 #endif /* #if !HAVE_VFPU */

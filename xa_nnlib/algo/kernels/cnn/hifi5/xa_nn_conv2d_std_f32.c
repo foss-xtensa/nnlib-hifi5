@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -19,6 +19,7 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ******************************************************************************/
+#include <math.h>
 #include <string.h>
 #include "xa_type_def.h"
 #include "xa_nnlib_common_fpu.h"
@@ -46,6 +47,28 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_conv2d_std_f32,(
     WORD32 out_width,
     WORD32 out_data_format,
     VOID *p_handle))
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32 xa_nn_conv2d_std_v2_f32(
+      FLOAT32* __restrict__ p_out,
+      const FLOAT32* __restrict__ p_inp,
+      const FLOAT32* __restrict__ p_kernel,
+      const FLOAT32* __restrict__ p_bias,
+      WORD32 input_height,
+      WORD32 input_width,
+      WORD32 input_channels,
+      WORD32 kernel_height,
+      WORD32 kernel_width,
+      WORD32 out_channels,
+      WORD32 x_stride,
+      WORD32 y_stride,
+      WORD32 x_padding,
+      WORD32 y_padding,
+      WORD32 out_height,
+      WORD32 out_width,
+      WORD32 out_data_format,
+      VOID *p_scratch,
+      FLOAT32 out_activation_min,
+      FLOAT32 out_activation_max,
+      xa_dma_cfg_t *p_dma_cfg))
 #else /* #if !HAVE_VFPU */
 
 static WORD32 conv_x_left_pad(
@@ -59,6 +82,8 @@ static WORD32 conv_x_left_pad(
     WORD32 out_width_offset,
     WORD32 out_height_offset,
     FLOAT32 *p_bias,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
     FLOAT32 *p_out)
 {
   WORD32 i,j,k;
@@ -74,7 +99,12 @@ static WORD32 conv_x_left_pad(
       {
         for(k=0;k<out_channels;k++)
         {
-          p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = p_bias[k];
+          FLOAT32 out_value = p_bias[k];
+          if(!isnan(out_value))
+          {
+            out_value = fminf(fmaxf(out_value, out_activation_min), out_activation_max);
+          }
+          p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = out_value;
         }
       }
     }
@@ -85,7 +115,8 @@ static WORD32 conv_x_left_pad(
       {
         for(k=0;k<out_channels;k++)
         {
-          p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = 0.0f;
+          p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] =
+              fminf(fmaxf(0.0f, out_activation_min), out_activation_max);
         }
       }
     }
@@ -104,6 +135,8 @@ static WORD32 conv_x_right_pad(
     WORD32 out_width_offset,
     WORD32 out_height_offset,
     FLOAT32 *p_bias,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
     FLOAT32 *p_out)
 {
   WORD32 i,j,k;
@@ -118,7 +151,12 @@ static WORD32 conv_x_right_pad(
       {
         for(k=0;k<out_channels;k++)
         {
-          p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = p_bias[k];
+          FLOAT32 out_value = p_bias[k];
+          if(!isnan(out_value))
+          {
+            out_value = fminf(fmaxf(out_value, out_activation_min), out_activation_max);
+          }
+          p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = out_value;
         }
       }
     }
@@ -129,7 +167,8 @@ static WORD32 conv_x_right_pad(
       {
         for(k=0;k<out_channels;k++)
         {
-          p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] = 0.0f;
+          p_out[i*out_height_offset+j*out_width_offset+k*out_channels_offset] =
+              fminf(fmaxf(0.0f, out_activation_min), out_activation_max);
         }
       }
     }
@@ -137,7 +176,7 @@ static WORD32 conv_x_right_pad(
   return out_width_over_x_r_pad;
 }
 
-WORD32 xa_nn_conv2d_std_f32(
+WORD32 xa_nn_conv2d_std_v2_f32(
     FLOAT32* __restrict__ p_out,
     const FLOAT32* __restrict__ p_inp,
     const FLOAT32* __restrict__ p_kernel,
@@ -155,7 +194,10 @@ WORD32 xa_nn_conv2d_std_f32(
     WORD32 out_height,
     WORD32 out_width,
     WORD32 out_data_format,
-    VOID *p_scratch)
+    VOID *p_scratch,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
+    struct _xa_dma_cfg_t *p_dma_cfg)
 {
   /* NULL pointer checks */
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
@@ -179,6 +221,9 @@ WORD32 xa_nn_conv2d_std_f32(
   XA_NNLIB_ARG_CHK_COND((y_padding < 0 || x_padding < 0), -1);
   XA_NNLIB_ARG_CHK_COND((out_height <= 0 || out_width <= 0), -1);
   XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
+  XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min), -1);
+
+  (void)p_dma_cfg;
   
   /* Interchange height and width dimensions when i_h = k_h = o_h = 1 for better throughput */
   WORD32 inp_h, inp_w, ker_h, ker_w, x_str, y_str, x_pad, y_pad, out_h, out_w;
@@ -214,7 +259,7 @@ WORD32 xa_nn_conv2d_std_f32(
   VOID *pp_inp = (VOID *)p_inp;
 
   xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_scratch;
-  xa_nn_conv2d_std_init_state((void*)p_state,(void*)p_kernel,inp_h,input_channels,ker_h,ker_w,x_str,y_str,y_pad,out_h,-1);
+  xa_nn_conv2d_std_init_state((void*)p_state,(void*)p_kernel,inp_h,input_channels,ker_h,ker_w,out_channels,x_str,y_str,y_pad,out_h,-1);
 
   WORD32 out_channels_offset = out_data_format ? out_h * out_w : 1;
   WORD32 out_height_offset = out_data_format ? out_w : out_w * out_channels;
@@ -227,7 +272,7 @@ WORD32 xa_nn_conv2d_std_f32(
   WORD32 out_width_over_x_pad = 0;
   if(x_padding_var >= ker_w)
   {
-    out_width_over_x_pad = conv_x_left_pad(x_pad, ker_w, x_str, out_w, out_h, out_channels, out_channels_offset, out_width_offset, out_height_offset, (FLOAT32 *)p_bias, p_out);
+    out_width_over_x_pad = conv_x_left_pad(x_pad, ker_w, x_str, out_w, out_h, out_channels, out_channels_offset, out_width_offset, out_height_offset, (FLOAT32 *)p_bias, out_activation_min, out_activation_max, p_out);
     x_padding_var -= out_width_over_x_pad * x_str;
   }
 
@@ -239,7 +284,7 @@ WORD32 xa_nn_conv2d_std_f32(
   x_r_pad = x_r_pad < 0 ? 0 : x_r_pad;
   if(x_r_pad >= ker_w)
   {
-    out_width_over_x_r_pad = conv_x_right_pad(x_pad, inp_w, x_str, out_w, out_h, out_channels, out_channels_offset, out_width_offset, out_height_offset, (FLOAT32 *)p_bias, p_out);
+    out_width_over_x_r_pad = conv_x_right_pad(x_pad, inp_w, x_str, out_w, out_h, out_channels, out_channels_offset, out_width_offset, out_height_offset, (FLOAT32 *)p_bias, out_activation_min, out_activation_max, p_out);
   }
 
   /* When kernel convolves over input region */
@@ -264,7 +309,7 @@ WORD32 xa_nn_conv2d_std_f32(
     idx_beg_inp_width_pad += x_str;
 
     // Convolution using matXvec with matrix as circular buffer
-    xa_nn_matXvec_f32_circ
+    xa_nn_matXvec_v2_f32_circ
       (p_out /* output */
        ,p_state->cir_buf.p_curr/* matrix: rows x cols */
        ,(FLOAT32 *)p_kernel /* vec: cols */
@@ -276,6 +321,8 @@ WORD32 xa_nn_conv2d_std_f32(
        ,input_channels_pad * ker_w * ker_h /* vec_offset */
        ,out_channels_offset /* out_col_offset */
        ,out_height_offset /* out_row_offset */
+      ,out_activation_min
+      ,out_activation_max
       );
 
     p_out += out_width_offset;
@@ -283,5 +330,48 @@ WORD32 xa_nn_conv2d_std_f32(
 
   return 0;
 }
-#endif /* #if !HAVE_VFPU */
 
+WORD32 xa_nn_conv2d_std_f32(
+    FLOAT32* __restrict__ p_out,
+    const FLOAT32* __restrict__ p_inp,
+    const FLOAT32* __restrict__ p_kernel,
+    const FLOAT32* __restrict__ p_bias,
+    WORD32 input_height,
+    WORD32 input_width,
+    WORD32 input_channels,
+    WORD32 kernel_height,
+    WORD32 kernel_width,
+    WORD32 out_channels,
+    WORD32 x_stride,
+    WORD32 y_stride,
+    WORD32 x_padding,
+    WORD32 y_padding,
+    WORD32 out_height,
+    WORD32 out_width,
+    WORD32 out_data_format,
+    VOID *p_scratch)
+{
+  return xa_nn_conv2d_std_v2_f32(
+      p_out,
+      p_inp,
+      p_kernel,
+      p_bias,
+      input_height,
+      input_width,
+      input_channels,
+      kernel_height,
+      kernel_width,
+      out_channels,
+      x_stride,
+      y_stride,
+      x_padding,
+      y_padding,
+      out_height,
+      out_width,
+      out_data_format,
+      p_scratch,
+      -INFINITY,
+      INFINITY,
+      NULL);
+}
+#endif /* #if !HAVE_VFPU */

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -75,6 +75,7 @@ VOID xa_nn_conv2d_std_init_state(
     WORD32 input_channels,
     WORD32 kernel_height,
     WORD32 kernel_width,
+    WORD32 output_channels,
     WORD32 x_stride,
     WORD32 y_stride,
     WORD32 y_padding,
@@ -168,6 +169,21 @@ WORD32 xa_nn_matXvec_f32_circ(
     WORD32 out_col_offset,
     WORD32 out_row_offset);
 
+WORD32 xa_nn_matXvec_v2_f32_circ(
+    FLOAT32 * __restrict__ p_out,
+    FLOAT32 * __restrict__ p_mat,
+    FLOAT32 * __restrict__ p_vec,
+    FLOAT32 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols,
+    WORD32 row_offset,
+    WORD32 vec_count,
+    WORD32 vec_offset,
+    WORD32 out_col_offset,
+    WORD32 out_row_offset,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max);
+
 #if HAVE_HP_VFPU
 typedef xthalf FLOAT16;
 WORD32 xa_nn_matXvec_f16_circ(
@@ -181,7 +197,9 @@ WORD32 xa_nn_matXvec_f16_circ(
     WORD32 vec_count,
     WORD32 vec_offset,
     WORD32 out_col_offset,
-    WORD32 out_row_offset);
+    WORD32 out_row_offset,
+    WORD16 out_activation_min,
+    WORD16 out_activation_max);
 #endif
 
 WORD32 xa_nn_matXvec_asym8xasym8_asym8_circ(

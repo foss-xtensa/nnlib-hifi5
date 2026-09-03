@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -57,6 +57,9 @@
 #include "../include/tanh_fp16_tbl.h"
  
 #define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+/* Block size, blkLen <= blkSize */
+#define blkSize_blkLen ((MAX_ALLOCA_SZ / 2) * 2 * sz_f16)
+#define blkSize_scr    ((MAX_ALLOCA_SZ / 2) * 2 * sz_f16)
 /*-------------------------------------------------------------------------
   Hyperbolic Tangent
   The functions compute the hyperbolic tangent of input argument. 32-bit
@@ -102,13 +105,12 @@ static void __tanh_fp16(float16_t * y, const float16_t * x, int N, float16_t* sc
   /* Current block index; overall number of blocks; number of values in the current block */
   int n, M;
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ / 2 * 2 * sz_f16;
   NASSERT_ALIGN16(scr);
   NASSERT(N % 16 == 0);
 
   for (; N>0; x += M, y += M, N -= M)
   {
-    M = XT_MIN(N, blkSize);
+    M = XT_MIN(N, blkSize_blkLen);
     pX   = (const xthalfx8*)(x);
     S_wr = (      xthalfx8*)(scr);
     X_va = AE_LA128_PP(pX);
@@ -344,10 +346,8 @@ void xa_nnlib_vec_tanh_fp16(float16_t* restrict y, const float16_t* restrict x, 
   xthalfx8  * restrict pX;
   xthalfx8  * restrict pY;
   int n;
-  /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ / 2 * 2 * sz_f16;
   /* Allocate a fixed-size scratch area on the stack. */
-  float16_t ALIGN(32) scr[blkSize];
+  float16_t ALIGN(32) scr[blkSize_scr];
 
   if (N <= 0) return;
   if (N & 15)

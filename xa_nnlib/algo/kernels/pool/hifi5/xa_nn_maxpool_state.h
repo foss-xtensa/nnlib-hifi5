@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -20,8 +20,8 @@
 
 ******************************************************************************/
 
-#ifndef __XA_NN_AVGPOOL_STATE_H__
-#define __XA_NN_AVGPOOL_STATE_H__
+#ifndef __XA_NN_MAXPOOL_STATE_H__
+#define __XA_NN_MAXPOOL_STATE_H__
 
 #define ALIGNMENT   16   /* 16 bytes alignment */
 
@@ -50,6 +50,22 @@ WORD32 xa_nn_maxpool_init(
 void xa_nn_maxpool_f32_hwc(
       FLOAT32* __restrict__ p_out,
 const FLOAT32* __restrict__ p_inp,
+      WORD32   input_height,
+      WORD32   input_width,
+      WORD32   input_channels,
+      WORD32   kernel_height,
+      WORD32   kernel_width,
+      WORD32   x_stride,
+      WORD32   y_stride,
+      WORD32   x_padding,
+      WORD32   y_padding,
+      WORD32   out_height,
+      WORD32   out_width,
+      pVOID    p_scratch_in);
+
+void xa_nn_maxpool_f16_hwc(
+      WORD16* __restrict__ p_out,
+const WORD16* __restrict__ p_inp,
       WORD32   input_height,
       WORD32   input_width,
       WORD32   input_channels,
@@ -111,4 +127,23 @@ const WORD16* __restrict__ p_inp,
       WORD32   out_width,
       pVOID    p_scratch_in);
 
-#endif /* #ifndef __XA_NN_AVGPOOL_STATE_H__ */
+/* NHWC f16 max-pool with packed argmax indices, VALID padding only.
+ * act_min_bits / act_max_bits : raw IEEE-754 fp16 bit patterns (WORD16).
+ * ID encoding: p_out_Id[oh,ow,c] = (best_ky << 4) | (best_kx & 0xF) */
+void xa_nn_maxpoolId_v2_f16_nhwc(
+      WORD16  * __restrict__ p_out,
+      UWORD8  * __restrict__ p_out_Id,
+const WORD16  * __restrict__ p_inp,
+      WORD32   input_height,
+      WORD32   input_width,
+      WORD32   input_channels,
+      WORD32   kernel_height,
+      WORD32   kernel_width,
+      WORD32   x_stride,
+      WORD32   y_stride,
+      WORD32   out_height,
+      WORD32   out_width,
+      WORD16   act_min_bits,
+      WORD16   act_max_bits);
+
+#endif /* #ifndef __XA_NN_MAXPOOL_STATE_H__ */

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -22,20 +22,37 @@
 #include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_common.h"
 #include "xa_nnlib_common_macros_hifi5.h"
+#include <math.h>
+#include <stdint.h>
 
 #if !HAVE_VFPU
-DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matmul_f32xf32_f32,(
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32 xa_nn_matmul_f32xf32_f32(
+    FLOAT32 * __restrict__ p_out,
+    const FLOAT32 * __restrict__ p_mat1,
+    const FLOAT32 * __restrict__ p_mat2,
+    const FLOAT32 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols,
+    WORD32 row_stride,
+    WORD32 vec_count,
+    WORD32 vec_offset,
+    WORD32 out_offset,
+    WORD32 out_stride))
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matmul_v2_f32xf32_f32,(
     FLOAT32 * __restrict__ p_out,        
     const FLOAT32 * __restrict__ p_mat1, 
-    const FLOAT32 * __restrict__ p_vec1, 
+    const FLOAT32 * __restrict__ p_mat2,
     const FLOAT32 * __restrict__ p_bias, 
     WORD32 rows,
-    WORD32 cols1,
-    WORD32 row_stride1,                   
+    WORD32 cols,
+    WORD32 row_stride,
     WORD32 vec_count,                     
     WORD32 vec_offset,
     WORD32 out_offset,
-    WORD32 out_stride))                      
+    WORD32 out_stride,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg))
 
 #else
 
@@ -224,35 +241,51 @@ static inline void _xa_nn_dot_product_1_row_4_vecs_unaligned
   *out_1_0 = z1;
 }
 
-WORD32 xa_nn_matmul_f32xf32_f32(
+WORD32 xa_nn_matmul_v2_f32xf32_f32(
     FLOAT32 * __restrict__ p_out,          
     const FLOAT32 * __restrict__ p_mat1,   
-    const FLOAT32 * __restrict__ p_vec1,   
-    const FLOAT32 * __restrict__ pt_bias,   
+    const FLOAT32 * __restrict__ p_mat2,
+    const FLOAT32 * __restrict__ pt_bias,
     WORD32 rows,
-    WORD32 cols1,
-    WORD32 row_stride1,                    
+    WORD32 cols,
+    WORD32 row_stride,
     WORD32 vec_count,                      
     WORD32 vec_offset,
     WORD32 out_offset,
-    WORD32 out_stride)                      
+    WORD32 out_stride,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
 {
+    const FLOAT32 * __restrict__ p_vec1 = p_mat2;
+    WORD32 cols1 = cols;
+    WORD32 row_stride1 = row_stride;
     /* NULL pointer checks */
     XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_mat1, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_mat2, -1);
     /* Pointer alignment checks */
     XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(FLOAT32), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(FLOAT32), -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(FLOAT32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_mat2, sizeof(FLOAT32), -1);
     XA_NNLIB_ARG_CHK_ALIGN(pt_bias, sizeof(FLOAT32), -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+    XA_NNLIB_ARG_CHK_COND((vec_count <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((vec_offset == 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_offset == 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_stride == 0), -1);
+    XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min), -1);
+
+    (void)p_dma_cfg;
   
     xtfloat *p_bias = (xtfloat*)pt_bias;
+    FLOAT32 activation_min_vec[2] = { out_activation_min, out_activation_min };
+    FLOAT32 activation_max_vec[2] = { out_activation_max, out_activation_max };
+    xtfloatx2 activation_min = XT_LSX2I((xtfloatx2 *)activation_min_vec, 0);
+    xtfloatx2 activation_max = XT_LSX2I((xtfloatx2 *)activation_max_vec, 0);
     /* Iterators used in for loops */
     int m_itr, c_itr, vec_itr;
     /* Assign initial value so this value will be used in trailing loop */
@@ -304,6 +337,25 @@ WORD32 xa_nn_matmul_f32xf32_f32(
               ,row_stride1
               ,vec_offset
               );
+
+            {
+              xtfloatx2 z0_pre = z0, z1_pre = z1, z2_pre = z2, z3_pre = z3;
+              xtfloatx2 z4_pre = z4, z5_pre = z5, z6_pre = z6, z7_pre = z7;
+              xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1), nan2 = UN_SX2(z2, z2), nan3 = UN_SX2(z3, z3);
+              xtbool2 nan4 = UN_SX2(z4, z4), nan5 = UN_SX2(z5, z5), nan6 = UN_SX2(z6, z6), nan7 = UN_SX2(z7, z7);
+              z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+              z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+              z2 = XT_MIN_SX2(XT_MAX_SX2(z2, activation_min), activation_max);
+              z3 = XT_MIN_SX2(XT_MAX_SX2(z3, activation_min), activation_max);
+              z4 = XT_MIN_SX2(XT_MAX_SX2(z4, activation_min), activation_max);
+              z5 = XT_MIN_SX2(XT_MAX_SX2(z5, activation_min), activation_max);
+              z6 = XT_MIN_SX2(XT_MAX_SX2(z6, activation_min), activation_max);
+              z7 = XT_MIN_SX2(XT_MAX_SX2(z7, activation_min), activation_max);
+              MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+              MOVT_SX2(z2, z2_pre, nan2); MOVT_SX2(z3, z3_pre, nan3);
+              MOVT_SX2(z4, z4_pre, nan4); MOVT_SX2(z5, z5_pre, nan5);
+              MOVT_SX2(z6, z6_pre, nan6); MOVT_SX2(z7, z7_pre, nan7);
+            }
             
             XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z0,z0)), p_out_0_ii, 4*out_stride*sizeof(xtfloat));
             XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(z0), p_out_0_ii, 4*out_stride*sizeof(xtfloat));
@@ -350,6 +402,14 @@ WORD32 xa_nn_matmul_f32xf32_f32(
             ,cols1
             ,vec_offset
             );
+
+          {
+            xtfloatx2 z0_pre = z0, z1_pre = z1;
+            xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1);
+            z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+            z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+            MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+          }
          
           AE_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z0,z0)), p_out_0, out_stride*sizeof(xtfloat));
           AE_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(z0), p_out_1, out_stride*sizeof(xtfloat));
@@ -387,6 +447,14 @@ WORD32 xa_nn_matmul_f32xf32_f32(
                 ,cols1
                 ,row_stride1
                 );
+
+              {
+                xtfloatx2 z0_pre = z0, z1_pre = z1;
+                xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1);
+                z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+                z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+                MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+              }
               
               XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z0,z0)), p_out_0_ii, 4*out_stride*sizeof(xtfloat));
               XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(z0), p_out_0_ii, 4*out_stride*sizeof(xtfloat));
@@ -424,6 +492,13 @@ WORD32 xa_nn_matmul_f32xf32_f32(
             XT_LSIP(bias, pbias, 4);
             acc_row0_vec0 = AE_MOVXTFLOATX2_FROMXTFLOAT(ADD_S(AE_MOVXTFLOAT_FROMXTFLOATX2(acc_row0_vec0), bias));
           }
+
+          {
+            xtfloatx2 acc_row0_vec0_pre = acc_row0_vec0;
+            xtbool2 nan0 = UN_SX2(acc_row0_vec0, acc_row0_vec0);
+            acc_row0_vec0 = XT_MIN_SX2(XT_MAX_SX2(acc_row0_vec0, activation_min), activation_max);
+            MOVT_SX2(acc_row0_vec0, acc_row0_vec0_pre, nan0);
+          }
          
           XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(acc_row0_vec0), p_out_0, out_stride*sizeof(xtfloat));
         }
@@ -454,6 +529,8 @@ static inline void spfunc_cols_mul4_out_offset1
     ,WORD32     vec_count
     ,WORD32     cols1
     ,WORD32     out_stride
+    ,xtfloatx2  activation_min
+    ,xtfloatx2  activation_max
     )
 {
   int vec_itr, m_itr, c_itr;
@@ -575,6 +652,25 @@ static inline void spfunc_cols_mul4_out_offset1
       z7 = ADD_SX2(z7, y2);
       z7 = ADD_SX2(z7, y3);
 
+      {
+        xtfloatx2 z0_pre = z0, z1_pre = z1, z2_pre = z2, z3_pre = z3;
+        xtfloatx2 z4_pre = z4, z5_pre = z5, z6_pre = z6, z7_pre = z7;
+        xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1), nan2 = UN_SX2(z2, z2), nan3 = UN_SX2(z3, z3);
+        xtbool2 nan4 = UN_SX2(z4, z4), nan5 = UN_SX2(z5, z5), nan6 = UN_SX2(z6, z6), nan7 = UN_SX2(z7, z7);
+        z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+        z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+        z2 = XT_MIN_SX2(XT_MAX_SX2(z2, activation_min), activation_max);
+        z3 = XT_MIN_SX2(XT_MAX_SX2(z3, activation_min), activation_max);
+        z4 = XT_MIN_SX2(XT_MAX_SX2(z4, activation_min), activation_max);
+        z5 = XT_MIN_SX2(XT_MAX_SX2(z5, activation_min), activation_max);
+        z6 = XT_MIN_SX2(XT_MAX_SX2(z6, activation_min), activation_max);
+        z7 = XT_MIN_SX2(XT_MAX_SX2(z7, activation_min), activation_max);
+        MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+        MOVT_SX2(z2, z2_pre, nan2); MOVT_SX2(z3, z3_pre, nan3);
+        MOVT_SX2(z4, z4_pre, nan4); MOVT_SX2(z5, z5_pre, nan5);
+        MOVT_SX2(z6, z6_pre, nan6); MOVT_SX2(z7, z7_pre, nan7);
+      }
+
       AE_SSX2X2_IP(z0, z1, p_out_0, 16);
       AE_SSX2X2_IP(z2, z3, p_out_1, 16);
       AE_SSX2X2_IP(z4, z5, p_out_2, 16);
@@ -629,6 +725,19 @@ static inline void spfunc_cols_mul4_out_offset1
       acc_row1_vec0 = AE_MOVXTFLOATX2_FROMXTFLOAT(XT_RADD_SX2(acc_row1_vec0));
       acc_row2_vec0 = AE_MOVXTFLOATX2_FROMXTFLOAT(XT_RADD_SX2(acc_row2_vec0));
       acc_row3_vec0 = AE_MOVXTFLOATX2_FROMXTFLOAT(XT_RADD_SX2(acc_row3_vec0));
+
+      {
+        xtfloatx2 acc_row0_vec0_pre = acc_row0_vec0, acc_row1_vec0_pre = acc_row1_vec0;
+        xtfloatx2 acc_row2_vec0_pre = acc_row2_vec0, acc_row3_vec0_pre = acc_row3_vec0;
+        xtbool2 nan0 = UN_SX2(acc_row0_vec0, acc_row0_vec0), nan1 = UN_SX2(acc_row1_vec0, acc_row1_vec0);
+        xtbool2 nan2 = UN_SX2(acc_row2_vec0, acc_row2_vec0), nan3 = UN_SX2(acc_row3_vec0, acc_row3_vec0);
+        acc_row0_vec0 = XT_MIN_SX2(XT_MAX_SX2(acc_row0_vec0, activation_min), activation_max);
+        acc_row1_vec0 = XT_MIN_SX2(XT_MAX_SX2(acc_row1_vec0, activation_min), activation_max);
+        acc_row2_vec0 = XT_MIN_SX2(XT_MAX_SX2(acc_row2_vec0, activation_min), activation_max);
+        acc_row3_vec0 = XT_MIN_SX2(XT_MAX_SX2(acc_row3_vec0, activation_min), activation_max);
+        MOVT_SX2(acc_row0_vec0, acc_row0_vec0_pre, nan0); MOVT_SX2(acc_row1_vec0, acc_row1_vec0_pre, nan1);
+        MOVT_SX2(acc_row2_vec0, acc_row2_vec0_pre, nan2); MOVT_SX2(acc_row3_vec0, acc_row3_vec0_pre, nan3);
+      }
   
       AE_SSIP(AE_MOVXTFLOAT_FROMXTFLOATX2(acc_row0_vec0), p_out_0, 4);
       AE_SSIP(AE_MOVXTFLOAT_FROMXTFLOATX2(acc_row1_vec0), p_out_1, 4);
@@ -648,6 +757,8 @@ static inline void spfunc_cols_mul4_out_stride1
     ,WORD32     vec_count
     ,WORD32     cols1
     ,WORD32     out_offset
+    ,xtfloatx2  activation_min
+    ,xtfloatx2  activation_max
     )
 {
   int vec_itr, m_itr, c_itr;
@@ -767,6 +878,25 @@ static inline void spfunc_cols_mul4_out_stride1
       z7 = ADD_SX2(z7, y2);
       z7 = ADD_SX2(z7, y3);
 
+      {
+        xtfloatx2 z0_pre = z0, z1_pre = z1, z2_pre = z2, z3_pre = z3;
+        xtfloatx2 z4_pre = z4, z5_pre = z5, z6_pre = z6, z7_pre = z7;
+        xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1), nan2 = UN_SX2(z2, z2), nan3 = UN_SX2(z3, z3);
+        xtbool2 nan4 = UN_SX2(z4, z4), nan5 = UN_SX2(z5, z5), nan6 = UN_SX2(z6, z6), nan7 = UN_SX2(z7, z7);
+        z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+        z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+        z2 = XT_MIN_SX2(XT_MAX_SX2(z2, activation_min), activation_max);
+        z3 = XT_MIN_SX2(XT_MAX_SX2(z3, activation_min), activation_max);
+        z4 = XT_MIN_SX2(XT_MAX_SX2(z4, activation_min), activation_max);
+        z5 = XT_MIN_SX2(XT_MAX_SX2(z5, activation_min), activation_max);
+        z6 = XT_MIN_SX2(XT_MAX_SX2(z6, activation_min), activation_max);
+        z7 = XT_MIN_SX2(XT_MAX_SX2(z7, activation_min), activation_max);
+        MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+        MOVT_SX2(z2, z2_pre, nan2); MOVT_SX2(z3, z3_pre, nan3);
+        MOVT_SX2(z4, z4_pre, nan4); MOVT_SX2(z5, z5_pre, nan5);
+        MOVT_SX2(z6, z6_pre, nan6); MOVT_SX2(z7, z7_pre, nan7);
+      }
+
       AE_SSX2X2_IP(z0, z1, p_out_0, 16);
       AE_SSX2X2_IP(z2, z3, p_out_1, 16);
       AE_SSX2X2_IP(z4, z5, p_out_2, 16);
@@ -822,6 +952,14 @@ static inline void spfunc_cols_mul4_out_stride1
       y3 = XT_SEL32_LH_SX2(acc_row2_vec0, acc_row3_vec0);
       z1 = ADD_SX2(z1, y2);
       z1 = ADD_SX2(z1, y3);
+
+      {
+        xtfloatx2 z0_pre = z0, z1_pre = z1;
+        xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1);
+        z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+        z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+        MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+      }
 
       AE_SSX2X2_IP(z0, z1, p_out_0, 16);
     }
@@ -1190,34 +1328,49 @@ static inline void _xa_nn_dot_product_1_row_4_vecs_unaligned
   *out_1_0 = z1;
 }
 
-WORD32 xa_nn_matmul_f32xf32_f32(
+WORD32 xa_nn_matmul_v2_f32xf32_f32(
     FLOAT32 * __restrict__ p_out,          
     const FLOAT32 * __restrict__ p_mat1,   
-    const FLOAT32 * __restrict__ p_vec1,   
+    const FLOAT32 * __restrict__ p_mat2,
     const FLOAT32 * __restrict__ p_bias,   
     WORD32 rows,
-    WORD32 cols1,
-    WORD32 row_stride1,                    
+    WORD32 cols,
+    WORD32 row_stride,
     WORD32 vec_count,                      
     WORD32 vec_offset,
     WORD32 out_offset,
-    WORD32 out_stride)                      
+    WORD32 out_stride,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
 {
+    const FLOAT32 * __restrict__ p_vec1 = p_mat2;
+    WORD32 cols1 = cols;
+    WORD32 row_stride1 = row_stride;
     /* NULL pointer checks */
     XA_NNLIB_ARG_CHK_PTR(p_out, -1);
     /* Pointer alignment checks */
     XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(FLOAT32), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_mat1, sizeof(FLOAT32), -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_vec1, sizeof(FLOAT32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_mat2, sizeof(FLOAT32), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(FLOAT32), -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((cols1 <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
+    XA_NNLIB_ARG_CHK_COND((vec_count <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((vec_offset == 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_offset == 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_stride == 0), -1);
-  
+    XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min), -1);
+
+    (void)p_dma_cfg;
+
+    FLOAT32 activation_min_vec[2] = { out_activation_min, out_activation_min };
+    FLOAT32 activation_max_vec[2] = { out_activation_max, out_activation_max };
+    xtfloatx2 activation_min = XT_LSX2I((xtfloatx2 *)activation_min_vec, 0);
+    xtfloatx2 activation_max = XT_LSX2I((xtfloatx2 *)activation_max_vec, 0);
+
     /* Iterators used in for loops */
     int m_itr, c_itr, vec_itr;
     /* Assign initial value so this value will be used in trailing loop */
@@ -1253,7 +1406,9 @@ WORD32 xa_nn_matmul_f32xf32_f32(
            rows,
            vec_count,
            cols1,
-           out_offset
+           out_offset,
+           activation_min,
+           activation_max
           );
       else if(out_offset == 1)
         spfunc_cols_mul4_out_offset1
@@ -1264,8 +1419,11 @@ WORD32 xa_nn_matmul_f32xf32_f32(
            rows,
            vec_count,
            cols1,
-           out_stride
+           out_stride,
+           activation_min,
+           activation_max
           );
+
       return 0;
     }
     else
@@ -1315,6 +1473,25 @@ WORD32 xa_nn_matmul_f32xf32_f32(
                 ,row_stride1
                 ,vec_offset
                 );
+
+              {
+                xtfloatx2 z0_pre = z0, z1_pre = z1, z2_pre = z2, z3_pre = z3;
+                xtfloatx2 z4_pre = z4, z5_pre = z5, z6_pre = z6, z7_pre = z7;
+                xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1), nan2 = UN_SX2(z2, z2), nan3 = UN_SX2(z3, z3);
+                xtbool2 nan4 = UN_SX2(z4, z4), nan5 = UN_SX2(z5, z5), nan6 = UN_SX2(z6, z6), nan7 = UN_SX2(z7, z7);
+                z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+                z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+                z2 = XT_MIN_SX2(XT_MAX_SX2(z2, activation_min), activation_max);
+                z3 = XT_MIN_SX2(XT_MAX_SX2(z3, activation_min), activation_max);
+                z4 = XT_MIN_SX2(XT_MAX_SX2(z4, activation_min), activation_max);
+                z5 = XT_MIN_SX2(XT_MAX_SX2(z5, activation_min), activation_max);
+                z6 = XT_MIN_SX2(XT_MAX_SX2(z6, activation_min), activation_max);
+                z7 = XT_MIN_SX2(XT_MAX_SX2(z7, activation_min), activation_max);
+                MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+                MOVT_SX2(z2, z2_pre, nan2); MOVT_SX2(z3, z3_pre, nan3);
+                MOVT_SX2(z4, z4_pre, nan4); MOVT_SX2(z5, z5_pre, nan5);
+                MOVT_SX2(z6, z6_pre, nan6); MOVT_SX2(z7, z7_pre, nan7);
+              }
               
               XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z0,z0)), p_out_0_ii, 4*out_stride*sizeof(xtfloat));
               XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(z0), p_out_0_ii, 4*out_stride*sizeof(xtfloat));
@@ -1361,6 +1538,14 @@ WORD32 xa_nn_matmul_f32xf32_f32(
             ,cols1
             ,vec_offset
             );
+
+          {
+            xtfloatx2 z0_pre = z0, z1_pre = z1;
+            xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1);
+            z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+            z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+            MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+          }
          
           AE_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z0,z0)), p_out_0, out_stride*sizeof(xtfloat));
           AE_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(z0), p_out_1, out_stride*sizeof(xtfloat));
@@ -1398,6 +1583,14 @@ WORD32 xa_nn_matmul_f32xf32_f32(
                 ,cols1
                 ,row_stride1
                 );
+
+              {
+                xtfloatx2 z0_pre = z0, z1_pre = z1;
+                xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1);
+                z0 = XT_MIN_SX2(XT_MAX_SX2(z0, activation_min), activation_max);
+                z1 = XT_MIN_SX2(XT_MAX_SX2(z1, activation_min), activation_max);
+                MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1);
+              }
               
               XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z0,z0)), p_out_0_ii, 4*out_stride*sizeof(xtfloat));
               XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(z0), p_out_0_ii, 4*out_stride*sizeof(xtfloat));
@@ -1459,6 +1652,13 @@ WORD32 xa_nn_matmul_f32xf32_f32(
             XT_LSIP(bias, pbias, 4);
             acc_row0_vec0 = ADD_SX2(acc_row0_vec0, AE_MOVXTFLOATX2_FROMXTFLOAT(bias));
           }
+
+          {
+            xtfloatx2 acc_row0_vec0_pre = acc_row0_vec0;
+            xtbool2 nan0 = UN_SX2(acc_row0_vec0, acc_row0_vec0);
+            acc_row0_vec0 = XT_MIN_SX2(XT_MAX_SX2(acc_row0_vec0, activation_min), activation_max);
+            MOVT_SX2(acc_row0_vec0, acc_row0_vec0_pre, nan0);
+          }
          
           XT_SSXP(AE_MOVXTFLOAT_FROMXTFLOATX2(acc_row0_vec0), p_out_0, out_stride*sizeof(xtfloat));
         }
@@ -1468,4 +1668,33 @@ WORD32 xa_nn_matmul_f32xf32_f32(
     return 0;
 }
 #endif /* NO_AGGR_FLOAT_OPT */
+WORD32 xa_nn_matmul_f32xf32_f32(
+    FLOAT32 * __restrict__ p_out,
+    const FLOAT32 * __restrict__ p_mat1,
+    const FLOAT32 * __restrict__ p_mat2,
+    const FLOAT32 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols,
+    WORD32 row_stride,
+    WORD32 vec_count,
+    WORD32 vec_offset,
+    WORD32 out_offset,
+    WORD32 out_stride)
+{
+    return xa_nn_matmul_v2_f32xf32_f32(
+        p_out,
+        p_mat1,
+        p_mat2,
+        p_bias,
+        rows,
+        cols,
+        row_stride,
+        vec_count,
+        vec_offset,
+        out_offset,
+        out_stride,
+        -INFINITY,
+        INFINITY,
+        NULL);
+}
 #endif

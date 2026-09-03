@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -466,11 +466,10 @@ static inline void _xa_nn_dot_product_4_rows_4_vecs_aligned
     mat1_row3_0 = AE_MOVINT8X8_FROMINT64(AE_SLAA64(AE_SRLA64(AE_MOVINT64_FROMINT8X8(mat1_row3_0), rem_cols_shift_0), rem_cols_shift_0));
     rem_cols_shift_0 = rem_cols_shift_1;
 #else
-    int vec_z_b = -vec1_zero_bias;
-    AE_MOVT8X16_L(scratch, mat1_row0_0, mat1_row0_0, AE_MOVDA8(vec_z_b), set_zero_mask_0);
-    AE_MOVT8X16_L(scratch, mat1_row1_0, mat1_row1_0, AE_MOVDA8(vec_z_b), set_zero_mask_0);
-    AE_MOVT8X16_L(scratch, mat1_row2_0, mat1_row2_0, AE_MOVDA8(vec_z_b), set_zero_mask_0);
-    AE_MOVT8X16_L(scratch, mat1_row3_0, mat1_row3_0, AE_MOVDA8(vec_z_b), set_zero_mask_0);
+    AE_MOVT8X16_L(scratch, mat1_row0_0, mat1_row0_0, AE_MOVDA8(0), set_zero_mask_0);
+    AE_MOVT8X16_L(scratch, mat1_row1_0, mat1_row1_0, AE_MOVDA8(0), set_zero_mask_0);
+    AE_MOVT8X16_L(scratch, mat1_row2_0, mat1_row2_0, AE_MOVDA8(0), set_zero_mask_0);
+    AE_MOVT8X16_L(scratch, mat1_row3_0, mat1_row3_0, AE_MOVDA8(0), set_zero_mask_0);
     set_zero_mask_0 = set_zero_mask_1;
 #endif
 

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -51,6 +51,7 @@
 #include "../include/nanf_tbl.h"
 #include "../include/pow2f_tbl.h"
 #define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+#define blkSize (2*MAX_ALLOCA_SZ/sz_f32)
 /*-------------------------------------------------------------------------
   Hyperbolic Tangent
   The functions compute the hyperbolic tangent of input argument. 32-bit
@@ -132,7 +133,6 @@ static void __tanhf(float32_t* restrict y, const float32_t* restrict x, int N)
     /* Current block index; overall number of blocks; number of values in the current block */
     ae_valignx2 X_va, Y_va;
     /* Block size, blkLen <= blkSize */
-    const int blkSize = 2*MAX_ALLOCA_SZ/sz_f32;
     xtfloatx2 one = XT_CONST_SX2(1);
     xtfloatx2 two = XT_CONST_SX2(2);
     xtfloatx2 half = XT_CONST_SX2(3);
@@ -262,35 +262,34 @@ static void __tanhf(float32_t* restrict y, const float32_t* restrict x, int N)
         /* next, compute output for smaller argument
         Use polynomial approximation for small input values. This branch is
         also used for a NaN on input.
+        Poly coefficients are loop-invariant; loading them once (instead of a
+        per-iteration self-resetting pointer) 
         */
         __Pragma("no_reorder")
         S_wr = ((xtfloatx4*)scr)+1;
-        S_rd = (xtfloatx4*)scr;
         X = (xtfloatx4*)(x);
         X_va = AE_LA128_PP(X);
-        pPolytanhf=(const ae_int32*)xa_nnlib_polytanhf_tbl;
-        __Pragma("loop_count factor=2")
-        for (n = 0; n<(M >> 2); n++)
         {
-            xtfloatx2 x0, x1, dx0, dx1, tx0, tx1, t0, t1;;
-            xtfloatx2 z0, z1, tn0, tn1, tn2, tn3;
-            ae_int32x2 tmp;
-            AE_LASX2X2_IP(x0, x1, X_va, X);
-            ABS_SX2X2(x0, x1, x0, x1);
-            MUL_SX2X2(dx0, dx1, x0, x1, x0, x1);
-            MUL_SX2X2(tx0, tx1, x0, x1, dx0, dx1);
-
-            AE_L32_IP(tmp,pPolytanhf,sizeof(float32_t));           tn0 = XT_AE_MOVXTFLOATX2_FROMINT32X2(tmp);
-            AE_L32_IP(tmp,pPolytanhf,sizeof(float32_t));           tn1 = XT_AE_MOVXTFLOATX2_FROMINT32X2(tmp);
-            AE_L32_IP(tmp,pPolytanhf,sizeof(float32_t));           tn2 = XT_AE_MOVXTFLOATX2_FROMINT32X2(tmp);
-            AE_L32_XP(tmp,pPolytanhf,-3*(int)sizeof(float32_t));   tn3 = XT_AE_MOVXTFLOATX2_FROMINT32X2(tmp);
-            z0 = z1 = tn1;      MADDQ_S   (z0, z1, dx0, dx1,    tn0); t0 = z0; t1 = z1;
-            z0 = z1 = tn2;      MADD_SX2X2(z0, z1, t0, t1, dx0, dx1); t0 = z0; t1 = z1;
-            z0 = z1 = tn3;      MADD_SX2X2(z0, z1, t0, t1, dx0, dx1); t0 = z0; t1 = z1;
-            z0 = x0; z1 = x1;
-            MADD_SX2X2(z0, z1, t0, t1, tx0, tx1);
-            AE_SSX2X2_IP(z0, z1, S_wr, 2 * 4 * sz_f32);
-        }    
+            xtfloatx2 tn0 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&(xa_nnlib_polytanhf_tbl[0].f));
+            xtfloatx2 tn1 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&(xa_nnlib_polytanhf_tbl[1].f));
+            xtfloatx2 tn2 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&(xa_nnlib_polytanhf_tbl[2].f));
+            xtfloatx2 tn3 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(xtfloat*)&(xa_nnlib_polytanhf_tbl[3].f));
+            __Pragma("loop_count factor=2")
+            for (n = 0; n<(M >> 2); n++)
+            {
+                xtfloatx2 x0, x1, dx0, dx1, tx0, tx1, t0, t1, z0, z1;
+                AE_LASX2X2_IP(x0, x1, X_va, X);
+                ABS_SX2X2(x0, x1, x0, x1);
+                MUL_SX2X2(dx0, dx1, x0, x1, x0, x1);
+                MUL_SX2X2(tx0, tx1, x0, x1, dx0, dx1);
+                z0 = z1 = tn1;      MADDQ_S   (z0, z1, dx0, dx1,    tn0); t0 = z0; t1 = z1;
+                z0 = z1 = tn2;      MADD_SX2X2(z0, z1, t0, t1, dx0, dx1); t0 = z0; t1 = z1;
+                z0 = z1 = tn3;      MADD_SX2X2(z0, z1, t0, t1, dx0, dx1); t0 = z0; t1 = z1;
+                z0 = x0; z1 = x1;
+                MADD_SX2X2(z0, z1, t0, t1, tx0, tx1);
+                AE_SSX2X2_IP(z0, z1, S_wr, 2 * 4 * sz_f32);
+            }
+        }
         /* final stage: select right output and apply sign */
         __Pragma("no_reorder")
         X = (xtfloatx4*)(x);

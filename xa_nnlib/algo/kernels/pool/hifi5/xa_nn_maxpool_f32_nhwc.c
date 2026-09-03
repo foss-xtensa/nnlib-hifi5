@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -162,9 +162,9 @@ const FLOAT32* __restrict__ p_inp,
                 {
                     xtfloat temp, i1, i2, i3, out;
 
-                    i1 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src1_temp[0]);
-                    i2 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src2_temp[0]);
-                    i3 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src3_temp[0]);
+                    i1 = *(xtfloat *)p_src1_temp;
+                    i2 = *(xtfloat *)p_src2_temp;
+                    i3 = *(xtfloat *)p_src3_temp;
 
                     temp = XT_MAX_S(i1, i2);
                     out = XT_MAX_S(temp, i3);
@@ -254,9 +254,9 @@ const FLOAT32* __restrict__ p_inp,
                     {
                         xtfloat temp, i1, i2, i3, out;
 
-                        i1 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src1_temp[0]);
-                        i2 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src2_temp[0]);
-                        i3 = AE_MOVXTFLOAT_FROMXTFLOATX2(p_src3_temp[0]);
+                        i1 = *(xtfloat *)p_src1_temp;
+                        i2 = *(xtfloat *)p_src2_temp;
+                        i3 = *(xtfloat *)p_src3_temp;
 
                         temp = XT_MAX_S(i1, i2);
                         out  = XT_MAX_S(temp, i3);

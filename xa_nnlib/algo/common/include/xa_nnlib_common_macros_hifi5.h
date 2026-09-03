@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -23,8 +23,10 @@
 #define __XA_NNLIB_COMMON_MACROS_H__
 
 #include "xa_nnlib_quant_macros_hifi5.h"
+#ifndef ENABLE_SCRATCH_SIZE_API_ONLY
 #include <xtensa/config/core-isa.h>
 #include "xtensa/tie/xt_hifi2.h"
+#endif
 #include "xa_nnlib_standards.h"
 
 #ifndef NULL
@@ -60,6 +62,8 @@
 #define SW_SRAA32S_INT32X2_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_SRAA32S(AE_MOVF32X2_FROMINT32X2(inp1), inp2))
 
 #define SW_SRAA32S_INT32X2_F32X2(inp1, inp2) AE_SRAA32S(AE_MOVF32X2_FROMINT32X2(inp1), inp2)
+
+#define SW_SRAA32S_INT32_INT32X2(inp1, inp2) AE_MOVINT32X2_FROMF32X2(AE_SRAA32S(AE_MOVF32X2_FROMINT32(inp1), inp2))
 
 #define SW_ADD64S_INT64_INT64(inp1, inp2) AE_MOVINT64_FROMF64(AE_ADD64S(AE_MOVF64_FROMINT64(inp1),AE_MOVF64_FROMINT64(inp2)))
 

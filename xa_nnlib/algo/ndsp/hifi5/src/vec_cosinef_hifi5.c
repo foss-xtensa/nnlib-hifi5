@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -53,6 +53,10 @@ DISCARD_FUN(void,xa_nnlib_vec_cosinef,( float32_t * restrict y, const float32_t 
 #elif HAVE_VFPU
 #define sz_f32    (int)sizeof(float32_t)
 
+/* Block size, blkLen <= blkSize */
+#define blkSize_blkLen (MAX_ALLOCA_SZ/(2*sz_f32))
+#define blkSize_scr    (MAX_ALLOCA_SZ/sz_f32)
+
 #if SINCOSF_ALG==0
 static void mycosinef(float32_t* scr,
     float32_t* restrict y,
@@ -73,7 +77,7 @@ static void mycosinef(float32_t* scr,
     ae_valignx2 X_va, X1_va, Z_va;
 
     /* Block size, blkLen <= blkSize */
-    const int blkSize = MAX_ALLOCA_SZ / (2 * sz_f32);
+    const int blkSize = blkSize_blkLen;
     /* 2/pi splited into 24-bit chunks*/
     xtfloatx2 pi2fc0, pi2fc1, pi2fc2;
 
@@ -271,9 +275,8 @@ void xa_nnlib_vec_cosinef(float32_t* restrict y,
     const float32_t* restrict x,
     int N)
 {
-    const int blkSize = MAX_ALLOCA_SZ / sz_f32;
     /* Allocate a fixed-size scratch area on the stack. */
-    float32_t ALIGN(32) scr[blkSize];
+    float32_t ALIGN(32) scr[blkSize_scr];
     float32_t ALIGN(32) tmpIn[8], tmpOut[8];
 
     int M;
@@ -441,9 +444,9 @@ void xa_nnlib_vec_cosinef   (  float32_t * restrict y,
   /* Current block index; overall number of blocks; number of values in the current block */
   int blkLen;
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ/sz_f32;
+  const int blkSize = blkSize_scr;
   /* Allocate a fixed-size scratch area on the stack. */
-  float32_t ALIGN(32) scr[blkSize];
+  float32_t ALIGN(32) scr[blkSize_scr];
   int n;
 
   NASSERT_ALIGN16( scr );
@@ -815,6 +818,9 @@ void xa_nnlib_vec_cosinef   (  float32_t * restrict y,
 #elif HAVE_FPU
 #define sz_f32    (int)sizeof(float32_t)
 
+/* Block size, blkLen <= blkSize */
+#define blkSize_scr (MAX_ALLOCA_SZ/sz_f32)
+
 /*===========================================================================
   Vector matematics:
   vec_cosine            Cosine    
@@ -911,9 +917,9 @@ void xa_nnlib_vec_cosinef( float32_t * restrict y, const float32_t * restrict x,
   /* Current block index; overall number of blocks; number of values in the current block */
   int blkIx, blkNum, blkLen;
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ / sz_f32;
+  const int blkSize = blkSize_scr;
   /* Allocate a fixed-size scratch area on the stack. */
-  float32_t ALIGN(32) scr[blkSize];
+  float32_t ALIGN(32) scr[blkSize_scr];
 
   int n;
   if ( N<=0 ) return;
@@ -1119,9 +1125,9 @@ void xa_nnlib_vec_cosinef( float32_t * restrict y, const float32_t * restrict x,
   /* Current block index; overall number of blocks; number of values in the current block */
   int blkIx, blkNum, blkLen;
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ / sz_f32;
+  const int blkSize = blkSize_scr;
   /* Allocate a fixed-size scratch area on the stack. */
-  float32_t ALIGN(32) scr[blkSize];
+  float32_t ALIGN(32) scr[blkSize_scr];
 
   int n;
   if ( N<=0 ) return;

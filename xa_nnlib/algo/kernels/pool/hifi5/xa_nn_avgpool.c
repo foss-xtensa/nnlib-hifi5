@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -42,8 +42,8 @@ static WORD32 xa_nn_avgpool_getsize_nchw(
     XA_NNLIB_CHK_COND((kernel_width <= 0), -1);
     XA_NNLIB_CHK_COND((kernel_width > input_width), -1);
     /* For 8 and 16 bit variants kernel_height and kernel_width should be less than or equal to 1024 */
-    XA_NNLIB_CHK_COND((inp_precision != -1 && kernel_height > 1024), -1);
-    XA_NNLIB_CHK_COND((inp_precision != -1 && kernel_width > 1024), -1);
+    XA_NNLIB_CHK_COND((inp_precision != -1 && inp_precision != -2 && kernel_height > 1024), -1);
+    XA_NNLIB_CHK_COND((inp_precision != -1 && inp_precision != -2 && kernel_width > 1024), -1);
     XA_NNLIB_CHK_COND((x_stride <= 0), -1);
     XA_NNLIB_CHK_COND((y_stride <= 0), -1);
     XA_NNLIB_CHK_COND((x_padding < 0), -1);
@@ -69,6 +69,10 @@ static WORD32 xa_nn_avgpool_getsize_nchw(
         case -1:
 //            inp_bytewidth = sizeof(WORD32);
             acc_bytewidth = sizeof(WORD32);
+            break;
+        case -2:
+//            inp_bytewidth = sizeof(WORD16);
+            acc_bytewidth = sizeof(WORD16);
             break;
         case -3:
 //            inp_bytewidth = sizeof(UWORD8);
@@ -112,8 +116,8 @@ static WORD32 xa_nn_avgpool_getsize_nhwc(
 {
     //XA_NNLIB_CHK_COND((kernel_width > input_width), -1);
     /* For 8 and 16 bit variants kernel_height and kernel_width should be less than or equal to 1024 */
-    XA_NNLIB_CHK_COND((inp_precision != -1 && kernel_height > 1024), -1);
-    XA_NNLIB_CHK_COND((inp_precision != -1 && kernel_width > 1024), -1);
+    XA_NNLIB_CHK_COND((inp_precision != -1 && inp_precision != -2 && kernel_height > 1024), -1);
+    XA_NNLIB_CHK_COND((inp_precision != -1 && inp_precision != -2 && kernel_width > 1024), -1);
 
     int total_size;
     int den_array_size;     /* Array to store 1/den for out_height and out_width */
@@ -140,6 +144,15 @@ static WORD32 xa_nn_avgpool_getsize_nhwc(
 
         total_size = 2*ALIGNED_SIZE((sizeof(FLOAT32) * input_width * input_channels), ALIGNMENT) +
                      ALIGNED_SIZE((sizeof(FLOAT32) * den_array_size), ALIGNMENT);
+
+        total_size = ALIGNED_SIZE(total_size, ALIGNMENT);
+    }
+    else if(inp_precision == -2)
+    {
+        den_array_size = out_width*out_height;
+
+        total_size = 2*ALIGNED_SIZE((sizeof(WORD16) * input_width * input_channels), ALIGNMENT) +
+                     ALIGNED_SIZE((sizeof(WORD16) * den_array_size), ALIGNMENT);
 
         total_size = ALIGNED_SIZE(total_size, ALIGNMENT);
     }

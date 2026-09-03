@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -63,6 +63,10 @@ static WORD32 xa_nn_maxpool_getsize_nchw(
         case -1:
 //            inp_bytewidth = sizeof(WORD32);
             acc_bytewidth = sizeof(WORD32);
+            break;
+        case -2:
+//            inp_bytewidth = sizeof(WORD16);
+            acc_bytewidth = sizeof(WORD16);
             break;
         case -3:
 //            inp_bytewidth = sizeof(UWORD8);
@@ -137,6 +141,11 @@ static WORD32 xa_nn_maxpool_getsize_nhwc(WORD32  inp_precision,
         return ALIGNED_SIZE(input_channels*(full_buf_width)*scratch_bytewidth, ALIGNMENT);
     }
     else if(inp_precision == 16)
+    {
+        scratch_bytewidth = sizeof(WORD16);
+        return ALIGNED_SIZE((input_channels*(input_width + 1)*scratch_bytewidth), ALIGNMENT);
+    }
+    else if(inp_precision == -2)
     {
         scratch_bytewidth = sizeof(WORD16);
         return ALIGNED_SIZE((input_channels*(input_width + 1)*scratch_bytewidth), ALIGNMENT);

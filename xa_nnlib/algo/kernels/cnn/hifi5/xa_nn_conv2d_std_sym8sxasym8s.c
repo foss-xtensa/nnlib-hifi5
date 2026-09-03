@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -634,7 +634,7 @@ static WORD32 internal_xa_nn_conv2d_std_per_chan_sym8sxasym8s(
   VOID *pp_inp = (VOID *)p_inp;
 
   xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_scratch;
-  xa_nn_conv2d_std_init_state((void*)p_state,(void*)p_kernel,input_height,input_channels,kernel_height,kernel_width,x_stride,y_stride,y_padding,out_height,-4);
+  xa_nn_conv2d_std_init_state((void*)p_state,(void*)p_kernel,input_height,input_channels,kernel_height,kernel_width,out_channels,x_stride,y_stride,y_padding,out_height,-4);
 
   WORD32 out_channels_offset = out_data_format ? out_height * out_width : 1;
   WORD32 out_height_offset = out_data_format ? out_width : out_width * out_channels;

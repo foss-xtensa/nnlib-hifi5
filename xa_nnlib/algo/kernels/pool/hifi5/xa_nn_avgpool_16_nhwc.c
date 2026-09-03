@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -392,35 +392,40 @@ const WORD16* __restrict__ p_inp,
                     INCR_ROW_IF_WIDTH_32(p_src3_w, pool_width, input_channels);
 
                 }while(1);
+// Saving Output
+                ae_int32x2 d_tmp32, d_out1, d_tmp32hw;
+                //ae_int64 d_tmp;
+                WORD32 *p_out1; ae_int32* p_out1_ae;
 
-                // Saving Output
-                ae_int32x2 den_h, den_w, d_tmp32, d_out1, d_tmp32hw;
-                ae_int64 d_tmp;
-                ae_int32 *p_out1;
+                p_out1 = (WORD32 *)p_dst;
+		p_out1_ae = (ae_int32 *)p_dst;
 
-                p_out1 = (ae_int32 *)p_dst;
-
-                if(kernel_height * kernel_width <= 1024)
+                WORD32 den_h, den_w, den;
+                den_h = p_den_height[itr_oh];
+                den_w = p_den_width[itr_ow];
+                den = den_h * den_w;
+                if(den <= 1024)
                 {
-                    d_tmp32hw = SW_MOVDA32(inv_256_tbl[p_den_height[itr_oh] * p_den_width[itr_ow]]);
+                    d_tmp32hw = AE_MOVINT32X2_FROMINT32(AE_MOVDA32(inv_256_tbl[den]));
+                    for(i=0; i<input_channels; i++)
+                        {
+                            AE_L32_IP(d_out1, p_out1_ae, 4);
+                            d_tmp32 = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(d_out1), AE_MOVF32X2_FROMINT32X2(d_tmp32hw)));
+                            p_out_temp[i] = (WORD16)AE_MOVAD32_L(AE_SRAI32(d_tmp32, 0));
+                        }
                 }
                 else
                 {
-                    den_h = SW_MOVDA32(inv_256_tbl[p_den_height[itr_oh]]);
-                    den_w = SW_MOVDA32(inv_256_tbl[p_den_width[itr_ow]]);
-                    d_tmp = AE_MUL32U_LL(den_h, den_w);
-
-                    /* Max value of den_h or den_w is 0x80000000
-                       so 1 left shift is possible without overflow */
-                    d_tmp32hw = AE_TRUNCI32X2F64S(d_tmp, d_tmp, 1);
-                }
-
-                for(i=0; i<input_channels; i++)
-                {
-                    AE_L32_IP(d_out1, p_out1, 4);
-                    d_tmp32 = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(d_out1), AE_MOVF32X2_FROMINT32X2(d_tmp32hw)));
-                    p_out_temp[i] = (WORD16)AE_MOVAD32_L(AE_SRAI32(d_tmp32, 0));
-                }
+                  int64_t out;
+                  for(i = 0; i < input_channels; i+=1)
+                  {
+                    out = p_out1[i]; 
+                    out = den != 0 ? (out + (out > 0 ? (den/2):(-den/2))) : 0;
+		    out = (out!=0) ? ((out>INT32_MAX) ?(INT32_MAX/den): ((out<INT32_MIN)?(INT32_MIN/den):(WORD32)out/den)):0; 
+                    p_out_temp[i] = (WORD32)out;
+                  }
+                } 
+                
             }
             else
             {

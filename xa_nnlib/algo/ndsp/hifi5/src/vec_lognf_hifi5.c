@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -50,6 +50,7 @@
 #include "../include/nanf_tbl.h"
 
 #define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
+#define blkSize (MAX_ALLOCA_SZ/(sz_i32*4))
 #if !HAVE_VFPU && !HAVE_FPU
 DISCARD_FUN(void,xa_nnlib_vec_lognf,( float32_t * restrict y, const float32_t * restrict x, int N ))
 #elif HAVE_VFPU
@@ -191,7 +192,6 @@ static void __lognf( float32_t * restrict y,const float32_t * restrict x, int N 
     ae_valignx2 X_rd_va, Y_rd_va, Y_wr_va;
 
     /* Block size, blkLen <= blkSize */
-    const int blkSize = (MAX_ALLOCA_SZ/(sz_i32*4));
     /* Allocate a fixed-size scratch area on the stack. */
     int32_t ALIGN(32) scr0[blkSize];
     float32_t ALIGN(32) scr1[blkSize];

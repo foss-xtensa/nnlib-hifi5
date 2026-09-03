@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -22,6 +22,7 @@
 #include "xa_nnlib_common_fpu.h"
 #include "xa_nnlib_common.h"
 #include "xa_nn_conv2d_depthwise_state.h"
+#include <math.h>
 
 #if !HAVE_VFPU
 DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_conv2d_pointwise_f32,(
@@ -34,9 +35,7 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_conv2d_pointwise_f32,(
     WORD32  input_channels,
     WORD32  out_channels,
     WORD32  out_data_format))
-#else /* #if !HAVE_VFPU */
-
-static WORD32 xa_nn_conv2d_pointwise_nhwc_f32(
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_conv2d_pointwise_v2_f32,(
     FLOAT32* __restrict__ p_out,
     FLOAT32* __restrict__ p_kernel,
     FLOAT32* __restrict__ p_inp,
@@ -44,7 +43,25 @@ static WORD32 xa_nn_conv2d_pointwise_nhwc_f32(
     WORD32  input_height,
     WORD32  input_width,
     WORD32  input_channels,
-    WORD32  out_channels)
+    WORD32  out_channels,
+    WORD32  out_data_format,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg))
+#else /* #if !HAVE_VFPU */
+
+static WORD32 xa_nn_conv2d_pointwise_nhwc_v2_f32(
+    FLOAT32* __restrict__ p_out,
+    FLOAT32* __restrict__ p_kernel,
+    FLOAT32* __restrict__ p_inp,
+    FLOAT32* __restrict__ p_bias,
+    WORD32  input_height,
+    WORD32  input_width,
+    WORD32  input_channels,
+    WORD32  out_channels,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
+    xa_dma_cfg_t* p_dma_cfg)
 {
     int ret, out_plane_size;
     out_plane_size = input_height*input_width;
@@ -53,7 +70,7 @@ static WORD32 xa_nn_conv2d_pointwise_nhwc_f32(
     vec_offset = input_channels;
     out_offset = out_channels;
 
-    ret = xa_nn_matmul_f32xf32_f32(p_out,
+    ret = xa_nn_matmul_v2_f32xf32_f32(p_out,
                                    p_kernel,
                                    p_inp,
                                    p_bias,
@@ -63,14 +80,17 @@ static WORD32 xa_nn_conv2d_pointwise_nhwc_f32(
                                    out_plane_size,
                                    vec_offset,
                                    out_offset,
-                                   1
+                                   1,
+                                   out_activation_min,
+                                   out_activation_max,
+                                   p_dma_cfg
                                    );
     if(ret<0)
         return ret;
     return 0;
 }
 
-static WORD32 xa_nn_conv2d_pointwise_nchw_f32(
+static WORD32 xa_nn_conv2d_pointwise_nchw_v2_f32(
     FLOAT32* __restrict__ p_out,
     FLOAT32* __restrict__ p_kernel,
     FLOAT32* __restrict__ p_inp,
@@ -78,7 +98,10 @@ static WORD32 xa_nn_conv2d_pointwise_nchw_f32(
     WORD32  input_height,
     WORD32  input_width,
     WORD32  input_channels,
-    WORD32  out_channels)
+    WORD32  out_channels,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
+    xa_dma_cfg_t* p_dma_cfg)
 {
     int ret, out_plane_size;
     out_plane_size = input_height*input_width;
@@ -87,7 +110,7 @@ static WORD32 xa_nn_conv2d_pointwise_nchw_f32(
     vec_offset = input_channels;
     out_offset = 1;
 
-    ret = xa_nn_matmul_f32xf32_f32(p_out,
+    ret = xa_nn_matmul_v2_f32xf32_f32(p_out,
                                    p_kernel,
                                    p_inp,
                                    p_bias,
@@ -97,11 +120,79 @@ static WORD32 xa_nn_conv2d_pointwise_nchw_f32(
                                    out_plane_size,
                                    vec_offset,
                                    out_offset,
-                                   out_plane_size
+                                   out_plane_size,
+                                   out_activation_min,
+                                   out_activation_max,
+                                   p_dma_cfg
                                    );
     if(ret<0)
         return ret;
     return 0;
+}
+
+WORD32 xa_nn_conv2d_pointwise_v2_f32(
+    FLOAT32* __restrict__ p_out,
+    FLOAT32* __restrict__ p_kernel,
+    FLOAT32* __restrict__ p_inp,
+    FLOAT32* __restrict__ p_bias,
+    WORD32  input_height,
+    WORD32  input_width,
+    WORD32  input_channels,
+    WORD32  out_channels,
+    WORD32  out_data_format,
+    FLOAT32 out_activation_min,
+    FLOAT32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
+{
+    /* NULL pointer checks */
+    XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_kernel, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
+    XA_NNLIB_ARG_CHK_PTR(p_bias, -1);
+    /* Pointer alignment checks */
+    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(FLOAT32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_kernel, sizeof(FLOAT32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(FLOAT32), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(FLOAT32), -1);
+    /* Basic Parameter checks */
+    XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((input_channels <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((out_channels <= 0), -1);
+    XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
+    XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min), -1);
+
+
+    int ret=0;
+
+    if(out_data_format == 0){
+        ret = xa_nn_conv2d_pointwise_nhwc_v2_f32(
+                p_out,
+                p_kernel,
+                p_inp,
+                p_bias,
+                input_height,
+                input_width,
+                input_channels,
+                out_channels,
+                out_activation_min,
+                out_activation_max,
+                p_dma_cfg);
+    }
+    else if(out_data_format == 1){
+        ret = xa_nn_conv2d_pointwise_nchw_v2_f32(
+                p_out,
+                p_kernel,
+                p_inp,
+                p_bias,
+                input_height,
+                input_width,
+                input_channels,
+                out_channels,
+                out_activation_min,
+                out_activation_max,
+                p_dma_cfg);
+    }
+    return ret;
 }
 
 WORD32 xa_nn_conv2d_pointwise_f32(
@@ -131,30 +222,18 @@ WORD32 xa_nn_conv2d_pointwise_f32(
     XA_NNLIB_ARG_CHK_COND((out_channels <= 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
 
-    int ret=0;
-
-    if(out_data_format == 0){
-        ret = xa_nn_conv2d_pointwise_nhwc_f32(
-                p_out,
-                p_kernel,
-                p_inp,
-                p_bias,
-                input_height,
-                input_width,
-                input_channels,
-                out_channels);
-    }
-    else if(out_data_format == 1){
-        ret = xa_nn_conv2d_pointwise_nchw_f32(
-                p_out,
-                p_kernel,
-                p_inp,
-                p_bias,
-                input_height,
-                input_width,
-                input_channels,
-                out_channels);
-    }
-    return ret;
+    return xa_nn_conv2d_pointwise_v2_f32(
+        p_out,
+        p_kernel,
+        p_inp,
+        p_bias,
+        input_height,
+        input_width,
+        input_channels,
+        out_channels,
+        out_data_format,
+        -INFINITY,
+        INFINITY,
+        NULL);
 }
 #endif /* #if !HAVE_VFPU */

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -300,7 +300,8 @@ WORD32 xa_nn_elm_requantize_asym32s_asym8s(WORD8 * __restrict__ p_out,
   {
     AE_L32_IP(d_inp1, ptr32_inp, 4);
     z_inp1 = AE_SUB32(d_inp1, d_inp_zero_bias);
-    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_out12, z_inp1, z_inp1, out_multiplier, left_shift, right_shift, out_zero_bias);
+    ae_int32x2 z_inp1_tmp = z_inp1;
+    MPY_BY_QUANT_MULT_X2X2_OUT16_ZB(d_out12, z_inp1, z_inp1_tmp, out_multiplier, left_shift, right_shift, out_zero_bias);
 
     d_out1234 = AE_SAT8X8X16(d_out12, d_out12);
 
@@ -1584,23 +1585,35 @@ WORD32 xa_nn_elm_quantize_f32_asym16s(WORD16 * __restrict__ p_out,
   ae_int32x2 d_out_zero_bias = SW_MOVDA32(out_zero_bias);
   xtfloat *out_scale_ptr = (xtfloat*)&out_scale;
   xtfloatx2 d_out_scale = AE_MOVXTFLOATX2_FROMXTFLOAT(*out_scale_ptr);
-  xtfloatx2 d_one = FLOAT_SX2(SW_MOVDA32(1),0);
-  xtfloatx2 d_one_over_out_scale = XT_DIV_SX2(d_one, d_out_scale);
+#ifdef DIV_SX4
+  xtfloatx4 d_out_scalex4 = xtfloat_rtor_xtfloatx4(*out_scale_ptr);
+#endif
 
   for(i = 0; i < (num_elm >> 3); i++)
   {
-    xtfloatx2 d_inp0, d_inp1, d_inp2, d_inp3;
     xtfloatx2 d_inp0_t, d_inp1_t, d_inp2_t, d_inp3_t;
     ae_int16x4 d_out0, d_out1;
     ae_int32x2 d_out32_0, d_out32_1, d_out32_2, d_out32_3;
 
-
+#ifdef DIV_SX4
+    xtfloatx4 d_inp01, d_inp23;
+    AE_LASX4IP(d_inp01, align_inp, p_i);
+    AE_LASX4IP(d_inp23, align_inp, p_i);
+    d_inp01 = DIV_SX4(d_inp01, d_out_scalex4);
+    d_inp23 = DIV_SX4(d_inp23, d_out_scalex4);
+    d_inp0_t = AE_EXTRACTSX2_FROMSX4_H(d_inp01);
+    d_inp1_t = AE_EXTRACTSX2_FROMSX4_L(d_inp01);
+    d_inp2_t = AE_EXTRACTSX2_FROMSX4_H(d_inp23);
+    d_inp3_t = AE_EXTRACTSX2_FROMSX4_L(d_inp23);
+#else
+    xtfloatx2 d_inp0, d_inp1, d_inp2, d_inp3;
     AE_LASX2X2_IP(d_inp0, d_inp1, align_inp, p_i);
     AE_LASX2X2_IP(d_inp2, d_inp3, align_inp, p_i);
-
-    MUL_SX2X2(d_inp0_t, d_inp1_t, d_inp0, d_inp1, d_one_over_out_scale, d_one_over_out_scale);
-    MUL_SX2X2(d_inp2_t, d_inp3_t, d_inp2, d_inp3, d_one_over_out_scale, d_one_over_out_scale);
-
+    d_inp0_t = DIV_SX2(d_inp0, d_out_scale);
+    d_inp1_t = DIV_SX2(d_inp1, d_out_scale);
+    d_inp2_t = DIV_SX2(d_inp2, d_out_scale);
+    d_inp3_t = DIV_SX2(d_inp3, d_out_scale);
+#endif
     d_inp0_t = XT_FIROUND_SX2(d_inp0_t);
     d_inp1_t = XT_FIROUND_SX2(d_inp1_t);
     d_inp2_t = XT_FIROUND_SX2(d_inp2_t);
@@ -1649,8 +1662,10 @@ WORD32 xa_nn_elm_quantize_f32_asym16s(WORD16 * __restrict__ p_out,
     d_inp2 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOVINT32X2_FROMINT16X4(d_tmp2));
     d_inp3 = AE_MOVXTFLOATX2_FROMINT32X2(AE_MOVINT32X2_FROMINT16X4(d_tmp3));
 
-    MUL_SX2X2(d_inp0_t, d_inp1_t, d_inp0, d_inp1, d_one_over_out_scale, d_one_over_out_scale);
-    MUL_SX2X2(d_inp2_t, d_inp3_t, d_inp2, d_inp3, d_one_over_out_scale, d_one_over_out_scale);
+    d_inp0_t = DIV_SX2(d_inp0, d_out_scale);
+    d_inp1_t = DIV_SX2(d_inp1, d_out_scale);
+    d_inp2_t = DIV_SX2(d_inp2, d_out_scale);
+    d_inp3_t = DIV_SX2(d_inp3, d_out_scale);
 
     d_inp0_t = XT_FIROUND_SX2(d_inp0_t);
     d_inp1_t = XT_FIROUND_SX2(d_inp1_t);

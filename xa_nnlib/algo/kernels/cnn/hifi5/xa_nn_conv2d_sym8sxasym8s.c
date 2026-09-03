@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -640,7 +640,7 @@ static WORD32 internal_xa_nn_conv2d_v2_per_chan_sym8sxasym8s(
   for (int grp_i = 0; grp_i < groups; ++grp_i)
   {
   tmp_out=p_out+grp_i*kernels_per_group*out_channels_offset;
-  xa_nn_conv2d_std_init_state((void*)p_state,(void*)p_kernel,input_height,kernel_channels,kernel_height,kernel_width,x_stride,y_stride,y_padding,out_height,-4);  
+  xa_nn_conv2d_std_init_state((void*)p_state,(void*)p_kernel,input_height,kernel_channels,kernel_height,kernel_width,out_channels,x_stride,y_stride,y_padding,out_height,-4);  
   pp_inp = (VOID *)(p_inp+grp_i*kernel_channels);
   conv2d_group_init_cir_buf(input_channels, input_channels_pad,kernel_channels,input_bytewidth, input_width, input_height, y_padding, y_b_pad, x_padding_var, kernel_width, x_stride, (VOID**)&pp_inp, p_state, -input_zero_bias);
 

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -305,7 +305,7 @@ static VOID *align_weightbuffer_rows(VOID *p_scratch /*dest*/, const WORD8 *p_ke
   int row_length = kw * kc;
   int row_length_pad = PADDED_SIZE(kw * kc, 8);
 
-  if (row_length_pad == row_length)
+  if (row_length_pad == row_length && (((unsigned int)p_kernel & 0x7) == 0))
   {
     return (VOID *)p_kernel;
   }
@@ -373,6 +373,10 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
 
   ae_int16x4 out_min16 = AE_MOVDA16(out_activation_min);
   ae_int16x4 out_max16 = AE_MOVDA16(out_activation_max);
+  ae_valign align_dst0 = AE_ZALIGN64();
+  ae_valign align_dst1 = AE_ZALIGN64();
+  ae_valign align_dst2 = AE_ZALIGN64();
+  ae_valign align_dst3 = AE_ZALIGN64();
 
   for (int out_y = 0; out_y < out_height; ++out_y)
   {
@@ -494,9 +498,9 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
 
         AE_MINMAX16(d1, out_min16, out_max16);
         AE_MINMAX16(d2, out_min16, out_max16);
-
-        AE_S16X4_IP(AE_SEL16_7531(d1, d2), p_dst0_0, 8);
-        AE_S16X4_IP(AE_SEL16_6420(d1, d2), p_dst1_0, 8);
+	
+        AE_SA16X4_IP(AE_SEL16_7531(d1, d2), align_dst0, p_dst0_0);
+        AE_SA16X4_IP(AE_SEL16_6420(d1, d2), align_dst1, p_dst1_0);
         if ((out_width - out_x) != 2)
         {
           // ae_int32x2 acc_vec0, acc_vec1, acc_vec2, acc_vec3;
@@ -510,10 +514,17 @@ static WORD32 xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_vec_unaligned(
           AE_MINMAX16(d1, out_min16, out_max16);
           AE_MINMAX16(d2, out_min16, out_max16);
 
-          AE_S16X4_IP(AE_SEL16_7531(d1, d2), p_dst2_0, 8);
-          AE_S16X4_IP(AE_SEL16_6420(d1, d2), p_dst3_0, 8);
+          AE_SA16X4_IP(AE_SEL16_7531(d1, d2), align_dst2, p_dst2_0);
+          AE_SA16X4_IP(AE_SEL16_6420(d1, d2), align_dst3, p_dst3_0);
         }
       }
+      AE_SA64POS_FP(align_dst0, p_dst0_0);
+      AE_SA64POS_FP(align_dst1, p_dst1_0);
+      if ((out_width - out_x) != 2)
+      {
+	      AE_SA64POS_FP(align_dst2, p_dst2_0);
+	      AE_SA64POS_FP(align_dst3, p_dst3_0);
+      }      
       p_dst0_0 = (ae_int16x4 *)((WORD16 *)p_dst0_0 + out_multiplier1 * out_channels);
       p_dst1_0 = (ae_int16x4 *)((WORD16 *)p_dst1_0 + out_multiplier1 * out_channels);
       p_dst2_0 = (ae_int16x4 *)((WORD16 *)p_dst2_0 + out_multiplier2 * out_channels);
@@ -637,8 +648,8 @@ WORD32 xa_nn_dilated_conv2d_std_v2_per_chan_sym8sxsym16s(
   WORD32 out_width_over_x_r_pad = 0;
   // Determine x-right padding
   WORD32 x_r_pad = kernel_width_dilation + (out_width - 1) * x_stride - (x_padding + input_width);//dilation
-  //x_r_pad = x_r_pad < 0 ? 0 : x_r_pad;
-  XA_NNLIB_ARG_CHK_COND((x_r_pad<0), -1);
+  x_r_pad = x_r_pad < 0 ? 0 : x_r_pad;
+  // XA_NNLIB_ARG_CHK_COND((x_r_pad<0), -1);
   if(x_r_pad >= kernel_width_dilation)//dilation
   {
     out_width_over_x_r_pad = conv_x_right_pad(x_padding, input_width, x_stride, out_width, out_height, out_channels, out_channels_offset, out_width_offset, out_height_offset, p_bias, p_out, p_out_multiplier, p_out_shift, out_zero_bias, out_activation_min, out_activation_max);
@@ -647,8 +658,8 @@ WORD32 xa_nn_dilated_conv2d_std_v2_per_chan_sym8sxsym16s(
 
   // Determine y-bottom padding
   WORD32 y_b_pad = kernel_height_dilation + (out_height - 1) * y_stride - (y_padding + input_height);
-  //y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
-  XA_NNLIB_ARG_CHK_COND((y_b_pad<0), -1);
+  y_b_pad = y_b_pad < 0 ? 0 : y_b_pad;
+  // XA_NNLIB_ARG_CHK_COND((y_b_pad<0), -1);
 
 
   XA_NNLIB_ARG_CHK_COND((kernel_height_dilation > ( y_padding + input_height + y_b_pad)), -1);//dilation
@@ -901,7 +912,7 @@ WORD32 xa_nn_conv2d_std_v2_per_chan_sym8sxsym16s(
     XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 15), -1);
   }
   if (!(x_padding) && !(input_channels & 0x7) && !(out_channels & 0x3) && !(out_width & 0x3) && (out_data_format == 0) && ((out_width - 1) * x_stride <= (input_width - kernel_width)) && p_bias 
-  && (((unsigned int)p_inp&0xF)==0) && (((unsigned int)p_kernel&0x7)==0))
+  && (((unsigned int)p_inp&0xF)==0) && (((unsigned int)p_kernel&0x7)==0) && (((unsigned int)p_out&0x7)==0) )
   {
     int ret_val = 0;
     ret_val = xa_nn_conv2d_std_per_chan_sym8sxsym16s_no_circ_buf_ow4(p_out,
@@ -997,7 +1008,7 @@ WORD32 xa_nn_conv2d_std_v2_per_chan_sym8sxsym16s(
 
   p_scratch = ALIGNED_ADDR(p_scratch, ALIGNMENT);
   xa_nn_conv_state_t *p_state = (xa_nn_conv_state_t *)p_scratch;
-  xa_nn_conv2d_std_init_state((void *)p_state, (void *)p_kernel, inp_h, input_channels, ker_h, ker_w, x_str, y_str, y_pad, out_h, PREC_SYM16S);
+  xa_nn_conv2d_std_init_state((void *)p_state, (void *)p_kernel, inp_h, input_channels, ker_h, ker_w, out_channels, x_str, y_str, y_pad, out_h, PREC_SYM16S);
 
   WORD32 out_channels_offset = out_data_format ? out_h * out_w : 1;
   WORD32 out_height_offset = out_data_format ? out_w : out_w * out_channels;

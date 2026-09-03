@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -59,6 +59,14 @@ DISCARD_FUN(void,xa_nnlib_vec_sinef,( float32_t * restrict y, const float32_t * 
 
 #define sz_f32    (int)sizeof(float32_t)
 
+/* Block size, blkLen <= blkSize */
+#if SINNCOSF_ALG==0
+#define blkSize_blkLen (MAX_ALLOCA_SZ/(2*sz_f32))
+#else
+#define blkSize_blkLen (MAX_ALLOCA_SZ/sz_f32)
+#endif
+#define blkSize_scr    (MAX_ALLOCA_SZ/sz_f32)
+
 #if SINNCOSF_ALG==0
 static void mysinef(float32_t* scr,
     float32_t* restrict y,
@@ -79,7 +87,7 @@ static void mysinef(float32_t* scr,
     ae_valignx2 X_va, X1_va, Z_va;
 
     /* Block size, blkLen <= blkSize */
-    const int blkSize = MAX_ALLOCA_SZ / (2 * sz_f32);
+    const int blkSize = blkSize_blkLen;
     /* 2/pi splited into 24-bit chunks*/
     xtfloatx2 pi2fc0, pi2fc1, pi2fc2;
     /* init 24bit chunks of 2/pi*/
@@ -295,7 +303,7 @@ static void mysinef(   float32_t * scr,
   /* Current block index; overall number of blocks; number of values in the current block */
   int blkLen;
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ/sz_f32;
+  const int blkSize = blkSize_blkLen;
   /* Allocate a fixed-size scratch area on the stack. */
 
   int n;
@@ -617,9 +625,8 @@ void xa_nnlib_vec_sinef( float32_t * restrict y,
           const float32_t * restrict x,
           int N )
 {
-  const int blkSize = MAX_ALLOCA_SZ/sz_f32;
   /* Allocate a fixed-size scratch area on the stack. */
-  float32_t ALIGN(32) scr[blkSize];
+  float32_t ALIGN(32) scr[blkSize_scr];
   float32_t ALIGN(32) tmpIn[8],tmpOut[8];
 
   int M;
@@ -676,6 +683,13 @@ void xa_nnlib_vec_sinef( float32_t * restrict y,
 }
 #elif HAVE_FPU
 #define sz_f32    (int)sizeof(float32_t)
+
+/* Block size, blkLen <= blkSize */
+#if SINNCOSF_ALG==0
+#define blkSize_scr (MAX_ALLOCA_SZ/(2*sz_f32))
+#else
+#define blkSize_scr (MAX_ALLOCA_SZ/sz_f32)
+#endif
 
 /*===========================================================================
   Vector matematics:
@@ -770,9 +784,9 @@ void xa_nnlib_vec_sinef( float32_t * restrict y, const float32_t * restrict x, i
   /* Current block index; overall number of blocks; number of values in the current block */
   int blkIx, blkNum, blkLen;
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ / (2*sz_f32);
+  const int blkSize = blkSize_scr;
   /* Allocate a fixed-size scratch area on the stack. */
-  float32_t ALIGN(32) scr[2*blkSize];
+  float32_t ALIGN(32) scr[2*blkSize_scr];
 
   int n;
   if (N <= 0) return;
@@ -933,9 +947,9 @@ void xa_nnlib_vec_sinef( float32_t * restrict y, const float32_t * restrict x, i
   /* Current block index; overall number of blocks; number of values in the current block */
   int blkIx, blkNum, blkLen;
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ / sz_f32;
+  const int blkSize = blkSize_scr;
   /* Allocate a fixed-size scratch area on the stack. */
-  float32_t ALIGN(32) scr[blkSize];
+  float32_t ALIGN(32) scr[blkSize_scr];
 
   int n;
   if (N <= 0) return;

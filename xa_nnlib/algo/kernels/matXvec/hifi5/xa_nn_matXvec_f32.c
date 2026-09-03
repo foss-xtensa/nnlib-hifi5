@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -467,6 +467,202 @@ WORD32 static dual_mtx_vecmpyf_bias_add( FLOAT32 * z,
     return -1;
   }
 } /* dual_mtx_vecmpyf_bias_add() */
+
+WORD32 static mtx_vecmpyf_bias_add( FLOAT32 * z,
+     const FLOAT32 * x,  const FLOAT32 * y, const FLOAT32 * b, 
+     int rows, int cols1, int row_stride1, FLOAT32 out_activation_min, FLOAT32 out_activation_max)
+{
+  const xtfloatx4 *restrict px0;
+  const xtfloatx4 *restrict px1;
+  const xtfloatx4 *restrict px2;
+  const xtfloatx4 *restrict px3;
+
+  const xtfloatx4 *restrict py;
+  const xtfloatx4 *restrict pb;
+        xtfloatx4 *restrict pz;
+        xtfloat   *restrict pz_;
+
+  xtfloatx2 b0, b1;
+  xtfloatx2 y0, y1, y2, y3;
+  xtfloatx2 z0, z1;
+  xtfloat z0_, b0_;
+
+  xtfloatx2 x00, x01, x02, x03,
+            x10, x11, x12, x13,
+            x20, x21, x22, x23,
+            x30, x31, x32, x33;
+  xtfloatx2 acc00, acc01, acc02, acc03,
+            acc10, acc11, acc12, acc13,
+            acc20, acc21, acc22, acc23,
+            acc30, acc31, acc32, acc33;
+  int m, n;
+
+  NASSERT(x);
+  NASSERT(y);
+  NASSERT(z);
+  NASSERT((z != x) && (z != y) && (z != b));
+  NASSERT_ALIGN(x,8);
+  NASSERT_ALIGN(y,8);
+  NASSERT_ALIGN(z,8);
+  NASSERT_ALIGN(b,8);
+  NASSERT(cols1%4==0);
+  NASSERT(row_stride1%4==0);
+
+  //if ((b == NULL) || (z == NULL))
+  if (rows < 1)
+  {
+    return -2;
+  }
+   /* Parameter checks that require zeroing output on failure (rows > 0 and p_out valid here) */
+  if((row_stride1 < cols1) || (out_activation_max < out_activation_min))
+  {
+    return -1;
+  }
+
+  pz = (xtfloatx4 *)z;
+  pb = (const xtfloatx4 *)(b);
+
+  xtfloat *pact_min = (xtfloat *)&out_activation_min;
+  xtfloat *pact_max = (xtfloat *)&out_activation_max;
+  xtfloatx2 out_activation_min_ = AE_MOVXTFLOATX2_FROMXTFLOAT(AE_LSI(pact_min, 0));
+  xtfloatx2 out_activation_max_ = AE_MOVXTFLOATX2_FROMXTFLOAT(AE_LSI(pact_max, 0));
+
+  if (x && y && (cols1 > 0))                       // Calculate z = (x*y) + b
+  {
+    /* Compute 4 Rows at a time */
+    for (m = 0; m < (rows>>2); m++)
+    {
+      px0 = (const xtfloatx4 *)(x+(4*m*row_stride1));
+      px1 = (const xtfloatx4 *)((FLOAT32 *)px0+row_stride1);
+      px2 = (const xtfloatx4 *)((FLOAT32 *)px1+row_stride1);
+      px3 = (const xtfloatx4 *)((FLOAT32 *)px2+row_stride1);
+
+      py  = (const xtfloatx4 *)(y);
+
+      acc00 = acc01 = acc02 = acc03 = 
+      acc10 = acc11 = acc12 = acc13 = 
+      acc20 = acc21 = acc22 = acc23 = 
+      acc30 = acc31 = acc32 = acc33 = ZERO_SX2();
+
+      b0 = b1 = ZERO_SX2();
+      if(b != NULL)
+      {
+        AE_LSX2X2_IP(b0,b1, pb,sizeof(xtfloatx4));
+      }
+
+      /* Compute for 8 colums per row, i.e. 4x8 * 8x4 */ 
+      for (n = 0; n < (cols1>>3); n++)
+      {
+        AE_LSX2X2_I(x02, x03, px0, sizeof(xtfloatx4));  AE_LSX2X2_IP(x00, x01, px0, 2*sizeof(xtfloatx4));
+        AE_LSX2X2_I(x12, x13, px1, sizeof(xtfloatx4));  AE_LSX2X2_IP(x10, x11, px1, 2*sizeof(xtfloatx4));
+        AE_LSX2X2_I(x22, x23, px2, sizeof(xtfloatx4));  AE_LSX2X2_IP(x20, x21, px2, 2*sizeof(xtfloatx4));
+        AE_LSX2X2_I(x32, x33, px3, sizeof(xtfloatx4));  AE_LSX2X2_IP(x30, x31, px3, 2*sizeof(xtfloatx4));
+        AE_LSX2X2_I( y2,  y3,  py, sizeof(xtfloatx4));  AE_LSX2X2_IP( y0,  y1,  py, 2*sizeof(xtfloatx4));
+
+        MADD_SX2X2(acc00, acc01, x00, x01, y0, y1);
+        MADD_SX2X2(acc10, acc11, x10, x11, y0, y1);
+        MADD_SX2X2(acc20, acc21, x20, x21, y0, y1);
+        MADD_SX2X2(acc30, acc31, x30, x31, y0, y1);
+
+        MADD_SX2X2(acc02, acc03, x02, x03, y2, y3);
+        MADD_SX2X2(acc12, acc13, x12, x13, y2, y3);
+        MADD_SX2X2(acc22, acc23, x22, x23, y2, y3);
+        MADD_SX2X2(acc32, acc33, x32, x33, y2, y3);
+      }
+
+      /* Compute for remaining cols1
+       * Note : cols1 is a multiple of 4, this is a pre-requisite.
+       *        So, if cols1%8 != 0,
+       *        then remaining columns are exactly 4
+       */
+      if( (unsigned int)cols1 & 7 )
+      {
+        AE_LSX2X2_IP(x00, x01, px0, sizeof(xtfloatx4));
+        AE_LSX2X2_IP(x10, x11, px1, sizeof(xtfloatx4));
+        AE_LSX2X2_IP(x20, x21, px2, sizeof(xtfloatx4));
+        AE_LSX2X2_IP(x30, x31, px3, sizeof(xtfloatx4));
+
+        AE_LSX2X2_IP( y0,  y1,  py, sizeof(xtfloatx4));
+
+        MADD_SX2X2(acc00, acc01, x00, x01, y0, y1);
+        MADD_SX2X2(acc10, acc11, x10, x11, y0, y1);
+        MADD_SX2X2(acc20, acc21, x20, x21, y0, y1);
+        MADD_SX2X2(acc30, acc31, x30, x31, y0, y1);
+      }
+
+      // z0.H = Sum of all elements in acc0X
+      // z0.L = Sum of all elements in acc1X
+      acc00 = ADD_SX2(ADD_SX2(acc00, acc01), ADD_SX2(acc02, acc03));
+      acc10 = ADD_SX2(ADD_SX2(acc10, acc11), ADD_SX2(acc12, acc13));
+      y0 = XT_SEL32_HL_SX2(acc00, acc10);
+      y1 = XT_SEL32_LH_SX2(acc00, acc10);
+      z0 = ADD_SX2(y0, y1);
+      z0 = ADD_SX2(z0, b0);
+
+      // z1.H = Sum of all elements in acc2X
+      // z1.L = Sum of all elements in acc3X
+      acc20 = ADD_SX2(ADD_SX2(acc20, acc21), ADD_SX2(acc22, acc23));
+      acc30 = ADD_SX2(ADD_SX2(acc30, acc31), ADD_SX2(acc32, acc33));
+      y0 = XT_SEL32_HL_SX2(acc20, acc30);
+      y1 = XT_SEL32_LH_SX2(acc20, acc30);
+      z1 = ADD_SX2(y0, y1);
+      z1 = ADD_SX2(z1, b1);
+
+      /* NaN-propagating clamp: save values, clamp, restore NaN where input was NaN */
+      { xtfloatx2 z0_pre = z0, z1_pre = z1;
+        xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1);
+        z0 = MIN_SX2(MAX_SX2(z0, out_activation_min_), out_activation_max_);
+        z1 = MIN_SX2(MAX_SX2(z1, out_activation_min_), out_activation_max_);
+        MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1); }
+
+      AE_SSX2X2_IP(z0, z1, pz, sizeof(xtfloatx4));
+    }
+
+    /* Compute remaining rows */
+    for (m = (rows&(~3)); m < rows; m++)
+    {
+      px0 = (const xtfloatx4 *)(x+m*row_stride1);
+      py  = (const xtfloatx4 *)(y);
+      pz_ = (xtfloat *)(z+m);
+
+      b0 = ZERO_SX2();
+      if(b != NULL)
+      {
+        b0_ = *(xtfloat*)&b[m];
+      }
+      acc00 = acc01 = ZERO_SX2();
+
+#if defined(ENABLE_PRAGMA)
+      __Pragma("loop_count min=1")
+#endif /* ENABLE_PRAGMA */
+#pragma no_unroll
+      for (n = 0; n < (cols1>>2); n++)
+      {
+        AE_LSX2X2_IP(x00, x01, px0, sizeof(xtfloatx4));
+        AE_LSX2X2_IP(y0, y1, py, sizeof(xtfloatx4));
+        MADD_SX2X2(acc00, acc01, x00, x01, y0, y1);
+      }
+      acc00 = ADD_SX2(acc00, acc01);
+
+      z0_ = XT_RADD_SX2(acc00);
+      z0_ = ADD_S(z0_, b0_);
+
+      /* NaN-propagating clamp: z0_ != z0_ is true only for NaN (IEEE 754) */
+      xtfloat z0_pre_ = z0_;
+      xtbool nan0_ = xtbool2_extract_0(UN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(z0_), AE_MOVXTFLOATX2_FROMXTFLOAT(z0_)));
+      z0_ = MAX_S(z0_, AE_MOVXTFLOAT_FROMXTFLOATX2(out_activation_min_));
+      z0_ = MIN_S(z0_, AE_MOVXTFLOAT_FROMXTFLOATX2(out_activation_max_));
+      MOVT_S(z0_, z0_pre_, nan0_);
+
+      XT_SSIP(z0_, pz_, sizeof(FLOAT32));
+    }
+    return 0;
+  }
+  else
+  {
+    return -1;
+  }
+} /* mtx_vecmpyf_bias_add() */
 
 void _xa_nn_dot_product_4_rows_1_vecs_offset_aligned
     (xtfloatx2* out_0_0
@@ -1027,6 +1223,228 @@ WORD32 static dual_mtx_vecmpyf_bias_add_generic( FLOAT32 * z,
   }
 } /* dual_mtx_vecmpyf_bias_add_generic() */
 
+WORD32 static mtx_vecmpyf_bias_add_generic( FLOAT32 * z,
+     const FLOAT32 * x,  const FLOAT32 * y,
+     const FLOAT32 * b, int rows, int cols1, int row_stride1, FLOAT32 out_activation_min, FLOAT32 out_activation_max)
+{
+  const xtfloatx4 *restrict px0;
+  const xtfloatx4 *restrict px1;
+  const xtfloatx4 *restrict px2;
+  const xtfloatx4 *restrict py;
+  const xtfloat   *restrict pb;
+        xtfloatx2 *restrict pz;
+        xtfloat *restrict pz_;
+  xtfloatx2 b0, b1;
+  xtfloatx2 y0, y1;
+  xtfloatx2 y2, y3;
+  xtfloatx2 z0, z1;
+  xtfloat z0_, b0_;
+  xtfloatx2 x00, x01, x10, x11, x20, x21;
+  xtfloatx2 x02, x03, x12, x13, x22, x23;
+  xtfloatx2 acc00, acc01, acc10, acc11, acc20, acc21;
+  xtfloatx2 acc02, acc03, acc12, acc13, acc22, acc23;
+  ae_valignx2 x0_a, x1_a, x2_a, y_a;
+  int m=0, n, k;
+
+  NASSERT(x);
+  NASSERT(y);
+  NASSERT(z);
+  NASSERT((z != x) && (z != y) && (z != b));
+  NASSERT_ALIGN(x,4);
+  NASSERT_ALIGN(y,4);
+  NASSERT_ALIGN(z,4);
+  NASSERT_ALIGN(b,4);
+
+  pz = (xtfloatx2 *)z;
+  pb = (const xtfloat *)(b);
+
+  xtfloat *pact_min = (xtfloat *)&out_activation_min;
+  xtfloat *pact_max = (xtfloat *)&out_activation_max;
+  xtfloatx2 out_activation_min_ = AE_MOVXTFLOATX2_FROMXTFLOAT(AE_LSI(pact_min, 0));
+  xtfloatx2 out_activation_max_ = AE_MOVXTFLOATX2_FROMXTFLOAT(AE_LSI(pact_max, 0));
+
+   /* Parameter checks that require zeroing output on failure (rows > 0 and p_out valid here) */
+  if((row_stride1 < cols1) || (out_activation_max < out_activation_min))
+  {
+    return -1;
+  }
+
+  if (cols1 > 0)
+  {
+    int ii;
+    for(m = 0; m < (rows & ~(16 - 1)); m += 16)
+    {
+      xtfloat* pz0 = (xtfloat*)((xtfloat *)pz + m);
+      for(ii = 0; ii < 4; ii++)
+      {
+        /* Init out registers with bias */
+        z0 = z1 = ZERO_SX2();
+        if(b != NULL)
+        {
+          z0 = XT_SEL32_LL_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(pb[m+ii+0]), AE_MOVXTFLOATX2_FROMXTFLOAT(pb[m+ii+4]));
+          z1 = XT_SEL32_LL_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(pb[m+ii+8]), AE_MOVXTFLOATX2_FROMXTFLOAT(pb[m+ii+12]));
+        }
+        
+        xtfloat *px = ((xtfloat *)x+((m+ii)*row_stride1));
+        xtfloat *pvec1  = (xtfloat *)(y);
+
+        _xa_nn_dot_product_4_rows_1_vecs_offset_aligned
+          (&z0
+          ,&z1
+          ,(xtfloat *)px
+          ,(xtfloat *)pvec1
+          ,cols1
+          ,row_stride1
+          );
+        
+        /* NaN-propagating clamp */
+        { xtfloatx2 z0_pre = z0, z1_pre = z1;
+          xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1);
+          z0 = MIN_SX2(MAX_SX2(z0, out_activation_min_), out_activation_max_);
+          z1 = MIN_SX2(MAX_SX2(z1, out_activation_min_), out_activation_max_);
+          MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1); }
+
+        AE_SSX(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_LL_SX2(z0,z0)), pz0, 16);
+        AE_SSX(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z1,z1)), pz0, 32);
+        AE_SSX(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_LL_SX2(z1,z1)), pz0, 48);
+        AE_SSIP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z0,z0)), pz0, 4);
+      }
+    }
+    xtfloat* pz0 = (xtfloat*)((xtfloat *)pz + m);
+    int row_count = (rows - m) - (rows - m) % 3;
+    for(ii = 0; ii < row_count; ii+= 3, m += 3)
+    {
+      px0 = (const xtfloatx4 *)(x+(m*row_stride1));
+
+      px1 = (const xtfloatx4 *)((FLOAT32 *)px0+row_stride1);
+      px2 = (const xtfloatx4 *)((FLOAT32 *)px1+row_stride1);
+      py  = (const xtfloatx4 *)(y);
+
+      x0_a = AE_LA128_PP(px0);
+      x1_a = AE_LA128_PP(px1);
+      x2_a = AE_LA128_PP(px2);
+      y_a = AE_LA128_PP(py);
+
+      acc00 = acc01 = acc10 = acc11 = acc20 = acc21 = ZERO_SX2();
+      acc02 = acc03 = acc12 = acc13 = acc22 = acc23 = ZERO_SX2();
+
+      b0 = b1 = ZERO_SX2();
+      if(b != NULL)
+      {
+        b0 = XT_SEL32_LL_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(pb[m+0]), AE_MOVXTFLOATX2_FROMXTFLOAT(pb[m+1]));
+        b1 = AE_MOVXTFLOATX2_FROMXTFLOAT(pb[m+2]);
+      }
+      for (n = 0; n < (cols1>>3); n++)
+      {
+        AE_LASX2X2_IP(x00, x01, x0_a, px0);
+        AE_LASX2X2_IP(x10, x11, x1_a, px1);
+        AE_LASX2X2_IP(x20, x21, x2_a, px2);
+
+        AE_LASX2X2_IP(y0, y1, y_a, py);
+
+        MADD_SX2X2(acc00, acc01, x00, x01, y0, y1);
+        MADD_SX2X2(acc10, acc11, x10, x11, y0, y1);
+        MADD_SX2X2(acc20, acc21, x20, x21, y0, y1);
+        
+        AE_LASX2X2_IP(x02, x03, x0_a, px0);
+        AE_LASX2X2_IP(x12, x13, x1_a, px1);
+        AE_LASX2X2_IP(x22, x23, x2_a, px2);
+
+        AE_LASX2X2_IP(y2, y3, y_a, py);
+
+        MADD_SX2X2(acc02, acc03, x02, x03, y2, y3);
+        MADD_SX2X2(acc12, acc13, x12, x13, y2, y3);
+        MADD_SX2X2(acc22, acc23, x22, x23, y2, y3);
+      }
+      acc00 = ADD_SX2(ADD_SX2(acc00, acc01), ADD_SX2(acc02, acc03));
+      acc10 = ADD_SX2(ADD_SX2(acc10, acc11), ADD_SX2(acc12, acc13));
+      y0 = XT_SEL32_HL_SX2(acc00, acc10);
+      y1 = XT_SEL32_LH_SX2(acc00, acc10);
+      z0 = ADD_SX2(y0, y1);
+
+      acc20 = ADD_SX2(ADD_SX2(acc20, acc21), ADD_SX2(acc22, acc23));
+      z1 = AE_MOVXTFLOATX2_FROMXTFLOAT(RADD_SX2(acc20));
+
+      acc00 = ZERO_SX2();
+      acc20 = ZERO_SX2();
+      for(k = 0; k < (cols1&7); k++)
+      {
+          x00 = XT_SEL32_LL_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(*(((xtfloat *)px0)+k)), AE_MOVXTFLOATX2_FROMXTFLOAT(*(((xtfloat *)px1)+k)));
+          x20 = AE_MOVXTFLOATX2_FROMXTFLOAT(*(((xtfloat *)px2)+k));
+          y0 = AE_MOVXTFLOATX2_FROMXTFLOAT(*((xtfloat *)py+k));
+          MADDQ_S(acc00, acc20, x00, x20, y0);
+      }
+      z0 = ADD_SX2(z0, acc00);
+      z1 = ADD_SX2(z1, acc20);
+
+      /* Add bias */
+      z0 = ADD_SX2(z0, b0);
+      z1 = ADD_SX2(z1, b1);
+
+      /* NaN-propagating clamp */
+      { xtfloatx2 z0_pre = z0, z1_pre = z1;
+        xtbool2 nan0 = UN_SX2(z0, z0), nan1 = UN_SX2(z1, z1);
+        z0 = MIN_SX2(MAX_SX2(z0, out_activation_min_), out_activation_max_);
+        z1 = MIN_SX2(MAX_SX2(z1, out_activation_min_), out_activation_max_);
+        MOVT_SX2(z0, z0_pre, nan0); MOVT_SX2(z1, z1_pre, nan1); }
+
+      AE_SSIP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z0,z0)), pz0, 4);
+      AE_SSIP(AE_MOVXTFLOAT_FROMXTFLOATX2(z0), pz0, 4);
+      AE_SSIP(AE_MOVXTFLOAT_FROMXTFLOATX2(XT_SEL32_HH_SX2(z1,z1)), pz0, 4);
+    }
+
+    /* Compute last (rows%3) output element */
+    pz_ = (xtfloat*)((xtfloat *)pz + m);
+    for (; m < rows; m++)
+    {
+      px0 = (const xtfloatx4 *)(x+m*row_stride1);
+      py  = (const xtfloatx4 *)(y);
+
+      x0_a = AE_LA128_PP(px0);
+      y_a = AE_LA128_PP(py);
+
+      b0_ = ZERO_S();
+      if(b != NULL)
+      {
+        b0_ = *(xtfloat*)&b[m];
+      }
+      acc00 = acc01 = acc02 = acc03 =ZERO_SX2();
+
+      for (n = 0; n < (cols1>>3); n++)
+      {
+        AE_LASX2X2_IP(x00, x01, x0_a, px0);
+        AE_LASX2X2_IP(y0, y1, y_a, py);
+        AE_LASX2X2_IP(x02, x03, x0_a, px0);
+        AE_LASX2X2_IP(y2, y3, y_a, py);
+
+        MADD_SX2X2(acc00, acc01, x00, x01, y0, y1);
+        MADD_SX2X2(acc02, acc03, x02, x03, y2, y3);
+      }
+      acc00 = ADD_SX2(ADD_SX2(acc00, acc01), ADD_SX2(acc02, acc03));
+      z0_ = XT_RADD_SX2(acc00);
+
+      for(n = 0; n < (cols1&7); n++)
+      {
+          XT_MADD_S(z0_, *(((xtfloat *)px0)+n), *(((xtfloat *)py)+n));
+      }
+
+      z0_ = ADD_S(z0_, b0_);
+
+      /* NaN-propagating clamp: z0_ != z0_ is true only for NaN (IEEE 754) */
+      xtfloat z0_pre_ = z0_;
+      xtbool nan0_ = xtbool2_extract_0(UN_SX2(AE_MOVXTFLOATX2_FROMXTFLOAT(z0_), AE_MOVXTFLOATX2_FROMXTFLOAT(z0_)));
+      z0_ = MAX_S(z0_, AE_MOVXTFLOAT_FROMXTFLOATX2(out_activation_min_));
+      z0_ = MIN_S(z0_, AE_MOVXTFLOAT_FROMXTFLOATX2(out_activation_max_));
+      MOVT_S(z0_, z0_pre_, nan0_);
+
+      XT_SSIP(z0_, pz_, sizeof(FLOAT32));
+    }
+  }
+  
+  return 0;
+  
+} /* mtx_vecmpyf_bias_add_generic() */
+
 #endif /* HAVE_VFPU */
 
 
@@ -1375,6 +1793,69 @@ WORD32  xa_nn_matXvec_f32xf32_f32(
   {
     ret = dual_mtx_vecmpyf_bias_add_generic(p_out, p_mat1, p_vec1, p_mat2, p_vec2,
         p_bias, rows, cols1, cols2, row_stride1, row_stride2);
+  }
+
+  if (-1 == ret)
+  {
+    /* In erroneous case, populate output with zeros. */
+    for (k = 0; k < rows; k++)
+    {
+      p_out[k] = 0.0f;
+    }
+  }
+
+  return ret;
+}
+#endif /* !HAVE_VFPU */
+
+#if !HAVE_VFPU
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matXvec_v2_f32xf32_f32,(
+    FLOAT32  * __restrict__ p_out,             
+      const FLOAT32  * __restrict__ p_mat,     
+      const FLOAT32  * __restrict__ p_vec,  
+      const FLOAT32  * __restrict__ p_bias,   
+      WORD32 rows,                       
+      WORD32 cols,                                 
+      WORD32 row_stride,                     
+      FLOAT32 out_activation_min,
+      FLOAT32 out_activation_max,
+      xa_dma_cfg_t *p_dma_cfg))
+#else
+WORD32 xa_nn_matXvec_v2_f32xf32_f32(
+      FLOAT32  * __restrict__ p_out,             
+      const FLOAT32  * __restrict__ p_mat,     
+      const FLOAT32  * __restrict__ p_vec,  
+      const FLOAT32  * __restrict__ p_bias,   
+      WORD32 rows,                       
+      WORD32 cols,                                 
+      WORD32 row_stride,                     
+      FLOAT32 out_activation_min,
+      FLOAT32 out_activation_max,
+      xa_dma_cfg_t *p_dma_cfg
+      )
+{
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_mat, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(FLOAT32), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_mat, sizeof(FLOAT32), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec, sizeof(FLOAT32), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(FLOAT32), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((rows <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((cols <= 0), -1);
+
+  WORD32 ret = 0, k;
+
+  if(((cols&3) == 0) && ((row_stride&3) == 0) && ((((unsigned)p_out)&15) == 0) && ((((unsigned)p_mat)&15) == 0) && ((((unsigned)p_vec)&15) == 0) && ((((unsigned)p_bias)&15) == 0))
+  {
+    ret = mtx_vecmpyf_bias_add(p_out, p_mat, p_vec, p_bias, rows, cols, row_stride,out_activation_min,out_activation_max);
+  }
+  else
+  {
+    ret = mtx_vecmpyf_bias_add_generic(p_out, p_mat, p_vec, p_bias, rows, cols, row_stride,out_activation_min,out_activation_max);
   }
 
   if (-1 == ret)

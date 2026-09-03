@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -294,7 +294,7 @@ static WORD32 internal_xa_nn_conv2d_std_per_chan_sym4sxasym8s(
        ,input_channels_pad * kernel_width * kernel_height /* cols */
        ,input_channels_pad * kernel_width * y_stride/* row_offset */
        ,out_channels /* vec_count */
-       ,input_channels_pad * kernel_width * kernel_height /* vec_stride */
+       ,PADDED_SIZE((input_channels_pad * kernel_width * kernel_height + 1)/2, 16) * 2 /* vec_stride in terms of number of elements, multiplied by 2 as 1 element is 4-bit */
        ,out_channels_offset /* out_col_offset */
        ,out_height_offset /* out_row_offset */
        ,input_zero_bias
@@ -354,8 +354,7 @@ WORD32 xa_nn_conv2d_std_per_chan_sym4sxasym8s(
   XA_NNLIB_ARG_CHK_COND((input_zero_bias < -127 || input_zero_bias > 128), -1);
   XA_NNLIB_ARG_CHK_COND((out_zero_bias < -128 || out_zero_bias > 127), -1);
   XA_NNLIB_ARG_CHK_COND((out_data_format != 0 && out_data_format != 1), -1);
-  XA_NNLIB_ARG_CHK_COND((((input_channels * kernel_width * kernel_height) % 2) != 0), -1);
-  
+
   int itr;
   for(itr=0;itr<out_channels;itr++){
     XA_NNLIB_ARG_CHK_COND((p_out_shift[itr] < -31 || p_out_shift[itr] > 31), -1);

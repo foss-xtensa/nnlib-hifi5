@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -445,5 +445,32 @@ WORD32 xa_nn_vec_softmax_sym16s_16( WORD16 * __restrict__ p_out,
     AE_SA128POS_FP(align_output128,(void *)temp_out2);
   }
  
+  return 0;
+}
+
+WORD32 xa_nn_vec_batch_softmax_sym16s_16( WORD16 * __restrict__ p_out,
+                    const   WORD16 * __restrict__ p_vec,
+                            WORD32  input_beta_left_shift,
+                            WORD32  input_beta_multiplier,
+                            WORD32  vec_length,
+                            WORD32  batch_size)
+{
+  int batch;
+  WORD32 ret = 0;
+
+  for(batch = 0; batch < batch_size; batch++)
+  {
+    ret = xa_nn_vec_softmax_sym16s_16(
+      p_out + batch * vec_length,
+      p_vec + batch * vec_length,
+      input_beta_left_shift,
+      input_beta_multiplier,
+      vec_length
+    );
+
+    if(ret != 0)
+      return ret;
+  }
+
   return 0;
 }

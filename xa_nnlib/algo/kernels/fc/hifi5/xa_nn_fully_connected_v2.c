@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -79,6 +79,64 @@ WORD32 xa_nn_fully_connected_v2_asym8sxasym8s_asym8s
   return ret;
 }
 
+WORD32 xa_nn_fully_connected_v2_asym4sxasym8s_asym8s
+  (WORD8 *__restrict__ p_out
+   ,const WORD8 *__restrict__ p_weight
+   ,const WORD8 *__restrict__ p_inp
+   ,const WORD32 *__restrict__ p_bias
+   ,WORD32  weight_depth
+   ,WORD32  out_depth
+   ,WORD32  input_zero_bias
+   ,WORD32  weight_zero_bias
+   ,WORD32  out_multiplier
+   ,WORD32  out_shift
+   ,WORD32  out_zero_bias
+   ,VOID *p_scratch
+   ,WORD32  out_activation_min
+   ,WORD32  out_activation_max
+   ,xa_dma_cfg_t *p_dma_cfg
+  )
+{
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_weight, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD32), -1);
+
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((out_depth <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((weight_depth <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((input_zero_bias < -127 || input_zero_bias > 128), -1);
+  XA_NNLIB_ARG_CHK_COND((weight_zero_bias < -127 || weight_zero_bias > 128), -1);
+  XA_NNLIB_ARG_CHK_COND((out_shift < -31 || out_shift > 31), -1);
+  XA_NNLIB_ARG_CHK_COND((out_zero_bias < -128 || out_zero_bias > 127), -1);
+
+  WORD32 ret = 0;
+  /* Fully-connected is matXvec with rows=out_depth, cols=row_stride=weight_depth.
+   * mat1=weight, vec1=input for the matXvec convention. */
+  ret = xa_nn_matXvec_v2_asym4sxasym8s_asym8s
+    (p_out
+     ,p_weight
+     ,p_inp
+     ,p_bias
+     ,out_depth
+     ,weight_depth
+     ,weight_depth
+     ,weight_zero_bias
+     ,input_zero_bias
+     ,out_multiplier
+     ,out_shift
+     ,out_zero_bias
+     ,p_scratch
+     ,out_activation_min
+     ,out_activation_max
+     ,p_dma_cfg
+    );
+  return ret;
+}
+
 WORD32 xa_nn_fully_connected_v2_sym8sxsym16s_sym16s
   (WORD16 *__restrict__ p_out
    ,const WORD8 *__restrict__ p_weight
@@ -123,3 +181,60 @@ WORD32 xa_nn_fully_connected_v2_sym8sxsym16s_sym16s
     );
   return ret;
 }
+
+
+#if !HAVE_HP_VFPU
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32, xa_nn_fully_connected_v2_f16,
+    (WORD16 *__restrict__ p_out
+   ,const WORD16 *__restrict__ p_weight
+   ,const WORD16 *__restrict__ p_inp
+   ,const WORD16 *__restrict__ p_bias
+   ,WORD32  weight_depth
+   ,WORD32  out_depth
+   ,const WORD16 * out_activation_min
+   ,const WORD16 * out_activation_max
+   ,xa_dma_cfg_t *p_dma_cfg
+    )   
+    )
+#else
+
+WORD32 xa_nn_fully_connected_v2_f16
+  (WORD16 *__restrict__ p_out
+   ,const WORD16 *__restrict__ p_weight
+   ,const WORD16 *__restrict__ p_inp
+   ,const WORD16 *__restrict__ p_bias
+   ,WORD32  weight_depth
+   ,WORD32  out_depth
+   ,const WORD16 *p_out_act_min
+   ,const WORD16 *p_out_act_max
+   ,xa_dma_cfg_t *p_dma_cfg
+  )
+{
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_weight, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_weight, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(WORD16), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_bias, sizeof(WORD16), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((out_depth <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((weight_depth <= 0), -1);
+
+  return xa_nn_matXvec_v2_f16xf16_f16(
+      p_out,
+      p_weight,
+      p_inp,
+      p_bias,
+      out_depth,
+      weight_depth,
+      weight_depth,   /* row_stride == weight_depth for fully-connected */
+      p_out_act_min,
+      p_out_act_max,
+      p_dma_cfg
+  );
+}
+
+#endif

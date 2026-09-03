@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -323,7 +323,7 @@ const WORD16 *__restrict__ p_inp,
         ae_int16x4 d_out16;
         ae_int32x2 d_tmp32, d_out1, d_out;
         ae_int32x2 d_out2, d_1tmp32;
-        ae_int64 d_tmp, d_1tmp;
+        //ae_int64 d_tmp, d_1tmp;
         if(kernel_height * kernel_width <= 1024)
         {
             WORD32 den_hw, den1_hw;
@@ -355,39 +355,21 @@ const WORD16 *__restrict__ p_inp,
         }
         else
         {
-            ae_int32x2 den_h, den_w, den1_w;
-            den_h = SW_MOVDA32(inv_256_tbl[p_den_height[itr_oh]]);
-            for(itr_ow = 0; itr_ow < out_width-1; itr_ow+=2)
-            {
-                den_w = SW_MOVDA32(inv_256_tbl[p_den_width[itr_ow]]);
-                den1_w = SW_MOVDA32(inv_256_tbl[p_den_width[itr_ow + 1]]);
-                d_out1 = AE_MOVINT32X2_FROMINT32(*(ae_int32 *)(&ptr_out1[itr_ow*x_stride]));
-                d_out2 = AE_MOVINT32X2_FROMINT32(*(ae_int32 *)(&ptr_out1[(itr_ow+1)*x_stride]));
+          WORD32 den_h, den_w, den;
+          int64_t out;
+          den_h = p_den_height[itr_oh];
+          for(itr_ow = 0; itr_ow < out_width; itr_ow+=1)
+          {
+              den_w = p_den_width[itr_ow];
+              
+              den = den_h * den_w;
+              
+              out = ptr_out1[itr_ow*x_stride];
 
-                d_tmp  = AE_MUL32U_LL(den_h, den_w);
-                d_1tmp = AE_MUL32U_LL(den_h, den1_w);
-
-                d_tmp32 = AE_TRUNCI32X2F64S(d_tmp, d_1tmp, 1);
-
-                d_out = AE_SEL32_LL(d_out1, d_out2);
-
-                d_1tmp32 = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(d_out), AE_MOVF32X2_FROMINT32X2(d_tmp32)));
-                d_out16 = AE_SAT16X4(d_1tmp32, d_1tmp32);
-
-                ((ae_int16 *)p_out)[itr_oh*out_width+itr_ow] = AE_MOVINT16_FROMINT16X4(AE_SEL16_2301(d_out16, d_out16));
-                ((ae_int16 *)p_out)[itr_oh*out_width+itr_ow+1] = AE_MOVINT16_FROMINT16X4(d_out16);
-            }
-            if(out_width & 1)
-            {
-                den_w = SW_MOVDA32(inv_256_tbl[p_den_width[itr_ow]]);
-                d_out1 = AE_MOVINT32X2_FROMINT32(*(ae_int32 *)(&ptr_out1[itr_ow*x_stride]));
-                d_tmp  = AE_MUL32U_LL(den_h, den_w);
-                d_tmp32 = AE_TRUNCI32X2F64S(d_tmp, d_tmp, 1);
-                d_1tmp32 = AE_MOVINT32X2_FROMF32X2(AE_MULFP32X2RS(AE_MOVF32X2_FROMINT32X2(d_out1), AE_MOVF32X2_FROMINT32X2(d_tmp32)));
-                d_out16 = AE_SAT16X4(d_1tmp32, d_1tmp32);
-                ((ae_int16 *)p_out)[itr_oh*out_width+itr_ow] = AE_MOVINT16_FROMINT16X4(d_out16);
-            
-            }
+             out = den != 0 ? (out + (out > 0 ? (den/2):(-den/2))) : 0;
+             out = (out!=0) ? ((out>INT32_MAX) ?(INT32_MAX/den): ((out<INT32_MIN)?(INT32_MIN/den):(WORD32)out/den)):0;
+              p_out[itr_oh*out_width+itr_ow] = (WORD32)out;
+          }
         }
     }
 }
@@ -415,8 +397,8 @@ const WORD16* __restrict__ p_inp,
     XA_NNLIB_ARG_CHK_PTR(p_inp, -1);
     XA_NNLIB_ARG_CHK_PTR(p_scratch, -1);
     /* Pointer alignment checks */
-    XA_NNLIB_ARG_CHK_ALIGN(p_out, ALIGNMENT, -1);
-    XA_NNLIB_ARG_CHK_ALIGN(p_inp, ALIGNMENT, -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD16), -1);
+    XA_NNLIB_ARG_CHK_ALIGN(p_inp, sizeof(WORD16), -1);
     XA_NNLIB_ARG_CHK_ALIGN(p_scratch, ALIGNMENT, -1);
     /* Basic Parameter checks */
     XA_NNLIB_ARG_CHK_COND((input_height <= 0 || input_width <= 0), -1);

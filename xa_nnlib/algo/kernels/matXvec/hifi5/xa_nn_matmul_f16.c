@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -25,6 +25,21 @@
 #include "xa_nnlib_common_macros_hifi5.h"
 
 #if !HAVE_HP_VFPU
+DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matmul_v2_f16xf16_f16,(
+  WORD16 * __restrict__ p_out,          
+  const WORD16 * __restrict__ p_mat1,   
+  const WORD16 * __restrict__ p_vec1,   
+  const WORD16 * __restrict__ p_bias,   
+  WORD32 rows,
+  WORD32 cols1,
+  WORD32 row_stride1,                    
+  WORD32 vec_count,                      
+  WORD32 vec_offset,
+  WORD32 out_offset,
+  WORD32 out_stride,
+  const WORD16 *out_activation_min,
+  const WORD16 *out_activation_max,
+  xa_dma_cfg_t *p_dma_cfg))
 DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matmul_f16xf16_f16,(
     WORD16 * __restrict__ p_out,          
     const WORD16 * __restrict__ p_mat1,   
@@ -48,6 +63,20 @@ DISCARD_FUN_FOR_NONVOID_RETURN(WORD32,xa_nn_matmul_f16xf16_f16,(
   out1 = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(out1_tmp));\
 }
 
+#define CLAMP_HX4_PRESERVE_NAN(out, act_min, act_max) {\
+  xthalfx4 out_pre = (out);\
+  ae_int16x4 out_bits = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(out_pre));\
+  ae_int16x4 min_bits = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(act_min));\
+  ae_int16x4 max_bits = AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(act_max));\
+  xtbool4 out_nan = AE_LT16(AE_MOVDA16(0x7c00), AE_AND16(out_bits, AE_MOVDA16(0x7fff)));\
+  xtbool4 min_nan = AE_LT16(AE_MOVDA16(0x7c00), AE_AND16(min_bits, AE_MOVDA16(0x7fff)));\
+  xtbool4 max_nan = AE_LT16(AE_MOVDA16(0x7c00), AE_AND16(max_bits, AE_MOVDA16(0x7fff)));\
+  (out) = MIN_HX4(MAX_HX4((out), (act_min)), (act_max));\
+  MOVT_HX4(out, (act_min), min_nan);\
+  MOVT_HX4(out, (act_max), max_nan);\
+  MOVT_HX4(out, out_pre, out_nan);\
+}
+
 static inline void spfunc_cols_mul4_out_stride1
     (xthalf*   p_out
     ,const xthalf*   p_mat1
@@ -57,6 +86,8 @@ static inline void spfunc_cols_mul4_out_stride1
     ,WORD32     vec_count
     ,WORD32     cols1
     ,WORD32     out_offset
+    ,xthalfx4   activation_min
+    ,xthalfx4   activation_max
     )
 {
   int vec_itr, m_itr, c_itr;
@@ -187,6 +218,10 @@ static inline void spfunc_cols_mul4_out_stride1
 	  z3= ADD_HX4(z3, y02);
 	  z3= ADD_HX4(z3, y13);
 	  
+    CLAMP_HX4_PRESERVE_NAN(z0, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z1, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z2, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z3, activation_min, activation_max);
       AE_SHX4IP(z0,p_out_0, 8);
       AE_SHX4IP(z1,p_out_1, 8);
       AE_SHX4IP(z2,p_out_2, 8);
@@ -243,6 +278,7 @@ static inline void spfunc_cols_mul4_out_stride1
       z0 = ADD_HX4(z0, y02);
       z0 = ADD_HX4(z0, y13);
 
+      CLAMP_HX4_PRESERVE_NAN(z0, activation_min, activation_max);
       AE_SHX4IP(z0,p_out_0, 8);
     }
   }
@@ -260,6 +296,8 @@ static inline void spfunc_aligned_cols_mul4_out_stride1
     ,WORD32     out_offset
     ,WORD32     row_stride1
     ,WORD32     vec_offset
+    ,xthalfx4   activation_min
+    ,xthalfx4   activation_max
     )
 {
   int vec_itr, m_itr, c_itr;
@@ -389,6 +427,10 @@ static inline void spfunc_aligned_cols_mul4_out_stride1
 	  z3= ADD_HX4(z3, y02);
 	  z3= ADD_HX4(z3, y13);
 	  
+    CLAMP_HX4_PRESERVE_NAN(z0, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z1, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z2, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z3, activation_min, activation_max);
       AE_SHX4IP(z0,p_out_0, 8);
       AE_SHX4IP(z1,p_out_1, 8);
       AE_SHX4IP(z2,p_out_2, 8);
@@ -446,6 +488,7 @@ static inline void spfunc_aligned_cols_mul4_out_stride1
       z0 = ADD_HX4(z0, y02);
       z0 = ADD_HX4(z0, y13);
       
+      CLAMP_HX4_PRESERVE_NAN(z0, activation_min, activation_max);
       AE_SHX4IP(z0,p_out_0, 8);
     }
   }
@@ -461,6 +504,8 @@ static inline void spfunc_cols_mul4_out_offset1
     ,WORD32     vec_count
     ,WORD32     cols1
     ,WORD32     out_stride
+    ,xthalfx4   activation_min
+    ,xthalfx4   activation_max
     )
 {
   int vec_itr, m_itr, c_itr;
@@ -631,6 +676,10 @@ static inline void spfunc_cols_mul4_out_offset1
 	  z3=z3+y02;
 	  z3=z3+y13;
 	  */
+    CLAMP_HX4_PRESERVE_NAN(z0, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z1, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z2, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z3, activation_min, activation_max);
       AE_SHX4IP(z0,p_out_0, 8);
       AE_SHX4IP(z1,p_out_1, 8);
       AE_SHX4IP(z2,p_out_2, 8);
@@ -759,6 +808,10 @@ for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
 	  z3= ADD_HX4(z3, y02);
 	  z3= ADD_HX4(z3, y13);
 	  
+    CLAMP_HX4_PRESERVE_NAN(z0, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z1, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z2, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z3, activation_min, activation_max);
       AE_SHX4IP(z0,p_out_0, 8);
       AE_SHX4IP(z1,p_out_1, 8);
       AE_SHX4IP(z2,p_out_2, 8);
@@ -822,6 +875,7 @@ for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
       y13 = AE_SELH_6420(y01, y23);
 	  y0123= ADD_HX4(y13, y02);
       
+      CLAMP_HX4_PRESERVE_NAN(y0123, activation_min, activation_max);
       y0 = AE_SELH_6543(y0123, y0123);            
 	  AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y0)),p_out_0 ,2);			
 	  y1 = AE_SELH_7362(y0123, y0123);
@@ -969,6 +1023,10 @@ for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
 	  z3= ADD_HX4(z3, y02);
 	  z3= ADD_HX4(z3, y13);
 	  
+    CLAMP_HX4_PRESERVE_NAN(z0, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z1, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z2, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z3, activation_min, activation_max);
       AE_SHX4IP(z0,p_out_0, 8);
       AE_SHX4IP(z1,p_out_1, 8);
       AE_SHX4IP(z2,p_out_2, 8);
@@ -1033,6 +1091,7 @@ for (vec_itr = 0; vec_itr < (vec_count & ~(4-1)); vec_itr += 4)
       y13 = AE_SELH_6420(y01, y23);
 	  y0123= ADD_HX4(y13, y02);
       
+      CLAMP_HX4_PRESERVE_NAN(y0123, activation_min, activation_max);
       y0 = AE_SELH_6543(y0123, y0123);            
 	  AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y0)),p_out_0 ,2);			
 	  y1 = AE_SELH_7362(y0123, y0123);
@@ -1057,6 +1116,8 @@ static inline void spfunc_aligned_cols_mul4_out_offset1
     ,WORD32     out_stride
     ,WORD32     row_stride1
     ,WORD32     vec_offset
+    ,xthalfx4   activation_min
+    ,xthalfx4   activation_max
     )
 {
   int vec_itr, m_itr, c_itr;
@@ -1197,6 +1258,10 @@ static inline void spfunc_aligned_cols_mul4_out_offset1
 	  z3= ADD_HX4(z3, y02);
 	  z3= ADD_HX4(z3, y13);
 	  
+    CLAMP_HX4_PRESERVE_NAN(z0, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z1, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z2, activation_min, activation_max);
+    CLAMP_HX4_PRESERVE_NAN(z3, activation_min, activation_max);
       AE_SHX4IP(z0,p_out_0, 8);
       AE_SHX4IP(z1,p_out_1, 8);
       AE_SHX4IP(z2,p_out_2, 8);
@@ -1260,6 +1325,7 @@ static inline void spfunc_aligned_cols_mul4_out_offset1
       y13 = AE_SELH_6420(y01, y23);
 	  y0123= ADD_HX4(y13, y02);
       
+      CLAMP_HX4_PRESERVE_NAN(y0123, activation_min, activation_max);
       y0 = AE_SELH_6543(y0123, y0123);            
 	  AE_S16_0_IP(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y0)),p_out_0 ,2);			
 	  y1 = AE_SELH_7362(y0123, y0123);
@@ -1272,7 +1338,34 @@ static inline void spfunc_aligned_cols_mul4_out_offset1
   }
 }
 
-WORD32 xa_nn_matmul_f16xf16_f16(
+static WORD32 f16_bits_less_than(WORD16 lhs_bits, WORD16 rhs_bits)
+{
+  UWORD16 lhs = (UWORD16)lhs_bits;
+  UWORD16 rhs = (UWORD16)rhs_bits;
+  UWORD16 lhs_key, rhs_key;
+
+  if((((lhs & 0x7C00u) == 0x7C00u) && (lhs & 0x03FFu)) ||
+     (((rhs & 0x7C00u) == 0x7C00u) && (rhs & 0x03FFu)))
+  {
+    return 0;
+  }
+
+  if((lhs & 0x7FFFu) == 0)
+  {
+    lhs = 0;
+  }
+  if((rhs & 0x7FFFu) == 0)
+  {
+    rhs = 0;
+  }
+
+  lhs_key = (lhs & 0x8000u) ? (UWORD16)(~lhs) : (UWORD16)(lhs ^ 0x8000u);
+  rhs_key = (rhs & 0x8000u) ? (UWORD16)(~rhs) : (UWORD16)(rhs ^ 0x8000u);
+
+  return lhs_key < rhs_key;
+}
+
+WORD32 xa_nn_matmul_v2_f16xf16_f16(
     WORD16 * __restrict__ p_out,          
     const WORD16 * __restrict__ p_mat1,   
     const WORD16 * __restrict__ p_vec1,   
@@ -1283,9 +1376,18 @@ WORD32 xa_nn_matmul_f16xf16_f16(
     WORD32 vec_count,                      
     WORD32 vec_offset,
     WORD32 out_offset,
-    WORD32 out_stride)
+    WORD32 out_stride,
+    const WORD16 *out_activation_min,
+    const WORD16 *out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg)
 	
 {
+  	WORD16 act_min_bits;
+  	WORD16 act_max_bits;
+  	xthalfx4 activation_min;
+  	xthalfx4 activation_max;
+
+  	(void)p_dma_cfg;
 	
 	    /* NULL pointer checks */
     XA_NNLIB_ARG_CHK_PTR(p_out, -1);
@@ -1301,6 +1403,11 @@ WORD32 xa_nn_matmul_f16xf16_f16(
     XA_NNLIB_ARG_CHK_COND((vec_offset == 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_offset == 0), -1);
     XA_NNLIB_ARG_CHK_COND((out_stride == 0), -1);
+    act_min_bits = (out_activation_min != NULL) ? *out_activation_min : (WORD16)0xFC00u;
+    act_max_bits = (out_activation_max != NULL) ? *out_activation_max : (WORD16)0x7C00u;
+    XA_NNLIB_ARG_CHK_COND(f16_bits_less_than(act_max_bits, act_min_bits), -1);
+    activation_min = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(act_min_bits)));
+    activation_max = AE_MOVHALFX4_FROMF16X4(AE_MOVF16X4_FROMINT16X4(AE_MOVDA16(act_max_bits)));
   
     /* Iterators used in for loops */
     int m_itr, c_itr, vec_itr;
@@ -1334,7 +1441,9 @@ WORD32 xa_nn_matmul_f16xf16_f16(
            rows,
            vec_count,
            cols1,
-           out_offset
+             out_offset,
+             activation_min,
+             activation_max
           );
       }
     else if(out_offset==1)
@@ -1348,7 +1457,9 @@ WORD32 xa_nn_matmul_f16xf16_f16(
            rows,
            vec_count,
            cols1,
-           out_stride
+               out_stride,
+               activation_min,
+               activation_max
           );
     }
 
@@ -1375,7 +1486,9 @@ WORD32 xa_nn_matmul_f16xf16_f16(
            cols1,
            out_stride,
            row_stride1,
-           vec_offset
+               vec_offset,
+               activation_min,
+               activation_max
           );
     }
     else if(out_stride==1)
@@ -1390,7 +1503,9 @@ WORD32 xa_nn_matmul_f16xf16_f16(
            cols1,
            out_offset,
            row_stride1,
-           vec_offset
+           vec_offset,
+           activation_min,
+           activation_max
            );
 
     }
@@ -1480,7 +1595,8 @@ WORD32 xa_nn_matmul_f16xf16_f16(
 
                 bias=AE_SELH_7362(bias,bias1);
                 y0123= ADD_HX4(y0123, bias);
-				
+                
+                CLAMP_HX4_PRESERVE_NAN(y0123, activation_min, activation_max);
 				y0 = AE_SELH_6543(y0123, y0123);
                 
 				AE_S16_0_I(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y0)),(p16_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride),0);
@@ -1551,7 +1667,8 @@ WORD32 xa_nn_matmul_f16xf16_f16(
 				y3 = AE_SELH_6420(y01, y01);
 				y23 = ADD_HX4(y2, y3);
 				y23= ADD_HX4(y23, bias);
-				y0 = AE_SELH_6543(y23, y23);
+        CLAMP_HX4_PRESERVE_NAN(y23, activation_min, activation_max);
+        y0 = AE_SELH_6543(y23, y23);
 				AE_S16_0_I(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y0)),(p16_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride),0);
 				
 				AE_S16_0_I(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y23)),(p16_out + (vec_itr + 1)*out_offset + (m_itr + 0)*out_stride),0);
@@ -1623,7 +1740,8 @@ WORD32 xa_nn_matmul_f16xf16_f16(
 				
 				bias=AE_SELH_7362(bias,bias1);
                 y23= ADD_HX4(y23, bias);
-				y0 = AE_SELH_6543(y23, y23);
+        CLAMP_HX4_PRESERVE_NAN(y23, activation_min, activation_max);
+        y0 = AE_SELH_6543(y23, y23);
 				AE_S16_0_I(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y0)),(p16_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride),0);
 				
 				AE_S16_0_I(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y23)),(p16_out + (vec_itr + 0)*out_offset + (m_itr + 1)*out_stride),0);
@@ -1677,7 +1795,8 @@ WORD32 xa_nn_matmul_f16xf16_f16(
 				y3 = AE_SELH_6420(y01, y01);
 				y23 = ADD_HX4(y2, y3);
 				
-				y0= ADD_HX4(y23, bias);
+        y0= ADD_HX4(y23, bias);
+        CLAMP_HX4_PRESERVE_NAN(y0, activation_min, activation_max);
 				AE_S16_0_I(AE_MOVINT16X4_FROMF16X4(AE_MOVF16X4_FROMHALFX4(y0)),(p16_out + (vec_itr + 0)*out_offset + (m_itr + 0)*out_stride),0);
 				
             }
@@ -1685,6 +1804,39 @@ WORD32 xa_nn_matmul_f16xf16_f16(
  }
 	
   return 0;
+}
+
+WORD32 xa_nn_matmul_f16xf16_f16(
+    WORD16 * __restrict__ p_out,
+    const WORD16 * __restrict__ p_mat1,
+    const WORD16 * __restrict__ p_vec1,
+    const WORD16 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols1,
+    WORD32 row_stride1,
+    WORD32 vec_count,
+    WORD32 vec_offset,
+    WORD32 out_offset,
+    WORD32 out_stride)
+{
+    WORD16 act_min_bits = (WORD16)0xFC00u;
+    WORD16 act_max_bits = (WORD16)0x7C00u;
+
+    return xa_nn_matmul_v2_f16xf16_f16(
+        p_out,
+        p_mat1,
+        p_vec1,
+        p_bias,
+        rows,
+        cols1,
+        row_stride1,
+        vec_count,
+        vec_offset,
+        out_offset,
+        out_stride,
+        &act_min_bits,
+        &act_max_bits,
+        NULL);
 }
 
 #endif

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -72,6 +72,24 @@ const FLOAT32* __restrict__ p_inp,
       pVOID    p_scratch_in,
       FLOAT32  *p_zeros_mem,
       FLOAT32  *p_den);
+
+void xa_nn_avgpool_f16_hwc(
+      WORD16* __restrict__ p_out,
+const WORD16* __restrict__ p_inp,
+      WORD32   input_height,
+      WORD32   input_width,
+      WORD32   input_channels,
+      WORD32   kernel_height,
+      WORD32   kernel_width,
+      WORD32   x_stride,
+      WORD32   y_stride,
+      WORD32   x_padding,
+      WORD32   y_padding,
+      WORD32   out_height,
+      WORD32   out_width,
+      pVOID    p_scratch_in,
+      WORD16   *p_zeros_mem,
+      WORD16   *p_den);
 
 void xa_nn_avgpool_asym8_hwc_16(
       UWORD8* __restrict__ p_out,

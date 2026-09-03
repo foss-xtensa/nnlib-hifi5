@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -46,6 +46,10 @@
 #include "xa_nnlib_common_fpu.h"
 #define SW_MOVDA32(a) AE_MOVDA32X2(a, a)
 #define sz_f32    (int)sizeof(float32_t)
+/* Block length (in elements) processed per iteration inside __sigmoidf() */
+#define blkSize_blkLen (2*MAX_ALLOCA_SZ/(sz_f32))
+/* Scratch buffer size (in bytes) allocated by xa_nnlib_vec_sigmoidf() */
+#define blkSize_scr    (MAX_ALLOCA_SZ/2*2*sz_f32)
 
 /*-------------------------------------------------------------------------
   Sigmoid
@@ -88,7 +92,7 @@ static void __sigmoidf(float32_t * y, const float32_t * x, int N, float32_t* scr
   ae_valignx2 X_va, Y_va;
 
   /* Block size, blkLen <= blkSize */
-  const int blkSize = 2*MAX_ALLOCA_SZ/(sz_f32);
+  const int blkSize = blkSize_blkLen;
   int n;
   NASSERT_ALIGN16(scr);
   NASSERT(N%8==0);
@@ -255,10 +259,8 @@ void xa_nnlib_vec_sigmoidf    (float32_t * restrict y, const float32_t * restric
     xtfloatx4 * restrict pX;
     xtfloatx4 * restrict pY;
     int n;
-    /* Block size, blkLen <= blkSize */
-    const int blkSize = MAX_ALLOCA_SZ/2*2*sz_f32;
     /* Allocate a fixed-size scratch area on the stack. */
-    float32_t ALIGN(32) scr[blkSize * 2];
+    float32_t ALIGN(32) scr[blkSize_scr * 2];
 
     if (N<=0) return;
     if (N&7)

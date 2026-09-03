@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+# Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -26,6 +26,58 @@ Cadence HiFi 5 Neural Network (NN) Library
 ===============================================================================
 Revision History
 ===============================================================================
+
+Version 4.2.0 API 2.2: September 3, 2026
+
++ Intermediate Release of HiFi5 NN Library
++ Tested using the RJ-2026.6 tools and xt-clang/xt-clang++ compiler
++ Adds the following kernels:
+  Normalization
+    xa_nn_instance_norm_3D_8_8_nhwc
+  LUT-based activations and softmax
+    xa_nn_vec_batch_softmax_{lut_asym8s_asym8s,sym16s_16}
+    xa_nn_vec_apply_lut_asym8s_asym8s
+    xa_nn_init_lut_asym8s_{sigmoid,tanh,softmax}
+  Matrix operations
+    xa_nn_matXvec_v2_{f16xf16_f16,f32xf32_f32,asym4sxasym8s_asym8s}
+    xa_nn_matmul_v2_{f16xf16_f16,f32xf32_f32}
+    xa_nn_matXvec_acc_batch_sym8sx8_asym16s_hU
+  Float16 (F16)
+    xa_nn_{conv2d_std,dilated_conv2d_std,conv2d_depthwise,
+    dilated_conv2d_depthwise,conv2d_pointwise,fully_connected}_v2_f16
+    xa_nn_{avgpool,maxpool,maxpoolId_v2,maxunpool}_f16
+    xa_nn_elm_{add,sub,mul,div}_broadcast_4D_f16xf16_f16
+    xa_nn_vec_{exp,sqrt,log,selu,logsoftmax,softmax,
+    hardswish,prelu,leaky_relu}_f16_f16
+  Float32 (F32)
+    xa_nn_{conv2d_std,conv2d_pointwise,fully_connected}_v2_f32
+  Resize
+    xa_nn_resize_nearest_neighbour_16_16
+  GRU
+    xa_nn_gru_hidden_state_update_16
+
++ Updates the xa_nn_gru_sym8sxasym8s API.
++ Updates the xa_nn_norm_calc_3D_8_nhwc API: removes the reciprocal table (precip).
++ Removes kernel API xa_nn_conv2d_std_getsize_sym4s. 
++ Fixes known issues to improve stability.
+
+Note:
+> The _v2 APIs are in beta stage and may change in next release.
+> Processor Configuration must be built with the SP-VFP option to compile
+  floating point variants of the kernels. F16 APIs require the HP-VFP option.
+> The library makefile uses '-mno-mul16 -mno-mul32 -mno-div32' compile options.
+  User may remove these from makefile for improved performance if their core
+  config supports these HW options.
+
+Known issues
+> Compiler optimizations are not available for the ANN C++ source files.
+> 3 failures were seen in the ANN testcases because of differences in reference
+  code implementations:
+    DEPTHWISE_CONV2D_FLOAT_LARGE_2_WEIGHTS_AS_INPUTS
+    LOCAL_RESPONSE_NORM_FLOAT_4
+    LOCAL_RESPONSE_NORM_FLOAT_4_RELAXED
+
+----------------------------------------------------------------------
 
 Version 4.1.0 API 2.1: September 30, 2025
 

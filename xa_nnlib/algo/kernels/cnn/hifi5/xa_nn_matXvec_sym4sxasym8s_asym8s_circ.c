@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -135,10 +135,10 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
 
       ae_int8x8 mat_zb = AE_MOVDA8(-mat1_offset);
 
-      ae_int8x16 * __restrict__ p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 * __restrict__ p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 * __restrict__ p_vec_batch_2  = (ae_int8x16 *)(&p_vec1[(vec_itr+2)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 * __restrict__ p_vec_batch_3  = (ae_int8x16 *)(&p_vec1[(vec_itr+3)*PADDED_SIZE((vec_stride/2), 16)]);
+      ae_int8x16 * __restrict__ p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*vec_stride/2]);
+      ae_int8x16 * __restrict__ p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*vec_stride/2]);
+      ae_int8x16 * __restrict__ p_vec_batch_2  = (ae_int8x16 *)(&p_vec1[(vec_itr+2)*vec_stride/2]);
+      ae_int8x16 * __restrict__ p_vec_batch_3  = (ae_int8x16 *)(&p_vec1[(vec_itr+3)*vec_stride/2]);
 
 
       // ae_int8 *p_mat_0, *p_mat_1, *p_mat_2, *p_mat_3;
@@ -466,10 +466,10 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
 
       ae_int8x8 mat_zb = AE_MOVDA8(-mat1_offset);
 
-      ae_int8x16 * __restrict__ p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 * __restrict__ p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 * __restrict__ p_vec_batch_2  = (ae_int8x16 *)(&p_vec1[(vec_itr+2)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 * __restrict__ p_vec_batch_3  = (ae_int8x16 *)(&p_vec1[(vec_itr+3)*PADDED_SIZE((vec_stride/2), 16)]);
+      ae_int8x16 * __restrict__ p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*vec_stride/2]);
+      ae_int8x16 * __restrict__ p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*vec_stride/2]);
+      ae_int8x16 * __restrict__ p_vec_batch_2  = (ae_int8x16 *)(&p_vec1[(vec_itr+2)*vec_stride/2]);
+      ae_int8x16 * __restrict__ p_vec_batch_3  = (ae_int8x16 *)(&p_vec1[(vec_itr+3)*vec_stride/2]);
       ae_int8x16 *p_mat_0, *p_mat_1;
       ae_int16x4 *p16x4_mat_0 = (ae_int16x4 *)p_mat1;
       AE_ADDCIRC16X4_XC(p16x4_mat_0, (m_itr)*row_stride1*sizeof(WORD8)); 
@@ -695,10 +695,10 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
 
       ae_int8x8 mat_zb = AE_MOVDA8(-mat1_offset);
 
-      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 *p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 *p_vec_batch_2  = (ae_int8x16 *)(&p_vec1[(vec_itr+2)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 *p_vec_batch_3  = (ae_int8x16 *)(&p_vec1[(vec_itr+3)*PADDED_SIZE((vec_stride/2), 16)]);
+      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*vec_stride/2]);
+      ae_int8x16 *p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*vec_stride/2]);
+      ae_int8x16 *p_vec_batch_2  = (ae_int8x16 *)(&p_vec1[(vec_itr+2)*vec_stride/2]);
+      ae_int8x16 *p_vec_batch_3  = (ae_int8x16 *)(&p_vec1[(vec_itr+3)*vec_stride/2]);
       ae_int8x16 *p_mat_0;
       ae_int16x4 *p16x4_mat_0 = (ae_int16x4 *)p_mat1;      
       AE_ADDCIRC16X4_XC(p16x4_mat_0, (m_itr)*row_stride1*sizeof(WORD8)); 
@@ -902,8 +902,8 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
 
       ae_int8x8 mat_zb = AE_MOVDA8(-mat1_offset);
 
-      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 *p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*PADDED_SIZE((vec_stride/2), 16)]);
+      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*vec_stride/2]);
+      ae_int8x16 *p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*vec_stride/2]);
       ae_int8x16 *p_mat_0, *p_mat_1;
       ae_int16x4 *p16x4_mat_0 = (ae_int16x4 *)p_mat1;
       AE_ADDCIRC16X4_XC(p16x4_mat_0, (m_itr)*row_stride1*sizeof(WORD8)); 
@@ -1063,8 +1063,8 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
 
       ae_int8x8 mat_zb = AE_MOVDA8(-mat1_offset);
 
-      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*PADDED_SIZE((vec_stride/2), 16)]);
-      ae_int8x16 *p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*PADDED_SIZE((vec_stride/2), 16)]);
+      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*vec_stride/2]);
+      ae_int8x16 *p_vec_batch_1  = (ae_int8x16 *)(&p_vec1[(vec_itr+1)*vec_stride/2]);
       ae_int8x16 *p_mat_0;
 
       ae_int16x4 *p16x4_mat_0 = (ae_int16x4 *)p_mat1;
@@ -1211,7 +1211,7 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
 
       ae_int8x8 mat_zb = AE_MOVDA8(-mat1_offset);
 
-      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*PADDED_SIZE((vec_stride/2), 16)]);
+      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*vec_stride/2]);
 
       ae_int8x16 *p_mat_0, *p_mat_1;
       ae_int16x4 *p16x4_mat_0 = (ae_int16x4 *)p_mat1;
@@ -1342,7 +1342,7 @@ WORD32 xa_nn_matXvec_sym4sxasym8s_asym8s_circ(
       ae_int16x4 mat_plus_zb4, mat_plus_zb5;
       ae_int16x4 mat_plus_zb6, mat_plus_zb7;
       ae_int8x8 mat_zb = AE_MOVDA8(-mat1_offset);
-      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*PADDED_SIZE((vec_stride/2), 16)]);
+      ae_int8x16 *p_vec_batch_0  = (ae_int8x16 *)(&p_vec1[(vec_itr)*vec_stride/2]);
       ae_int16x4 *p16x4_mat_0 = (ae_int16x4 *)p_mat1;
       AE_ADDCIRC16X4_XC(p16x4_mat_0, (m_itr)*row_stride1*sizeof(WORD8)); 
       ae_int8x16 *p_mat_0 = (ae_int8x16 *)p16x4_mat_0;

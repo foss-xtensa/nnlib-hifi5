@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -2797,6 +2797,57 @@ WORD32 xa_nn_vec_tanh_asym8s_asym8s(WORD8 *p_out,
   }
   AE_SA128POS_FP(align_dst_hf5, p_o);
 #endif /* #if defined(USE_HIFI_ACT_TIE) && defined(AE_TANH16X4X2) */
+
+  return 0;
+}
+
+WORD32 xa_nn_vec_apply_lut_asym8s_asym8s(WORD8 * __restrict__ p_out,
+                      const WORD8 * __restrict__ p_vec,
+                            WORD8 * __restrict__ p_lut,
+                            WORD32 lut_len,
+                            WORD32 vec_length)
+{
+  /* NULL pointer checks */
+  XA_NNLIB_ARG_CHK_PTR(p_out, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_vec, -1);
+  XA_NNLIB_ARG_CHK_PTR(p_lut, -1);
+  /* Pointer alignment checks */
+  XA_NNLIB_ARG_CHK_ALIGN(p_out, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_vec, sizeof(WORD8), -1);
+  XA_NNLIB_ARG_CHK_ALIGN(p_lut, sizeof(WORD8), -1);
+  /* Basic Parameter checks */
+  XA_NNLIB_ARG_CHK_COND((vec_length <= 0), -1);
+  XA_NNLIB_ARG_CHK_COND((lut_len != 256), -1);
+
+  int i;
+  const WORD8 *pin = p_vec;
+  ae_valign align_src = AE_LA64_PP((ae_int8x8 *)pin);
+  for(i = 0; i < (vec_length >> 2); i++)
+  {
+    ae_int16x4 d0;
+    ae_int32x2 d32_0, d32_1;
+    WORD32 v0, v1, v2, v3;
+    AE_LA8X4S_IP(d0, align_src, pin);
+    /* Mask to unsigned byte indices [0,255]; LUT is pre-permuted */
+    d0 = AE_AND16(d0, AE_MOVDA16(0xFF));
+    AE_SUBW16(d32_0, d32_1, d0, AE_MOVDA16(0));
+    v0 = AE_MOVAD32_H(d32_0);
+    v1 = AE_MOVAD32_L(d32_0);
+    v2 = AE_MOVAD32_H(d32_1);
+    v3 = AE_MOVAD32_L(d32_1);
+    /* Scalar LUT lookups and store */
+    p_out[0] = p_lut[v0];
+    p_out[1] = p_lut[v1];
+    p_out[2] = p_lut[v2];
+    p_out[3] = p_lut[v3];
+    p_out += 4;
+
+  }
+  for(i = 0; i < (vec_length & 3); i++)
+  {
+    UWORD8 index = (UWORD8)(*pin++);
+    *p_out++ = p_lut[index];
+  }
 
   return 0;
 }

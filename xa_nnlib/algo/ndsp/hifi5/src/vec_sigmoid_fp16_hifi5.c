@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -55,6 +55,9 @@
 #include "xa_nnlib_common_fpu.h"
 
 #define sz_f16    (int)sizeof(float16_t)
+/* Block size, blkLen <= blkSize */
+#define blkSize_blkLen (MAX_ALLOCA_SZ/(2*sz_f16))
+#define blkSize_scr    (MAX_ALLOCA_SZ/(2*sz_f16))
 
 /*-------------------------------------------------------------------------
   Sigmoid
@@ -113,7 +116,7 @@ static void __sigmoid_fp16(float16_t * y, const float16_t * x, int N, float16_t*
   ae_valignx2 X_va, Y_va;
   xthalfx4 x0, x1;
   /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ/2*2*sz_f16;
+  const int blkSize = blkSize_blkLen;
   int n;
   NASSERT_ALIGN16(scr);
   NASSERT(N%16==0);
@@ -268,10 +271,9 @@ void xa_nnlib_vec_sigmoid_fp16    (float16_t * restrict y, const float16_t * res
   xthalfx8  * restrict pX;
   xthalfx8  * restrict pY;
   int n;
-  /* Block size, blkLen <= blkSize */
-  const int blkSize = MAX_ALLOCA_SZ/2*2*sz_f16;
+  /* The factor of 2 below is present as scratch stores exponents in int16 and fractional part in fp16 format. */
   /* Allocate a fixed-size scratch area on the stack. */
-  float16_t ALIGN(32) scr[blkSize];
+  float16_t ALIGN(32) scr[blkSize_scr*2];
 
   if (N<=0) return;
   if (N & 15)

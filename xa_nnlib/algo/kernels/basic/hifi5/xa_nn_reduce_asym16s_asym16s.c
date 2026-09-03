@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -1205,7 +1205,7 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
   {
     current = p_axis[axis_itr];
     XA_NNLIB_ARG_CHK_COND(((current < 0) || (current > (num_inp_dims - 1))), -1);
-    XA_NNLIB_ARG_CHK_COND((p_inp_shape[current] > 1024), -1);
+//    XA_NNLIB_ARG_CHK_COND((p_inp_shape[current] > 1024), -1);
 
     /* Avoid calculation in case of repeated axis dims*/
     if(current != past)
@@ -1370,6 +1370,8 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
         AE_SA128POS_FP(align_dst, p16x8_out); // finalize the stream
         ae_int32 *p32_src1 = (ae_int32 *)p_src1;
         ae_int16 *p16_out = (ae_int16 *)p16x8_out;
+
+	
         for(itr = 0; itr < (out_length & 7); itr++)
         {
           ae_int32x2 wout1;
@@ -1377,9 +1379,8 @@ WORD32 xa_nn_reduce_mean_4D_asym16s_asym16s(WORD16 * __restrict__ p_out
 
           AE_L32_IP(wout1, p32_src1, 4);
           wout1 = SW_ADD32S_INT32X2_INT32X2(wout1, total_bias);
-
           MPY_BY_QUANT_MULT_SLS_X2_OUT32(wout1, wout1, out_multiplier, left_shift, right_shift);
-          wout1 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_zero_bias)), AE_MOVF32X2_FROMINT32X2(wout1)));
+	  wout1 = AE_MOVINT32X2_FROMF32X2(AE_ADD32S(AE_MOVF32X2_FROMINT32(AE_MOVDA32(out_zero_bias)), AE_MOVF32X2_FROMINT32X2(wout1)));
           d0_out16 = AE_SAT16X4(wout1, wout1);
 
           AE_S16_0_IP(d0_out16, p16_out, 2);

@@ -1,5 +1,5 @@
 /*******************************************************************************
-* Copyright (c) 2018-2025 Cadence Design Systems, Inc.
+* Copyright (c) 2018-2026 Cadence Design Systems, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining
 * a copy of this software and associated documentation files (the
@@ -89,26 +89,24 @@ static WORD32 calculate_zero_point_x_vector(WORD32 vec_zero_bias, WORD32 mat_zer
   return  AE_MOVAD32_L(AE_MOVINT32X2_FROMINT64(acc));
 }
 
-WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
+WORD32 xa_nn_matXvec_v2_asym4sxasym8s_asym8s(
     WORD8 * __restrict__ p_out,
     const WORD8 * __restrict__ p_mat1,
-    const WORD8 * __restrict__ p_mat2,
     const WORD8 * __restrict__ p_vec1,
-    const WORD8 * __restrict__ p_vec2,
     const WORD32 * __restrict__ p_bias,
     WORD32 rows,
     WORD32 cols1,
-    WORD32 cols2,
     WORD32 row_stride1,
-    WORD32 row_stride2,
     WORD32 mat1_zero_bias,
-    WORD32 mat2_zero_bias,
     WORD32 vec1_zero_bias,
-    WORD32 vec2_zero_bias,
     WORD32 out_multiplier,
     WORD32 out_shift,
     WORD32 out_zero_bias, 
-    pVOID p_scratch)
+    pVOID p_scratch,
+    WORD32 out_activation_min,
+    WORD32 out_activation_max,
+    xa_dma_cfg_t *p_dma_cfg
+  )
 {
   /* NULL pointer checks */
   XA_NNLIB_ARG_CHK_PTR(p_out, -1);
@@ -122,13 +120,11 @@ WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
   XA_NNLIB_ARG_CHK_COND((row_stride1 < cols1), -1);
   XA_NNLIB_ARG_CHK_COND(((row_stride1%2!=0) && (row_stride1!=cols1)), -1);
   XA_NNLIB_ARG_CHK_COND((vec1_zero_bias < -127 || vec1_zero_bias > 128), -1);
-  XA_NNLIB_ARG_CHK_COND((mat1_zero_bias < -127 || vec1_zero_bias > 128), -1);
+  XA_NNLIB_ARG_CHK_COND((mat1_zero_bias < -127 || mat1_zero_bias > 128), -1);
   XA_NNLIB_ARG_CHK_COND((out_shift < -31 || out_shift > 31), -1);
   XA_NNLIB_ARG_CHK_COND((out_zero_bias < -128 || out_zero_bias > 127), -1);
-  if(p_mat2 != NULL || p_vec2 != NULL)
-  {
-    return -1;
-  }
+  XA_NNLIB_ARG_CHK_COND((out_activation_min < -128 || out_activation_min > 127), -1);
+  XA_NNLIB_ARG_CHK_COND((out_activation_max < out_activation_min || out_activation_max > 127), -1);
 
   WORD8 *p_vec_flipped = (WORD8 *)p_scratch;
   p_vec_flipped = ALIGNED_ADDR(p_vec_flipped, 16);
@@ -319,7 +315,7 @@ WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
     acc1 = SW_ADD32S_INT32X2_INT32X2(acc1, SW_MOVDA32(mat_zb_x_vec));
     ae_int16x4 out;
     MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out, acc0, acc1, out_multiplier, left_shift, right_shift, out_zero_bias)
-    AE_MINMAX16(out, AE_MOVDA16(-128), AE_MOVDA16(127));
+    AE_MINMAX16(out, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
     *out_ptr = (WORD8)AE_MOVAD16_3(out); out_ptr += step;
     *out_ptr = (WORD8)AE_MOVAD16_2(out); out_ptr += step;
     *out_ptr = (WORD8)AE_MOVAD16_1(out); out_ptr += step;
@@ -407,7 +403,7 @@ WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
     acc0 = SW_ADD32S_INT32X2_INT32X2(acc0, SW_MOVDA32(mat_zb_x_vec));
     ae_int16x4 out;
     MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out, acc0, dummy, out_multiplier, left_shift, right_shift, out_zero_bias)
-    AE_MINMAX16(out, AE_MOVDA16(-128), AE_MOVDA16(127));
+    AE_MINMAX16(out, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
     *out_ptr = (WORD8)AE_MOVAD16_3(out); out_ptr += step;
     *out_ptr = (WORD8)AE_MOVAD16_2(out); out_ptr += step;
   }
@@ -496,7 +492,7 @@ WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
     acc0 = SW_ADD32S_INT32X2_INT32X2(acc0, SW_MOVDA32(mat_zb_x_vec));
     ae_int16x4 out;
     MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out, acc0, dummy, out_multiplier, left_shift, right_shift, out_zero_bias)
-    AE_MINMAX16(out, AE_MOVDA16(-128), AE_MOVDA16(127));
+    AE_MINMAX16(out, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
     *out_ptr = (WORD8)AE_MOVAD16_3(out); out_ptr += step;
   }
   
@@ -640,7 +636,7 @@ WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
       acc1 = SW_ADD32S_INT32X2_INT32X2(acc1, SW_MOVDA32(mat_zb_x_vec));
       ae_int16x4 out;
       MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out, acc0, acc1, out_multiplier, left_shift, right_shift, out_zero_bias)
-      AE_MINMAX16(out, AE_MOVDA16(-128), AE_MOVDA16(127));
+      AE_MINMAX16(out, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
       *out_ptr = (WORD8)AE_MOVAD16_3(out); out_ptr += step;
       *out_ptr = (WORD8)AE_MOVAD16_2(out); out_ptr += step;
       *out_ptr = (WORD8)AE_MOVAD16_1(out); out_ptr += step;
@@ -726,7 +722,7 @@ WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
       acc0 = SW_ADD32S_INT32X2_INT32X2(acc0, SW_MOVDA32(mat_zb_x_vec));
       ae_int16x4 out;
       MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out, acc0, dummy, out_multiplier, left_shift, right_shift, out_zero_bias)
-      AE_MINMAX16(out, AE_MOVDA16(-128), AE_MOVDA16(127));
+      AE_MINMAX16(out, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
       *out_ptr = (WORD8)AE_MOVAD16_3(out); out_ptr += step;
       *out_ptr = (WORD8)AE_MOVAD16_2(out); out_ptr += step;
     }
@@ -810,13 +806,48 @@ WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
       acc0 = SW_ADD32S_INT32X2_INT32X2(acc0, SW_MOVDA32(mat_zb_x_vec));
       ae_int16x4 out;
       MPY_BY_QUANT_MULT_SLS_X2X2_OUT16_ZB(out, acc0, dummy, out_multiplier, left_shift, right_shift, out_zero_bias)
-      AE_MINMAX16(out, AE_MOVDA16(-128), AE_MOVDA16(127));
+      AE_MINMAX16(out, AE_MOVDA16(out_activation_min), AE_MOVDA16(out_activation_max));
       *out_ptr = (WORD8)AE_MOVAD16_3(out); out_ptr += step;
     }
     
-      
   }
   
   return 0;  
 }
 
+WORD32 xa_nn_matXvec_asym4sxasym8s_asym8s(
+    WORD8 * __restrict__ p_out,
+    const WORD8 * __restrict__ p_mat1,
+    const WORD8 * __restrict__ p_mat2,
+    const WORD8 * __restrict__ p_vec1,
+    const WORD8 * __restrict__ p_vec2,
+    const WORD32 * __restrict__ p_bias,
+    WORD32 rows,
+    WORD32 cols1,
+    WORD32 cols2,
+    WORD32 row_stride1,
+    WORD32 row_stride2,
+    WORD32 mat1_zero_bias,
+    WORD32 mat2_zero_bias,
+    WORD32 vec1_zero_bias,
+    WORD32 vec2_zero_bias,
+    WORD32 out_multiplier,
+    WORD32 out_shift,
+    WORD32 out_zero_bias, 
+    pVOID p_scratch)
+{
+  if(p_mat2 != NULL || p_vec2 != NULL)
+  {
+    return -1;
+  }
+
+  return xa_nn_matXvec_v2_asym4sxasym8s_asym8s(
+      p_out, p_mat1, p_vec1, p_bias,
+      rows, cols1, row_stride1,
+      mat1_zero_bias, vec1_zero_bias,
+      out_multiplier, out_shift, out_zero_bias,
+      p_scratch,
+      -128, 127, NULL
+    );
+
+}
